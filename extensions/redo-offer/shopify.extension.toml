@@ -49,42 +49,42 @@ api_access = true
 key = "redo_variant_id"
 type = "single_line_text_field"
 name = "Redo Variant ID"
-description = "GID del variante de Redo para esta tienda. Ej: gid://shopify/ProductVariant/47300408901871"
+description = "GID of the Redo variant for this store. E.g: gid://shopify/ProductVariant/47300408901871"
 
 [[extensions.settings.fields]]
 key = "redo_price"
 type = "single_line_text_field"
 name = "Redo Price"
-description = "Precio que se muestra en el bloque. Ej: 2.98 o 2.99"
+description = "Price displayed in the block. E.g: 2.98 or 2.99"
 
 [[extensions.settings.fields]]
 key = "block_heading"
 type = "single_line_text_field"
 name = "Block Heading"
-description = "Título del bloque. Default: Redo Order Protection"
+description = "Block title. Default: Redo Order Protection"
 
 [[extensions.settings.fields]]
 key = "block_subtitle"
 type = "single_line_text_field"
 name = "Block Subtitle"
-description = "Subtítulo del bloque. Default: Protect your order against loss, theft, or damage"
+description = "Block subtitle. Default: Protect your order against loss, theft, or damage"
 
 [[extensions.settings.fields]]
 key = "benefit_1"
 type = "single_line_text_field"
 name = "Benefit 1"
-description = "Primera línea de beneficios. Default: Free returns & exchanges"
+description = "First benefit line. Default: Free returns & exchanges"
 
 [[extensions.settings.fields]]
 key = "benefit_2"
 type = "single_line_text_field"
 name = "Benefit 2"
-description = "Segunda línea de beneficios. Default: Worry-free returns"
+description = "Second benefit line. Default: Worry-free returns"
 
 [[extensions.settings.fields]]
 key = "button_label"
 type = "single_line_text_field"
 name = "Button Label"
-description = "Texto del botón. Default: Add Protection"
+description = "Button text. Default: Add Protection"
 # name = "Banner title"
 # description = "Enter a title for the banner"

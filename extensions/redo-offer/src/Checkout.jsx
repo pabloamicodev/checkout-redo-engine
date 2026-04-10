@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "preact/hooks";
 const BLOCK_HANDLE = "redo-offer";
 const APP_HANDLE = "checkout-redo-engine";
 
-// Fallback por si el merchant no configuró el setting aún
+// Fallback values used when the merchant has not configured the settings yet
 const FALLBACK_VARIANT_ID = "gid://shopify/ProductVariant/45066643996809";
 const FALLBACK_PRICE = "2.98";
 const FALLBACK_HEADING = "Redo Order Protection";
