@@ -21,8 +21,8 @@ export default function () {
 function Extension() {
   const { applyCartLinesChange, applyAttributeChange, lines, analytics, checkoutToken, settings } = shopify;
 
-  // Lee el variant ID del setting configurado por el merchant en el editor de checkout
-  // Si no está configurado, usa el fallback (HPN por defecto)
+  // Read settings configured by the merchant in the checkout editor.
+  // Falls back to default values if not set.
   const REDO_VARIANT_ID = String(settings.current?.redo_variant_id ?? FALLBACK_VARIANT_ID);
   const REDO_PRICE = String(settings.current?.redo_price ?? FALLBACK_PRICE);
   const HEADING = String(settings.current?.block_heading ?? FALLBACK_HEADING);
@@ -51,8 +51,8 @@ function Extension() {
     return () => unsubscribe();
   }, []);
 
-  // Capa 1: cuando Redo pasa a estar en el carrito, graba el atributo en la orden
-  // Este atributo persiste en el pedido y es visible en Shopify Admin y via Admin API
+  // Layer 1: when Redo is added to the cart, write an order attribute.
+  // This attribute persists on the order and is visible in Shopify Admin and via the Admin API.
   useEffect(() => {
     if (!redoInCart) return;
 
@@ -76,8 +76,8 @@ function Extension() {
           quantity: 1,
         });
       } else {
-        // Capa 2: evento analytics al momento exacto del click
-        // Propagado a todos los Web Pixels (GA4, Segment, etc.)
+        // Layer 2: fire an analytics event at the exact moment of the click.
+        // Propagated to all Web Pixels (GA4, Segment, etc.)
         const token = checkoutToken?.value ?? checkoutToken ?? "unknown";
         analytics
           .publish("redo_protection_added", {
@@ -101,7 +101,7 @@ function Extension() {
     setLoading(false);
   }, [redoInCart, redoLineId]);
 
-  // No mostrar nada si Redo ya está en el carrito
+  // Hide the block if Redo is already in the cart
   if (redoInCart) {
     return null;
   }
