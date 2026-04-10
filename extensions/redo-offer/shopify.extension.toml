@@ -56,5 +56,35 @@ key = "redo_price"
 type = "single_line_text_field"
 name = "Redo Price"
 description = "Precio que se muestra en el bloque. Ej: 2.98 o 2.99"
+
+[[extensions.settings.fields]]
+key = "block_heading"
+type = "single_line_text_field"
+name = "Block Heading"
+description = "Título del bloque. Default: Redo Order Protection"
+
+[[extensions.settings.fields]]
+key = "block_subtitle"
+type = "single_line_text_field"
+name = "Block Subtitle"
+description = "Subtítulo del bloque. Default: Protect your order against loss, theft, or damage"
+
+[[extensions.settings.fields]]
+key = "benefit_1"
+type = "single_line_text_field"
+name = "Benefit 1"
+description = "Primera línea de beneficios. Default: Free returns & exchanges"
+
+[[extensions.settings.fields]]
+key = "benefit_2"
+type = "single_line_text_field"
+name = "Benefit 2"
+description = "Segunda línea de beneficios. Default: Worry-free returns"
+
+[[extensions.settings.fields]]
+key = "button_label"
+type = "single_line_text_field"
+name = "Button Label"
+description = "Texto del botón. Default: Add Protection"
 # name = "Banner title"
 # description = "Enter a title for the banner"

@@ -8,6 +8,11 @@ const APP_HANDLE = "checkout-redo-engine";
 // Fallback por si el merchant no configuró el setting aún
 const FALLBACK_VARIANT_ID = "gid://shopify/ProductVariant/45066643996809";
 const FALLBACK_PRICE = "2.98";
+const FALLBACK_HEADING = "Redo Order Protection";
+const FALLBACK_SUBTITLE = "Protect your order against loss, theft, or damage";
+const FALLBACK_BENEFIT_1 = "Free returns & exchanges";
+const FALLBACK_BENEFIT_2 = "Worry-free returns";
+const FALLBACK_BUTTON_LABEL = "Add Protection";
 
 export default function () {
   render(<Extension />, document.body);
@@ -20,6 +25,11 @@ function Extension() {
   // Si no está configurado, usa el fallback (HPN por defecto)
   const REDO_VARIANT_ID = String(settings.current?.redo_variant_id ?? FALLBACK_VARIANT_ID);
   const REDO_PRICE = String(settings.current?.redo_price ?? FALLBACK_PRICE);
+  const HEADING = String(settings.current?.block_heading ?? FALLBACK_HEADING);
+  const SUBTITLE = String(settings.current?.block_subtitle ?? FALLBACK_SUBTITLE);
+  const BENEFIT_1 = String(settings.current?.benefit_1 ?? FALLBACK_BENEFIT_1);
+  const BENEFIT_2 = String(settings.current?.benefit_2 ?? FALLBACK_BENEFIT_2);
+  const BUTTON_LABEL = String(settings.current?.button_label ?? FALLBACK_BUTTON_LABEL);
 
   const [redoInCart, setRedoInCart] = useState(false);
   const [redoLineId, setRedoLineId] = useState("");
@@ -107,9 +117,9 @@ function Extension() {
         <s-stack direction="inline" gap="small" alignItems="center">
           <s-icon type="check-circle" tone="success" size="large" />
           <s-stack direction="block" gap="small-100">
-            <s-heading>Redo Order Protection</s-heading>
+            <s-heading>{HEADING}</s-heading>
             <s-text color="subdued" type="small">
-              Protect your order against loss, theft, or damage
+              {SUBTITLE}
             </s-text>
           </s-stack>
         </s-stack>
@@ -118,8 +128,8 @@ function Extension() {
 
         <s-stack direction="inline" justifyContent="space-between" alignItems="center">
           <s-stack direction="block" gap="small-100">
-            <s-text>✓ Free returns & exchanges</s-text>
-            <s-text>✓ Worry-free returns</s-text>
+            <s-text>✓ {BENEFIT_1}</s-text>
+            <s-text>✓ {BENEFIT_2}</s-text>
           </s-stack>
 
           <s-stack direction="block" gap="small-100" alignItems="end">
@@ -129,7 +139,7 @@ function Extension() {
               disabled={loading}
               onClick={handleToggle}
             >
-              {loading ? "..." : redoInCart ? "✓ Added" : "Add Protection"}
+              {loading ? "..." : redoInCart ? "✓ Added" : BUTTON_LABEL}
             </s-button>
           </s-stack>
         </s-stack>
