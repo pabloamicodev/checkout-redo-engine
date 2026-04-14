@@ -1,0 +1,16 @@
+query RunInput {
+  cart {
+    lines {
+      id
+      quantity
+      attribute(key: "_duplicated") {
+        value
+      }
+    }
+  }
+  discountNode {
+    metafield(namespace: "$app:order-duplicator-discount", key: "function-configuration") {
+      jsonValue
+    }
+  }
+}

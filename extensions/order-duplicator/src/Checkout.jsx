@@ -2,7 +2,6 @@ import "@shopify/ui-extensions/preact";
 import { render } from "preact";
 import { useState, useEffect, useCallback } from "preact/hooks";
 
-const FALLBACK_DISCOUNT_CODE = "DUPLICATE10";
 const FALLBACK_DISCOUNT_LABEL = "10%";
 const FALLBACK_REDO_VARIANT_ID = "gid://shopify/ProductVariant/45066643996809";
 
@@ -15,14 +14,10 @@ function Extension() {
     lines,
     settings,
     applyCartLinesChange,
-    applyDiscountCodeChange,
     query,
     i18n,
   } = shopify;
 
-  const DISCOUNT_CODE = String(
-    settings.current?.discount_code ?? FALLBACK_DISCOUNT_CODE
-  );
   const DISCOUNT_LABEL = String(
     settings.current?.discount_label ?? FALLBACK_DISCOUNT_LABEL
   );
@@ -113,20 +108,16 @@ function Extension() {
     setError(null);
 
     try {
-      // Add duplicate lines
+      // Add duplicate lines marked with _duplicated attribute
+      // so the Shopify Function can identify and discount them automatically
       for (const line of cartLines) {
         await applyCartLinesChange({
           type: "addCartLine",
           merchandiseId: line.merchandise.id,
           quantity: line.quantity,
+          attributes: [{ key: "_duplicated", value: "true" }],
         });
       }
-
-      // Apply discount code
-      await applyDiscountCodeChange({
-        type: "addDiscountCode",
-        code: DISCOUNT_CODE,
-      });
 
       setDone(true);
     } catch (err) {
@@ -135,7 +126,7 @@ function Extension() {
     }
 
     setLoading(false);
-  }, [cartLines, DISCOUNT_CODE]);
+  }, [cartLines]);
 
   // Don't render if no eligible lines
   if (cartLines.length === 0) return null;
@@ -173,7 +164,7 @@ function Extension() {
           <s-stack direction="block" gap="small-100">
             <s-text type="strong">{i18n.translate("success.title")}</s-text>
             <s-text color="subdued" type="small">
-              {i18n.translate("success.subtitle", { discount_code: DISCOUNT_CODE, discount_label: DISCOUNT_LABEL })}
+            {i18n.translate("success.subtitle", { discount_label: DISCOUNT_LABEL })}
             </s-text>
           </s-stack>
         </s-stack>
@@ -330,7 +321,7 @@ function Extension() {
               : i18n.translate("cta.button_idle", { discount_label: DISCOUNT_LABEL })}
           </s-button>
           <s-text color="subdued" type="small">
-            {i18n.translate("cta.code_notice", { discount_code: DISCOUNT_CODE })}
+            {i18n.translate("cta.code_notice", { discount_label: DISCOUNT_LABEL })}
           </s-text>
         </s-stack>
 

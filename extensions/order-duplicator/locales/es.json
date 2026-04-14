@@ -19,11 +19,11 @@
   "cta": {
     "button_idle": "Duplicar pedido y obtener {{discount_label}} extra de descuento",
     "button_loading": "Agregando productos...",
-    "code_notice": "El código {{discount_code}} se aplicará automáticamente."
+    "code_notice": "El descuento de {{discount_label}} se aplicará automáticamente."
   },
   "success": {
     "title": "¡Pedido duplicado!",
-    "subtitle": "{{discount_code}} aplicado — {{discount_label}} de descuento en tus productos extra."
+    "subtitle": "{{discount_label}} de descuento aplicado automáticamente a tus productos extra."
   },
   "error": {
     "generic": "Algo salió mal. Por favor, inténtalo de nuevo."

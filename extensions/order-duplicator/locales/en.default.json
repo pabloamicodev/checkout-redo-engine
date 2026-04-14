@@ -19,11 +19,11 @@
   "cta": {
     "button_idle": "Duplicate order & get extra {{discount_label}} off",
     "button_loading": "Adding items...",
-    "code_notice": "Code {{discount_code}} will be applied automatically."
+    "code_notice": "The {{discount_label}} discount will be applied automatically."
   },
   "success": {
     "title": "Order duplicated!",
-    "subtitle": "{{discount_code}} applied — {{discount_label}} off your extra items."
+    "subtitle": "{{discount_label}} off applied automatically to your extra items."
   },
   "error": {
     "generic": "Something went wrong. Please try again."

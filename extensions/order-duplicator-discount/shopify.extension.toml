@@ -1,0 +1,18 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "Order Duplicator Discount"
+handle = "order-duplicator-discount"
+type = "function"
+uid = "745c7b5f-1a8d-13b7-7604-e9508f3756a9788ba6f8"
+description = "Applies a percentage discount automatically to cart lines marked as duplicated."
+
+  [[extensions.targeting]]
+  target = "purchase.product-discount.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
