@@ -1,0 +1,31 @@
+{
+  "header": {
+    "title": "Double your order & save an extra {{discount_label}} off",
+    "subtitle": "Add the same items again and get {{discount_label}} off automatically."
+  },
+  "product": {
+    "qty": "Qty {{quantity}}",
+    "default_title": "Product",
+    "default_variant": "Default Title"
+  },
+  "preview": {
+    "notice": "This is how your final order would look if you accept this offer.",
+    "discount_badge": "-{{discount_label}} off duplicates"
+  },
+  "badge": {
+    "free": "FREE",
+    "redo": "Redo"
+  },
+  "cta": {
+    "button_idle": "Duplicate order & get extra {{discount_label}} off",
+    "button_loading": "Adding items...",
+    "code_notice": "Code {{discount_code}} will be applied automatically."
+  },
+  "success": {
+    "title": "Order duplicated!",
+    "subtitle": "{{discount_code}} applied — {{discount_label}} off your extra items."
+  },
+  "error": {
+    "generic": "Something went wrong. Please try again."
+  }
+}

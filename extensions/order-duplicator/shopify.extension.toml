@@ -1,0 +1,38 @@
+# Learn more about configuring your checkout UI extension:
+# https://shopify.dev/docs/api/checkout-ui-extensions/latest/configuration
+
+api_version = "2026-01"
+
+[[extensions]]
+name = "order-duplicator"
+handle = "order-duplicator"
+
+uid = "85ccd554-efdc-e5dc-ce7c-37c723ea8ee219248d42"
+
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+api_access = true
+
+[extensions.settings]
+[[extensions.settings.fields]]
+key = "discount_code"
+type = "single_line_text_field"
+name = "Discount Code"
+description = "Discount code applied when duplicating the order. Default: DUPLICATE10"
+
+[[extensions.settings.fields]]
+key = "discount_label"
+type = "single_line_text_field"
+name = "Discount Label"
+description = "Percentage shown in the button label. Default: 10%"
+
+[[extensions.settings.fields]]
+key = "redo_variant_id"
+type = "single_line_text_field"
+name = "Redo Variant ID"
+description = "GID of the Redo variant to exclude from duplication. E.g: gid://shopify/ProductVariant/45066643996809"

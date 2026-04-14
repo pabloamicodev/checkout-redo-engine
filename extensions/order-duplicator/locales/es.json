@@ -1,0 +1,31 @@
+{
+  "header": {
+    "title": "Duplica tu pedido y ahorra un {{discount_label}} extra",
+    "subtitle": "Agrega los mismos productos otra vez y obtén {{discount_label}} de descuento automáticamente."
+  },
+  "product": {
+    "qty": "Cant. {{quantity}}",
+    "default_title": "Producto",
+    "default_variant": "Default Title"
+  },
+  "preview": {
+    "notice": "Así quedaría tu pedido final si aceptas esta oferta.",
+    "discount_badge": "-{{discount_label}} en duplicados"
+  },
+  "badge": {
+    "free": "GRATIS",
+    "redo": "Redo"
+  },
+  "cta": {
+    "button_idle": "Duplicar pedido y obtener {{discount_label}} extra de descuento",
+    "button_loading": "Agregando productos...",
+    "code_notice": "El código {{discount_code}} se aplicará automáticamente."
+  },
+  "success": {
+    "title": "¡Pedido duplicado!",
+    "subtitle": "{{discount_code}} aplicado — {{discount_label}} de descuento en tus productos extra."
+  },
+  "error": {
+    "generic": "Algo salió mal. Por favor, inténtalo de nuevo."
+  }
+}
