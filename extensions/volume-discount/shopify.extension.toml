@@ -1,0 +1,17 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "Volume Discount"
+handle = "volume-discount"
+uid = "bb2f00de-e779-90e3-7141-d67d5d765661b27f22c4"
+type = "function"
+description = "Applies tiered volume discounts per product using metafield-driven configuration."
+
+  [[extensions.targeting]]
+  target = "purchase.product-discount.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

@@ -1,0 +1,18 @@
+query RunInput {
+  cart {
+    lines {
+      id
+      quantity
+      merchandise {
+        ... on ProductVariant {
+          product {
+            id
+            metafield(namespace: "custom", key: "volume_discount_tiers") {
+              jsonValue
+            }
+          }
+        }
+      }
+    }
+  }
+}
