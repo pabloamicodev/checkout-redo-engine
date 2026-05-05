@@ -47,9 +47,14 @@ export function run(input: RunInput): FunctionRunResult {
 
     if (!best) continue;
 
+    // Calculate discount as fixed amount on the line total (2 decimal rounding)
+    // e.g. $39.99 * 3 * 20% = $23.994 -> $23.99 -> final $95.98
+    const lineTotal = parseFloat(line.cost.totalAmount.amount as string);
+    const discountAmount = Math.round(lineTotal * best.percent) / 100;
+
     discounts.push({
       targets: [{ cartLine: { id: line.id } }],
-      value: { percentage: { value: best.percent.toFixed(1) } },
+      value: { fixedAmount: { amount: discountAmount.toFixed(2) } },
       message: best.discount_label ?? `${best.percent}% off`,
     });
   }
@@ -61,4 +66,3 @@ export function run(input: RunInput): FunctionRunResult {
     discounts,
   };
 }
-

@@ -3,6 +3,11 @@ query RunInput {
     lines {
       id
       quantity
+      cost {
+        totalAmount {
+          amount
+        }
+      }
       merchandise {
         ... on ProductVariant {
           product {
