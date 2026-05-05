@@ -40,21 +40,16 @@ export function run(input: RunInput): FunctionRunResult {
     const tiers: Tier[] = Array.isArray(tiersRaw) ? tiersRaw : JSON.parse(tiersRaw as string);
     const totalQty = qtyByProduct.get(productId)?.qty ?? line.quantity;
 
-    // Find highest qualifying tier
+    // Find highest qualifying tier based on per-product quantity
     const best = tiers
       .filter((t) => t.percent > 0 && totalQty >= t.qty)
       .sort((a, b) => b.qty - a.qty)[0];
 
     if (!best) continue;
 
-    // Calculate discount as fixed amount on the line total (2 decimal rounding)
-    // e.g. $39.99 * 3 * 20% = $23.994 -> $23.99 -> final $95.98
-    const lineTotal = parseFloat(line.cost.totalAmount.amount as string);
-    const discountAmount = Math.round(lineTotal * best.percent) / 100;
-
     discounts.push({
       targets: [{ cartLine: { id: line.id } }],
-      value: { fixedAmount: { amount: discountAmount.toFixed(2) } },
+      value: { percentage: { value: best.percent.toFixed(1) } },
       message: best.discount_label ?? `${best.percent}% off`,
     });
   }
