@@ -53,7 +53,7 @@ function Extension() {
   // Always render inside the checkout editor so merchants can configure the block.
   const isInEditor  = shopify.extension.editor != null;
 
-  const [accepted, setAccepted]               = useState(false);
+  const [accepted, setAccepted]               = useState(true);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [blocked, setBlocked]                 = useState(false);
 
