@@ -63,9 +63,3 @@ key = "checkbox_tick_note"
 type = "single_line_text_field"
 name = "Checkbox tick color — read-only note"
 description = "The color of the checkbox tick (✓) follows your store's checkout branding and cannot be changed here. To update it, go to Online Store → Customize → Checkout → Colors and adjust the primary/accent color."
-
-[[extensions.settings.fields]]
-key = "always_visible"
-type = "boolean"
-name = "Always show (preview mode)"
-description = "Enable this while configuring the block in the editor so it's always visible. Disable it in production — the block will only appear when the cart contains subscription products."

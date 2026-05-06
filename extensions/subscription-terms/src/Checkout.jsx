@@ -50,8 +50,8 @@ function Extension() {
   const textAfter   = (String(settings.current?.text_after_link  ?? "")).trim() || i18n.translate("checkbox.text_after");
   const textColor   = toTextColor(settings.current?.text_color);
   const linkTone    = toLinkTone(settings.current?.link_tone);
-  // When true: block always renders regardless of cart contents (use in editor to preview/configure).
-  const alwaysVisible = settings.current?.always_visible === true;
+  // Always render inside the checkout editor so merchants can configure the block.
+  const isInEditor  = shopify.extension.editor != null;
 
   const [accepted, setAccepted]               = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
@@ -105,8 +105,8 @@ function Extension() {
     };
   }, []);
 
-  // Only render when there are subscription lines — OR when always_visible is on (editor preview).
-  if (!hasSubscription && !alwaysVisible) return null;
+  // Only render when there are subscription lines — OR when running inside the checkout editor.
+  if (!hasSubscription && !isInEditor) return null;
 
   function handleChange(/** @type {any} */ event) {
     const isChecked = Boolean(event.target.checked);
