@@ -1,0 +1,65 @@
+# Learn more about configuring your checkout UI extension:
+# https://shopify.dev/docs/api/checkout-ui-extensions/latest/configuration
+
+api_version = "2026-01"
+
+[[extensions]]
+name = "Subscription Terms & Conditions"
+handle = "subscription-terms"
+
+
+uid = "52db81b4-c975-77b8-2531-a2254fd7726238fad04b"
+
+
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+block_progress = true
+
+[extensions.settings]
+
+[[extensions.settings.fields]]
+key = "terms_url"
+type = "single_line_text_field"
+name = "Terms & Conditions URL"
+description = "Full URL for the Terms and Conditions page. E.g: https://yourstore.com/policies/terms-of-service"
+
+[[extensions.settings.fields]]
+key = "text_before_link"
+type = "single_line_text_field"
+name = "Text before the link"
+description = "Text displayed before the clickable link. E.g: 'I agree to the'"
+
+[[extensions.settings.fields]]
+key = "link_text"
+type = "single_line_text_field"
+name = "Link anchor text"
+description = "The clickable text of the link. E.g: 'Terms and Conditions'"
+
+[[extensions.settings.fields]]
+key = "text_after_link"
+type = "single_line_text_field"
+name = "Text after the link"
+description = "Optional text displayed after the link. E.g: 'for my subscription'"
+
+[[extensions.settings.fields]]
+key = "text_color"
+type = "single_line_text_field"
+name = "Text color"
+description = "Color for the label text. Valid values: subdued, base. Leave empty for the default checkout text color."
+
+[[extensions.settings.fields]]
+key = "link_tone"
+type = "single_line_text_field"
+name = "Link tone (color)"
+description = "Tone applied to the Terms & Conditions hyperlink. Valid values: auto, neutral. Leave empty for the default (auto)."
+
+[[extensions.settings.fields]]
+key = "checkbox_tick_note"
+type = "single_line_text_field"
+name = "Checkbox tick color — read-only note"
+description = "The color of the checkbox tick (✓) follows your store's checkout branding and cannot be changed here. To update it, go to Online Store → Customize → Checkout → Colors and adjust the primary/accent color."

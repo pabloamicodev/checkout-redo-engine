@@ -1,0 +1,10 @@
+{
+  "checkbox": {
+    "text_before": "Acepto los",
+    "link_text": "Términos y Condiciones",
+    "text_after": "de mi suscripción"
+  },
+  "errors": {
+    "must_accept": "Debes aceptar los Términos y Condiciones para continuar."
+  }
+}
