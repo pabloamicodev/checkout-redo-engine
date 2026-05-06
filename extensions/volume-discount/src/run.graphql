@@ -3,8 +3,14 @@ query RunInput {
     lines {
       id
       quantity
+      cost {
+        totalAmount {
+          amount
+        }
+      }
       merchandise {
         ... on ProductVariant {
+          __typename
           product {
             id
             metafield(namespace: "custom", key: "volume_discount_tiers") {
