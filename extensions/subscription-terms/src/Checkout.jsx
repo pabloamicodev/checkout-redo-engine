@@ -44,12 +44,14 @@ export default function () {
 function Extension() {
   const { lines, settings, buyerJourney, i18n } = shopify;
 
-  const termsUrl   = String(settings.current?.terms_url   ?? "");
-  const textBefore = (String(settings.current?.text_before_link ?? "")).trim() || i18n.translate("checkbox.text_before");
-  const linkLabel  = (String(settings.current?.link_text  ?? "")).trim() || i18n.translate("checkbox.link_text");
-  const textAfter  = (String(settings.current?.text_after_link  ?? "")).trim() || i18n.translate("checkbox.text_after");
-  const textColor  = toTextColor(settings.current?.text_color);
-  const linkTone   = toLinkTone(settings.current?.link_tone);
+  const termsUrl    = String(settings.current?.terms_url   ?? "");
+  const textBefore  = (String(settings.current?.text_before_link ?? "")).trim() || i18n.translate("checkbox.text_before");
+  const linkLabel   = (String(settings.current?.link_text  ?? "")).trim() || i18n.translate("checkbox.link_text");
+  const textAfter   = (String(settings.current?.text_after_link  ?? "")).trim() || i18n.translate("checkbox.text_after");
+  const textColor   = toTextColor(settings.current?.text_color);
+  const linkTone    = toLinkTone(settings.current?.link_tone);
+  // When true: block always renders regardless of cart contents (use in editor to preview/configure).
+  const alwaysVisible = settings.current?.always_visible === true;
 
   const [accepted, setAccepted]               = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
@@ -103,7 +105,8 @@ function Extension() {
     };
   }, []);
 
-  if (!hasSubscription) return null;
+  // Only render when there are subscription lines — OR when always_visible is on (editor preview).
+  if (!hasSubscription && !alwaysVisible) return null;
 
   function handleChange(/** @type {any} */ event) {
     const isChecked = Boolean(event.target.checked);
