@@ -2,7 +2,7 @@ import type { RunInput, FunctionRunResult } from "../generated/api";
 import { DiscountApplicationStrategy } from "../generated/api";
 
 const EMPTY_DISCOUNT: FunctionRunResult = {
-  discountApplicationStrategy: DiscountApplicationStrategy.Maximum,
+  discountApplicationStrategy: DiscountApplicationStrategy.All,
   discounts: [],
 };
 
@@ -63,7 +63,7 @@ export function run(input: RunInput): FunctionRunResult {
   if (discounts.length === 0) return EMPTY_DISCOUNT;
 
   return {
-    discountApplicationStrategy: DiscountApplicationStrategy.Maximum,
+    discountApplicationStrategy: DiscountApplicationStrategy.All,
     discounts,
   };
 }
