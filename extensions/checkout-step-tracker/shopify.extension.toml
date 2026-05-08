@@ -1,0 +1,20 @@
+# Checkout Step Tracker — invisible extension
+# Writes the last completed checkout step + timestamp to order attributes.
+# Used to enrich abandoned checkouts for Klaviyo flows and custom automations.
+
+api_version = "2026-01"
+
+[[extensions]]
+name = "Checkout Step Tracker"
+handle = "checkout-step-tracker"
+
+uid = "183cb059-cbf2-b7ad-6687-c42efdbed660c34a68bc"
+
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Tracker.jsx"
+target = "purchase.checkout.block.render"
+
+# No block_progress — this extension never blocks the buyer.
+# No settings — fully automatic, zero merchant configuration needed.
