@@ -38,19 +38,88 @@ function normalizeStep(rawStep) {
   return { key: s, label: String(rawStep) };
 }
 
+/**
+ * Returns the traffic source for this checkout session:
+ * 1. utm_source query param (most reliable for paid / email campaigns)
+ * 2. Referrer hostname  (organic / social)
+ * 3. "direct"
+ *
+ * @returns {string}
+ */
+function getSource() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const utm = params.get("utm_source");
+    if (utm) return utm;
+    const ref = document.referrer;
+    if (ref) {
+      try { return new URL(ref).hostname; } catch { return ref; }
+    }
+  } catch { /* extension sandbox may restrict window */ }
+  return "direct";
+}
+
 function Tracker() {
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   const { buyerJourney, applyAttributeChange } = shopify;
 
   /**
-   * Track the highest step rank already written so we never overwrite
-   * with a less-advanced step when the buyer navigates back.
+   * Track the two most recent steps reached.
+   * - highestRankWritten: prevents going backwards
+   * - previousStep: label of the step before the current one
    */
   const highestRankWritten = useRef(0);
+  const previousStep = useRef(/** @type {string | null} */ (null));
 
   useEffect(() => {
+    // ── Source / referrer (captured once on mount) ──────────────────────────
+    applyAttributeChange({
+      type:  "updateAttribute",
+      key:   "_checkout_source",
+      value: getSource(),
+    });
+
+    // ── Buyer identity (email preferred, phone fallback) ────────────────────
+    const identity = /** @type {any} */ (shopify).buyerIdentity;
+
+    /**
+     * Write the buyer identifier as an order attribute.
+     * @param {unknown} val
+     */
+    function writeBuyer(val) {
+      const str = val ? String(val).trim() : "";
+      if (str) {
+        applyAttributeChange({
+          type:  "updateAttribute",
+          key:   "_checkout_buyer",
+          value: str,
+        });
+      }
+    }
+
     /** @type {(() => void) | null} */
-    let cleanup = null;
+    let emailUnsub = null;
+    /** @type {(() => void) | null} */
+    let phoneUnsub = null;
+
+    if (identity?.email?.subscribe) {
+      emailUnsub = identity.email.subscribe(writeBuyer);
+    } else if (identity?.email?.current) {
+      writeBuyer(identity.email.current);
+    }
+
+    // Phone only as fallback when no email is available
+    if (identity?.phone?.subscribe) {
+      phoneUnsub = identity.phone.subscribe((/** @type {unknown} */ phone) => {
+        if (phone && !identity?.email?.current) writeBuyer(phone);
+      });
+    } else if (identity?.phone?.current && !identity?.email?.current) {
+      writeBuyer(identity.phone.current);
+    }
+
+    // ── Step tracking ────────────────────────────────────────────────────────
+    /** @type {(() => void) | null} */
+    let stepCleanup = null;
 
     buyerJourney
       .intercept(async (/** @type {any} */ details) => {
@@ -59,7 +128,17 @@ function Tracker() {
           const rank = STEP_RANK[normalized.key] ?? 0;
 
           if (rank > highestRankWritten.current) {
+            // Shift: current last_step becomes previous_step
+            if (highestRankWritten.current > 0) {
+              applyAttributeChange({
+                type:  "updateAttribute",
+                key:   "_checkout_previous_step",
+                value: previousStep.current ?? "",
+              });
+            }
+
             highestRankWritten.current = rank;
+            previousStep.current = normalized.label;
 
             applyAttributeChange({
               type:  "updateAttribute",
@@ -79,11 +158,13 @@ function Tracker() {
         return { behavior: "allow" };
       })
       .then((unsub) => {
-        cleanup = unsub;
+        stepCleanup = unsub;
       });
 
     return () => {
-      if (cleanup) cleanup();
+      if (stepCleanup)  stepCleanup();
+      if (emailUnsub)   emailUnsub();
+      if (phoneUnsub)   phoneUnsub();
     };
   }, []);
 
