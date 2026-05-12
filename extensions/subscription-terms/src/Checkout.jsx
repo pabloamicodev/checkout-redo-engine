@@ -55,7 +55,7 @@ function Extension() {
 
   const [accepted, setAccepted]               = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
-  const [blocked, setBlocked]                 = useState(false);
+    const [shouldShowError, setShouldShowError] = useState(false);
 
 
   const acceptedRef        = useRef(/** @type {boolean} */ (false));
@@ -67,9 +67,21 @@ function Extension() {
   useEffect(() => {
     function checkLines() {
       const current = lines.current;
-      const hasSub  = current.some(
-        (/** @type {any} */ l) => l.sellingPlanAllocation != null
-      );
+
+      const hasSub  = current.some((/** @type {any} */ l) => {
+        if (l.sellingPlanAllocation != null) return true;
+        if (l.sellingPlan != null) return true;
+        if (l.merchandise?.sellingPlan != null) return true;
+        if (l.merchandise?.product?.requiresSellingPlan === true) return true;
+        // Also check bundle line components
+        if (Array.isArray(l.lineComponents)) {
+          return l.lineComponents.some(
+            (/** @type {any} */ c) => c.sellingPlanAllocation != null
+          );
+        }
+        return false;
+      });
+
       setHasSubscription(hasSub);
     }
     checkLines();
@@ -83,18 +95,25 @@ function Extension() {
 
     buyerJourney
       .intercept(async ({ canBlockProgress }) => {
-        if (canBlockProgress && hasSubscriptionRef.current && !acceptedRef.current) {
-          setBlocked(true);
+        const shouldBlock =
+          canBlockProgress &&
+          hasSubscriptionRef.current &&
+          !acceptedRef.current;
+        if (shouldBlock) {
           return {
             behavior: "block",
             reason: "Subscription terms not accepted",
-            errors: [
-              { message: i18n.translate("errors.must_accept") },
-            ],
+            perform: () => {
+              setShouldShowError(true);
+            },
           };
         }
-        setBlocked(false);
-        return { behavior: "allow" };
+        return {
+          behavior: "allow",
+          perform: () => {
+            setShouldShowError(false);
+          },
+        };
       })
       .then((unsub) => {
         cleanup = unsub;
@@ -111,7 +130,7 @@ function Extension() {
   function handleChange(/** @type {any} */ event) {
     const isChecked = Boolean(event.target.checked);
     setAccepted(isChecked);
-    if (isChecked) setBlocked(false);
+    if (isChecked) setShouldShowError(false);
   }
 
   return (
@@ -119,7 +138,7 @@ function Extension() {
       <s-stack direction="block" gap="small">
 
         {/* ── Checkbox row ──────────────────────────────────────────────── */}
-        <s-stack direction="inline" gap="small" alignItems="center">
+        <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", cursor: "pointer" }}>
           <s-checkbox
             checked={accepted}
             onChange={handleChange}
@@ -135,25 +154,10 @@ function Extension() {
             </s-link>
             {textAfter ? ` ${textAfter}` : ""}
           </s-text>
-        </s-stack>
+        </label>
 
-        {/* ── Disabled proceed button + hint (shown while unchecked) ────── */}
-        {!accepted && (
-          <s-stack direction="block" gap="small">
-            <s-button
-              disabled
-              accessibilityLabel={i18n.translate("proceed.button_label")}
-            >
-              {i18n.translate("proceed.button_label")}
-            </s-button>
-            <s-text color="subdued">
-              ⚠️ {i18n.translate("proceed.hint")}
-            </s-text>
-          </s-stack>
-        )}
-
-        {/* ── Validation banner (shown after a blocked attempt) ─────────── */}
-        {blocked && !accepted && (
+        {/* ── Validation banner (shown only after a blocked attempt) ─────────── */}
+        {shouldShowError && !accepted && (
           <s-banner tone="critical">
             <s-text>{i18n.translate("errors.must_accept")}</s-text>
           </s-banner>

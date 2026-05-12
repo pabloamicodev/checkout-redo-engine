@@ -1,8 +1,8 @@
 {
   "checkbox": {
-    "text_before": "I agree to the",
-    "link_text": "Terms and Conditions",
-    "text_after": "for my subscription"
+    "text_before": "One or more items in your cart is a deferred, subscription, or recurring purchase. By continuing with your payment, you agree that your payment method will automatically be charged at the price and frequency listed on this page until it ends or you cancel. All cancellations are subject to the",
+    "link_text": "terms and conditions",
+    "text_after": "policy"
   },
   "errors": {
     "must_accept": "Please accept the Terms and Conditions to continue."
