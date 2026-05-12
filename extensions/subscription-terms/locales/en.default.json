@@ -6,5 +6,9 @@
   },
   "errors": {
     "must_accept": "Please accept the Terms and Conditions to continue."
+  },
+  "proceed": {
+    "button_label": "Continue to next step",
+    "hint": "Accept the Terms & Conditions above to unlock this step."
   }
 }

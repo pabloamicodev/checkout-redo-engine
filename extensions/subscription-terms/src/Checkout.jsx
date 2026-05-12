@@ -53,7 +53,7 @@ function Extension() {
   // Always render inside the checkout editor so merchants can configure the block.
   const isInEditor  = shopify.extension.editor != null;
 
-  const [accepted, setAccepted]               = useState(true);
+  const [accepted, setAccepted]               = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [blocked, setBlocked]                 = useState(false);
 
@@ -117,6 +117,8 @@ function Extension() {
   return (
     <s-box padding="base">
       <s-stack direction="block" gap="small">
+
+        {/* ── Checkbox row ──────────────────────────────────────────────── */}
         <s-stack direction="inline" gap="small" alignItems="center">
           <s-checkbox
             checked={accepted}
@@ -134,6 +136,23 @@ function Extension() {
             {textAfter ? ` ${textAfter}` : ""}
           </s-text>
         </s-stack>
+
+        {/* ── Disabled proceed button + hint (shown while unchecked) ────── */}
+        {!accepted && (
+          <s-stack direction="block" gap="small">
+            <s-button
+              disabled
+              accessibilityLabel={i18n.translate("proceed.button_label")}
+            >
+              {i18n.translate("proceed.button_label")}
+            </s-button>
+            <s-text color="subdued">
+              ⚠️ {i18n.translate("proceed.hint")}
+            </s-text>
+          </s-stack>
+        )}
+
+        {/* ── Validation banner (shown after a blocked attempt) ─────────── */}
         {blocked && !accepted && (
           <s-banner tone="critical">
             <s-text>{i18n.translate("errors.must_accept")}</s-text>
