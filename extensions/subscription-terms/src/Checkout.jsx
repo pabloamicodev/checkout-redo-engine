@@ -50,13 +50,11 @@ function Extension() {
   const textAfter   = (String(settings.current?.text_after_link  ?? "")).trim() || i18n.translate("checkbox.text_after");
   const textColor   = toTextColor(settings.current?.text_color);
   const linkTone    = toLinkTone(settings.current?.link_tone);
-  // Always render inside the checkout editor so merchants can configure the block.
   const isInEditor  = shopify.extension.editor != null;
 
   const [accepted, setAccepted]               = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
-    const [shouldShowError, setShouldShowError] = useState(false);
-
+  const [shouldShowError, setShouldShowError] = useState(false);
 
   const acceptedRef        = useRef(/** @type {boolean} */ (false));
   const hasSubscriptionRef = useRef(/** @type {boolean} */ (false));
@@ -68,7 +66,7 @@ function Extension() {
     function checkLines() {
       const current = lines.current;
 
-      const hasSub  = current.some((/** @type {any} */ l) => {
+      const hasSub = (current ?? []).some((/** @type {any} */ l) => {
         if (l.sellingPlanAllocation != null) return true;
         if (l.sellingPlan != null) return true;
         if (l.merchandise?.sellingPlan != null) return true;
@@ -86,8 +84,25 @@ function Extension() {
     }
     checkLines();
     const unsub = lines.subscribe(checkLines);
-    return () => unsub();
+    return () => {
+      unsub();
+    };
   }, []);
+
+  // ── Write _terms_blocked attribute so checkout-step-tracker can read it ──────
+  useEffect(() => {
+    const { applyAttributeChange } = shopify;
+    const value = shouldShowError ? "true" : "false";
+    if (!applyAttributeChange) return;
+    applyAttributeChange({
+      key: "_terms_blocked",
+      type: "updateAttribute",
+      value,
+    }).then(() => {
+    }).catch((/** @type {any} */ err) => {
+      console.log("[SubscriptionTerms] _terms_blocked write FAILED:", err);
+    });
+  }, [shouldShowError]);
 
   useEffect(() => {
     /** @type {(() => void) | null} */
@@ -125,10 +140,12 @@ function Extension() {
   }, []);
 
   // Only render when there are subscription lines — OR when running inside the checkout editor.
-  if (!hasSubscription && !isInEditor) return null;
+  if (!hasSubscription && !isInEditor) {
+    return null;
+  }
 
   function handleChange(/** @type {any} */ event) {
-    const isChecked = Boolean(event.target.checked);
+    const isChecked = event.target?.checked ?? event.detail?.checked ?? false;
     setAccepted(isChecked);
     if (isChecked) setShouldShowError(false);
   }
@@ -136,27 +153,25 @@ function Extension() {
   return (
     <s-box padding="base">
       <s-stack direction="block" gap="small">
-
-        {/* ── Checkbox row ──────────────────────────────────────────────── */}
-        <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", cursor: "pointer" }}>
+        <s-stack direction="inline" alignItems="start" gap="small">
           <s-checkbox
             checked={accepted}
             onChange={handleChange}
           />
-          <s-text color={textColor}>
-            {textBefore}{" "}
-            <s-link
-              href={termsUrl || "#"}
-              target="auto"
-              tone={linkTone}
-            >
-              {linkLabel}
-            </s-link>
-            {textAfter ? ` ${textAfter}` : ""}
-          </s-text>
-        </label>
-
-        {/* ── Validation banner (shown only after a blocked attempt) ─────────── */}
+          <s-stack minInlineSize="0px">
+             <s-text color={textColor}>
+                {textBefore}{" "}
+                <s-link
+                  href={termsUrl || "#"}
+                  target="auto"
+                  tone={linkTone}
+                >
+                  {linkLabel}
+                </s-link>
+                {textAfter ? ` ${textAfter}` : ""}
+              </s-text>
+          </s-stack>
+        </s-stack>
         {shouldShowError && !accepted && (
           <s-banner tone="critical">
             <s-text>{i18n.translate("errors.must_accept")}</s-text>

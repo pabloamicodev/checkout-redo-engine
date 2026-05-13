@@ -107,4 +107,36 @@ The attributes are also available in **Shopify Flow** triggers for `Order Create
 
 - The extension requires **Shopify Checkout Extensibility** (not legacy checkout). All stores using this app already meet this requirement.
 - `applyAttributeChange` is marked deprecated in the 2026-01 API but remains fully functional. Shopify maintains deprecated APIs for multiple API versions before removal. We will migrate when a stable replacement that writes to order attributes is available.
+- **Accelerated checkout (Apple Pay, Google Pay, Shop Pay):** `applyAttributeChange` throws if the buyer uses an express payment method (`attributes.canUpdateAttributes` is `false`). Step attributes will be absent on orders placed via express checkout. This is a Shopify platform limitation.
 - The extension does **not** block checkout progress under any circumstance — it always returns `{ behavior: "allow" }`.
+
+---
+
+## Cross-extension communication — Subscription Terms
+
+This extension shares the same order attribute system with the **Subscription Terms** extension (`extensions/subscription-terms`). Both extensions write order attributes independently using `applyAttributeChange`, and those attributes are all visible together in the same completed order or abandoned checkout.
+
+### Attribute written by Subscription Terms
+
+| Attribute | Value | Meaning |
+|---|---|---|
+| `_terms_blocked` | `"true"` | Buyer tried to advance without accepting the T&C |
+| `_terms_blocked` | `"false"` | Buyer accepted and was allowed through |
+
+### How to use both together in Klaviyo
+
+You can combine `_checkout_last_step` and `_terms_blocked` to build precise abandonment flows:
+
+```
+Trigger: Checkout Abandoned
+  ├── IF _checkout_last_step = "Payment" AND _terms_blocked = "true"
+  │     → Send email: "You're almost there — please accept our subscription terms to complete your order"
+  └── IF _checkout_last_step = "Payment" AND _terms_blocked ≠ "true"
+        → Send email: standard payment recovery email
+```
+
+This lets you send a completely different recovery message to buyers who were blocked specifically because they didn't accept the subscription terms — which is a very different objection from a payment failure.
+
+### How it works technically
+
+Both extensions run in the same checkout session and share the same cart context. They do **not** communicate directly with each other — instead, they each write to the same order attributes object via `applyAttributeChange`. The attributes are merged into the order/abandoned checkout record by Shopify, making them all available together downstream.
