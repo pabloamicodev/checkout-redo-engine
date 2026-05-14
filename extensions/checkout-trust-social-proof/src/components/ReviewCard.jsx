@@ -15,9 +15,16 @@ export function ReviewCard({ quote, name, label, rating }) {
       border="base"
       borderRadius="base"
       padding="base"
+      blockSize="100%"
+      justifyContent="space-between"
     >
-      <StarRating rating={rating} />
-      <s-text>"{quote}"</s-text>
+      {/* Top section: stars + quote */}
+      <s-stack direction="block" gap="small">
+        <StarRating rating={rating} />
+        <s-text>"{quote}"</s-text>
+      </s-stack>
+
+      {/* Bottom section: always pinned to bottom */}
       <s-stack direction="block" gap="none">
         <s-text type="strong">{name}</s-text>
         <s-text type="emphasis" color="subdued">{label}</s-text>

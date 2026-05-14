@@ -1,15 +1,16 @@
 import "@shopify/ui-extensions/preact";
 import { ReviewCard } from "./ReviewCard.jsx";
-import { REVIEWS } from "../data/reviews.js";
 
-
-export function ReviewList() {
-  const columns = REVIEWS.map(() => "260px").join(" ");
+/**
+ * @param {{ reviews: Array<{ id: string, quote: string, name: string, label: string, rating: number }> }} props
+ */
+export function ReviewList({ reviews }) {
+  const columns = reviews.map(() => "260px").join(" ");
 
   return (
     <s-scroll-box overflow="hidden auto">
       <s-grid gridTemplateColumns={columns} gap="small">
-        {REVIEWS.map((review) => (
+        {reviews.map((review) => (
           <ReviewCard
             key={review.id}
             quote={review.quote}
@@ -22,3 +23,4 @@ export function ReviewList() {
     </s-scroll-box>
   );
 }
+

@@ -25,25 +25,25 @@ declare module './src/components/ReviewList.jsx' {
 }
 
 //@ts-ignore
-declare module './src/components/TrustBadge.jsx' {
-  const shopify: import('@shopify/ui-extensions/purchase.checkout.block.render').Api;
-  const globalThis: { shopify: typeof shopify };
-}
-
-//@ts-ignore
 declare module './src/data/trustBadges.ts' {
   const shopify: import('@shopify/ui-extensions/purchase.checkout.block.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
 
 //@ts-ignore
-declare module './src/components/ReviewCard.jsx' {
+declare module './src/data/reviews.ts' {
   const shopify: import('@shopify/ui-extensions/purchase.checkout.block.render').Api;
   const globalThis: { shopify: typeof shopify };
 }
 
 //@ts-ignore
-declare module './src/data/reviews.ts' {
+declare module './src/components/TrustBadge.jsx' {
+  const shopify: import('@shopify/ui-extensions/purchase.checkout.block.render').Api;
+  const globalThis: { shopify: typeof shopify };
+}
+
+//@ts-ignore
+declare module './src/components/ReviewCard.jsx' {
   const shopify: import('@shopify/ui-extensions/purchase.checkout.block.render').Api;
   const globalThis: { shopify: typeof shopify };
 }

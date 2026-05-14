@@ -1,12 +1,13 @@
 import "@shopify/ui-extensions/preact";
 import { TrustBadge } from "./TrustBadge.jsx";
-import { TRUST_BADGES } from "../data/trustBadges.js";
 
-
-export function TrustBadgeList() {
+/**
+ * @param {{ badges: Array<{ id: string, line1: string, line2: string, iconSource: string, accessibilityLabel: string }> }} props
+ */
+export function TrustBadgeList({ badges }) {
   return (
     <s-grid gridTemplateColumns="1fr 1fr 1fr" gap="small-200">
-      {TRUST_BADGES.map((badge) => (
+      {badges.map((badge) => (
         <TrustBadge
           key={badge.id}
           line1={badge.line1}
@@ -18,3 +19,4 @@ export function TrustBadgeList() {
     </s-grid>
   );
 }
+

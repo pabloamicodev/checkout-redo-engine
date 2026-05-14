@@ -11,3 +11,101 @@ type = "ui_extension"
 [[extensions.targeting]]
 module = "./src/Checkout.jsx"
 target = "purchase.checkout.block.render"
+
+[extensions.settings]
+
+  # ── Trust Badge 1 ──────────────────────────────────────────────────────────
+  [[extensions.settings.fields]]
+  key = "badge_1_icon"
+  type = "single_line_text_field"
+  name = "Badge 1 – Icon URL"
+
+  [[extensions.settings.fields]]
+  key = "badge_1_line1"
+  type = "single_line_text_field"
+  name = "Badge 1 – Label (line 1)"
+
+  [[extensions.settings.fields]]
+  key = "badge_1_line2"
+  type = "single_line_text_field"
+  name = "Badge 1 – Label (line 2)"
+
+  # ── Trust Badge 2 ──────────────────────────────────────────────────────────
+  [[extensions.settings.fields]]
+  key = "badge_2_icon"
+  type = "single_line_text_field"
+  name = "Badge 2 – Icon URL"
+
+  [[extensions.settings.fields]]
+  key = "badge_2_line1"
+  type = "single_line_text_field"
+  name = "Badge 2 – Label (line 1)"
+
+  [[extensions.settings.fields]]
+  key = "badge_2_line2"
+  type = "single_line_text_field"
+  name = "Badge 2 – Label (line 2)"
+
+  # ── Trust Badge 3 ──────────────────────────────────────────────────────────
+  [[extensions.settings.fields]]
+  key = "badge_3_icon"
+  type = "single_line_text_field"
+  name = "Badge 3 – Icon URL"
+
+  [[extensions.settings.fields]]
+  key = "badge_3_line1"
+  type = "single_line_text_field"
+  name = "Badge 3 – Label (line 1)"
+
+  [[extensions.settings.fields]]
+  key = "badge_3_line2"
+  type = "single_line_text_field"
+  name = "Badge 3 – Label (line 2)"
+
+  # ── Review 1 ───────────────────────────────────────────────────────────────
+  [[extensions.settings.fields]]
+  key = "review_1_quote"
+  type = "multi_line_text_field"
+  name = "Review 1 – Quote"
+
+  [[extensions.settings.fields]]
+  key = "review_1_name"
+  type = "single_line_text_field"
+  name = "Review 1 – Customer name"
+
+  [[extensions.settings.fields]]
+  key = "review_1_rating"
+  type = "number_integer"
+  name = "Review 1 – Rating (1–5)"
+
+  # ── Review 2 ───────────────────────────────────────────────────────────────
+  [[extensions.settings.fields]]
+  key = "review_2_quote"
+  type = "multi_line_text_field"
+  name = "Review 2 – Quote"
+
+  [[extensions.settings.fields]]
+  key = "review_2_name"
+  type = "single_line_text_field"
+  name = "Review 2 – Customer name"
+
+  [[extensions.settings.fields]]
+  key = "review_2_rating"
+  type = "number_integer"
+  name = "Review 2 – Rating (1–5)"
+
+  # ── Review 3 ───────────────────────────────────────────────────────────────
+  [[extensions.settings.fields]]
+  key = "review_3_quote"
+  type = "multi_line_text_field"
+  name = "Review 3 – Quote"
+
+  [[extensions.settings.fields]]
+  key = "review_3_name"
+  type = "single_line_text_field"
+  name = "Review 3 – Customer name"
+
+  [[extensions.settings.fields]]
+  key = "review_3_rating"
+  type = "number_integer"
+  name = "Review 3 – Rating (1–5)"
