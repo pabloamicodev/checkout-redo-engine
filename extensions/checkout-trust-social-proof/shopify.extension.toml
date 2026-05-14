@@ -1,0 +1,13 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "Checkout Trust & Social Proof"
+handle = "checkout-trust-social-proof"
+
+uid = "07070264-0776-7831-dc5b-69b1562abd3279a754ce"
+
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"

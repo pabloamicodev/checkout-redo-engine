@@ -1,0 +1,22 @@
+{
+  "badges": {
+    "guarantee_line1": "30 días de",
+    "guarantee_line2": "garantía de devolución*",
+    "guarantee_label": "Garantía de devolución de 30 días",
+    "shipping_line1": "Envío",
+    "shipping_line2": "rápido",
+    "shipping_label": "Envío rápido",
+    "secure_line1": "Pago seguro",
+    "secure_line2": "y confiable",
+    "secure_label": "Pago seguro y confiable"
+  },
+  "reviews": {
+    "verified_buyer": "Comprador verificado",
+    "review_1_quote": "Es fácil y conveniente ahora que sé cuánto uso regularmente. El pedido llega automáticamente y no tengo que preocuparme por volver a pedir. Me gusta la comodidad y el precio reducido por suscribirme.",
+    "review_1_name": "- Marcia E.",
+    "review_2_quote": "La suscripción hizo que fuera simple mantenerme abastecido, y el proceso de pago se sintió rápido y seguro.",
+    "review_2_name": "- Amy R.",
+    "review_3_quote": "Amo el producto y la opción de envío automático. Se lo he recomendado a todos mis amigos. El proceso de pago es fluido y confiable.",
+    "review_3_name": "- Andrea T."
+  }
+}
