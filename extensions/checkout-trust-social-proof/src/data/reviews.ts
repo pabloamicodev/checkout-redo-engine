@@ -5,24 +5,24 @@ export const REVIEWS = [
   {
     id: "review-1",
     quote:
-      "It's easy and convenient now that I know how much I regularly use. The order comes automatically and I don't have to think about reorders. I like the convenience and the reduced price for subscribing.",
-    name: "- Marcia E.",
+      "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm a wellness entrepreneur and the opportunity to work with OneSol would be a dream come true. I'm currently on my wellness and gym journey - after a few failed ventures- I wish I had OneSol creatine during that time because I believe it would've given me the assistance I needed back then. @wellness.thebodyshop (IG).",
+    name: "- Anikka H.",
     label: "Verified Buyer",
     rating: 5,
   },
   {
     id: "review-2",
     quote:
-      "The subscription made it simple to stay stocked up, and the checkout process felt fast and secure.",
-    name: "- Amy R.",
+      "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm a wellness entrepreneur and the opportunity to work with OneSol would be a dream come true. I'm currently on my wellness and gym journey - after a few failed ventures- I wish I had OneSol creatine during that time because I believe it would've given me the assistance I needed back then. @wellness.thebodyshop (IG).",
+    name: "- Monica B.",
     label: "Verified Buyer",
     rating: 5,
   },
   {
     id: "review-3",
     quote:
-      "I love the product and the auto-ship option. I've recommended it to all my friends. The checkout is smooth and trustworthy.",
-    name: "- Andrea T.",
+      "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm a wellness entrepreneur and the opportunity to work with OneSol would be a dream come true. I'm currently on my wellness and gym journey - after a few failed ventures- I wish I had OneSol creatine during that time because I believe it would've given me the assistance I needed back then. @wellness.thebodyshop (IG).",
+    name: "- Nancy R.",
     label: "Verified Buyer",
     rating: 5,
   },

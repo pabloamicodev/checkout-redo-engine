@@ -14,6 +14,15 @@ target = "purchase.checkout.block.render"
 
 [extensions.settings]
 
+  # ── MarginLab A/B testing ──────────────────────────────────────────────────
+  # Set this to your MarginLab app URL (e.g. https://your-app.vercel.app).
+  # When set, the extension fetches the active checkout test and renders the
+  # assigned variant's content instead of the static settings below.
+  [[extensions.settings.fields]]
+  key = "ml_app_url"
+  type = "single_line_text_field"
+  name = "MarginLab App URL"
+
   # ── Trust Badge 1 ──────────────────────────────────────────────────────────
   [[extensions.settings.fields]]
   key = "badge_1_icon"
