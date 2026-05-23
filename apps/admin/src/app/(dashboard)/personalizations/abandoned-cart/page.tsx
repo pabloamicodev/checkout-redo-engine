@@ -20,21 +20,20 @@ export default async function AbandonedCartPage() {
     try {
       // Use raw SQL to avoid Prisma client enum validation — safe until
       // `prisma generate` is re-run after adding ABANDONED_CART to the schema.
-      const rows = await prisma.$queryRaw<
-        Array<{
-          id: string;
-          name: string;
-          status: string;
-          priority: number;
-          modifications: unknown;
-          targetingRules: unknown;
-          offerIds: string[];
-          startsAt: Date | null;
-          endsAt: Date | null;
-          createdAt: Date;
-          updatedAt: Date;
-        }>
-      >(
+      type AbandonedCartRow = {
+        id: string;
+        name: string;
+        status: string;
+        priority: number;
+        modifications: unknown;
+        targetingRules: unknown;
+        offerIds: string[];
+        startsAt: Date | null;
+        endsAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+      };
+      const rows = (await prisma.$queryRaw(
         Prisma.sql`
           SELECT id, name, status, priority, modifications, "targetingRules", "offerIds",
                  "startsAt", "endsAt", "createdAt", "updatedAt"
@@ -45,7 +44,7 @@ export default async function AbandonedCartPage() {
           ORDER BY priority ASC, "updatedAt" DESC
           LIMIT ${PAGE_SIZE}
         `
-      );
+      )) as AbandonedCartRow[];
 
       items = rows.map((p) => ({
         id: p.id,

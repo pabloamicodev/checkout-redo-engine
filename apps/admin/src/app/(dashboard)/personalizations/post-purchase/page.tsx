@@ -32,7 +32,7 @@ export default async function PostPurchasePersonalizationsPage() {
 
   if (shop) {
     try {
-      items = await prisma.$queryRaw<Row[]>(
+      items = (await prisma.$queryRaw(
         Prisma.sql`
           SELECT id, name, status, priority, "offerIds",
                  "startsAt", "endsAt", "createdAt", "updatedAt"
@@ -43,7 +43,7 @@ export default async function PostPurchasePersonalizationsPage() {
           ORDER BY priority ASC, "updatedAt" DESC
           LIMIT ${PAGE_SIZE}
         `
-      );
+      )) as Row[];
     } catch {
       // POST_PURCHASE enum not yet in DB — show empty state until migration runs
       items = [];
