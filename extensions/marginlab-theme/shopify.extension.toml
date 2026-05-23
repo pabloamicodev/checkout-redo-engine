@@ -1,0 +1,10 @@
+api_version = "2025-04"
+
+[[extensions]]
+name = "MarginLab Runtime"
+handle = "marginlab-runtime"
+uid = "9bdf4d0e-f927-a480-738e-a2c67bf8ced1abe7c2ba"
+type = "theme"
+
+[extensions.targeting]
+type = "all-pages"

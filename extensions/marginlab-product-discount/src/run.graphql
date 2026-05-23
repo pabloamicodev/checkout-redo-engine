@@ -1,0 +1,31 @@
+query RunInput {
+  cart {
+    attribute {
+      key
+      value
+    }
+    lines {
+      id
+      quantity
+      cost {
+        totalAmount {
+          amount
+        }
+      }
+      merchandise {
+        ... on ProductVariant {
+          __typename
+          id
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  discountNode {
+    metafield(namespace: "$app:marginlab", key: "product-discount-config") {
+      value
+    }
+  }
+}

@@ -1,0 +1,27 @@
+# UTM Attribution Capture — invisible checkout extension
+# Reads UTM params + fbclid/gclid/referrer from cart attributes (set by the
+# storefront theme before the buyer enters checkout) and persists them as
+# order attributes. Zero UI — runs silently in the background.
+#
+# The storefront is responsible for reading URL params and writing them to
+# cart attributes (e.g. via theme.liquid or a Web Pixel). This extension
+# then promotes those cart attributes to durable order attributes so the
+# marketing team has clean attribution data on every order in Shopify Admin.
+
+api_version = "2026-01"
+
+[[extensions]]
+name = "UTM Attribution Capture"
+handle = "utm-attribution"
+
+uid = "a2f7c013-9e4b-4d82-b391-7c1e8a5d3f60"
+
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Capture.jsx"
+target = "purchase.checkout.block.render"
+
+# No block_progress — this extension never blocks the buyer.
+# No settings — fully automatic, zero merchant configuration needed.
+

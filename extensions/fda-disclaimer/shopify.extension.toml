@@ -1,0 +1,81 @@
+# FDA Disclaimer Interceptor — checkout UI extension
+#
+# Detects products in the cart that carry an `fda-disclaimer` tag (or a
+# category-specific tag like `fda-protein`, `fda-preworkout`, `fda-vitamins`).
+# Groups them by disclaimer category, renders one mandatory checkbox per
+# distinct category, and blocks checkout progress until all are accepted.
+#
+# Disclaimer text is configurable per category via extension settings.
+# Falls back to the default FDA statement-of-nutritional-support disclaimer.
+
+api_version = "2026-01"
+
+[[extensions]]
+name = "FDA Disclaimer"
+handle = "fda-disclaimer"
+
+uid = "b3e82f14-5c7a-4a1d-9b6f-0d2e3c8a7f51"
+
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+block_progress = true
+
+[extensions.settings]
+
+# ── Category tag prefixes ─────────────────────────────────────────────────────
+# Products are tagged with fda-<category> (e.g. fda-protein, fda-preworkout).
+# Multiple categories can appear in the same cart.
+# Up to 5 custom categories are supported; any product tagged `fda-disclaimer`
+# (generic) falls into the "general" bucket.
+
+[[extensions.settings.fields]]
+key = "category_tag_prefix"
+type = "single_line_text_field"
+name = "Category tag prefix"
+description = "Prefix used in product tags to identify FDA disclaimer categories. Default: fda-. Tags like fda-protein, fda-preworkout will be detected automatically."
+
+# ── Per-category disclaimer text ─────────────────────────────────────────────
+# Leave empty to use the built-in FDA statement for that category.
+
+[[extensions.settings.fields]]
+key = "disclaimer_general"
+type = "multi_line_text_field"
+name = "General disclaimer text"
+description = "Shown for products tagged fda-disclaimer (no category). Leave empty to use the default FDA disclaimer."
+
+[[extensions.settings.fields]]
+key = "disclaimer_protein"
+type = "multi_line_text_field"
+name = "Protein disclaimer text"
+description = "Shown for products tagged fda-protein. Leave empty to use the default."
+
+[[extensions.settings.fields]]
+key = "disclaimer_preworkout"
+type = "multi_line_text_field"
+name = "Pre-workout disclaimer text"
+description = "Shown for products tagged fda-preworkout. Leave empty to use the default."
+
+[[extensions.settings.fields]]
+key = "disclaimer_vitamins"
+type = "multi_line_text_field"
+name = "Vitamins / supplements disclaimer text"
+description = "Shown for products tagged fda-vitamins. Leave empty to use the default."
+
+[[extensions.settings.fields]]
+key = "disclaimer_weight_loss"
+type = "multi_line_text_field"
+name = "Weight loss disclaimer text"
+description = "Shown for products tagged fda-weight-loss. Leave empty to use the default."
+
+# ── Checkbox label ────────────────────────────────────────────────────────────
+
+[[extensions.settings.fields]]
+key = "checkbox_label"
+type = "single_line_text_field"
+name = "Checkbox label"
+description = "Text shown next to each disclaimer checkbox. Default: I have read and understand the above statement."

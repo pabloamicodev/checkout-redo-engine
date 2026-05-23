@@ -1,0 +1,21 @@
+{
+  "disclaimer": {
+    "general": "* Estas declaraciones no han sido evaluadas por la Administración de Alimentos y Medicamentos (FDA). Este producto no está destinado a diagnosticar, tratar, curar ni prevenir ninguna enfermedad.",
+    "protein": "* Estas declaraciones no han sido evaluadas por la FDA. Este producto no está destinado a diagnosticar, tratar, curar ni prevenir ninguna enfermedad. Consulte a un médico antes de usar si tiene alguna condición médica o toma medicamentos.",
+    "preworkout": "* Estas declaraciones no han sido evaluadas por la FDA. Este producto no está destinado a diagnosticar, tratar, curar ni prevenir ninguna enfermedad. Contiene cafeína. No recomendado para menores de 18 años, mujeres embarazadas o en período de lactancia, ni personas sensibles a la cafeína.",
+    "vitamins": "* Estas declaraciones no han sido evaluadas por la FDA. Este producto no está destinado a diagnosticar, tratar, curar ni prevenir ninguna enfermedad. Mantener fuera del alcance de los niños.",
+    "weight-loss": "* Estas declaraciones no han sido evaluadas por la FDA. Este producto no está destinado a diagnosticar, tratar, curar ni prevenir ninguna enfermedad. Los resultados pueden variar. Debe usarse junto con una dieta saludable y ejercicio regular."
+  },
+  "category_label": {
+    "general": "Suplemento dietético",
+    "protein": "Suplemento proteico",
+    "preworkout": "Suplemento pre-entrenamiento",
+    "vitamins": "Vitaminas y suplementos",
+    "weight-loss": "Suplemento para control de peso"
+  },
+  "checkbox_label": "He leído y comprendido la declaración anterior.",
+  "errors": {
+    "must_accept_all": "Por favor, acepta todas las declaraciones de exención para continuar.",
+    "must_accept_one": "Por favor, acepta la declaración de exención para continuar."
+  }
+}

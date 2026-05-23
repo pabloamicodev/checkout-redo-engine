@@ -1,0 +1,773 @@
+// MarginLab — Prisma schema
+// PostgreSQL + pgcrypto extension for UUID generation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ExperimentType {
+  PRICE_TEST
+  DISCOUNT_TEST
+  SHIPPING_TEST
+  OFFER_TEST
+  COMBINATION_TEST
+  CONTENT_TEST
+  SPLIT_URL_TEST
+  TEMPLATE_TEST
+  THEME_TEST
+  CHECKOUT_TEST
+  PERSONALIZATION_TEST
+  JAVASCRIPT_API_TEST
+}
+
+enum ExperimentStatus {
+  DRAFT
+  QA
+  PREVIEW
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum PersonalizationType {
+  OFFER
+  CHECKOUT
+  CONTENT
+  PRICE_DISPLAY
+  BANNER
+  SHIPPING_MESSAGE
+  ABANDONED_CART
+  POST_PURCHASE
+}
+
+enum PersonalizationStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum OfferType {
+  PERCENTAGE_DISCOUNT
+  FIXED_AMOUNT_DISCOUNT
+  PRODUCT_DISCOUNT
+  ORDER_DISCOUNT
+  FREE_SHIPPING
+  FREE_GIFT
+  VOLUME_DISCOUNT
+  QUANTITY_BREAK
+  BUY_X_GET_Y
+  TIERED_PROGRESS_BAR
+  CAMPAIGN_LINK_OFFER
+}
+
+enum CheckoutBlockType {
+  TRUST_BADGES
+  SOCIAL_PROOF
+  GUARANTEE
+  SHIPPING_MESSAGE
+  PAYMENT_ICONS
+  PRODUCT_UPSELL
+  CUSTOM_CONTENT
+  IMAGE_WITH_TEXT
+  URGENCY_MESSAGE
+  SECURITY_MESSAGE
+}
+
+enum EventType {
+  PAGE_VIEW
+  PRODUCT_VIEW
+  COLLECTION_VIEW
+  SEARCH
+  ADD_TO_CART
+  REMOVE_FROM_CART
+  CART_VIEW
+  CHECKOUT_STARTED
+  CHECKOUT_STEP_VIEWED
+  PAYMENT_INFO_SUBMITTED
+  CHECKOUT_COMPLETED
+  CUSTOM
+  CHECKOUT_BLOCK_RENDERED
+  OFFER_VIEWED
+  OFFER_CLAIMED
+  PRICE_VIEWED
+}
+
+enum IntegrationProvider {
+  GA4
+  KLAVIYO
+  ELEVAR
+  CLARITY
+  HEAP
+  SEGMENT
+  RECHARGE
+  WEBHOOK
+  SLACK
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  PENDING
+}
+
+enum ProductCostSource {
+  SHOPIFY_API
+  MANUAL
+  CSV_IMPORT
+}
+
+enum PlanStatus {
+  TRIALING
+  ACTIVE
+  DECLINED
+  EXPIRED
+  FROZEN
+  CANCELLED
+  PENDING
+}
+
+enum AssignmentSource {
+  COOKIE
+  URL_PARAM
+  CART_ATTRIBUTE
+  CUSTOMER_ID
+  SERVER_SIDE
+}
+
+// ---------------------------------------------------------------------------
+// Core: Shop
+// ---------------------------------------------------------------------------
+
+model Shop {
+  id                   String   @id @default(cuid())
+  shopDomain           String   @unique
+  accessTokenEncrypted String
+  scopes               String[]
+  timezone             String   @default("UTC")
+  currencyCode         String   @default("USD")
+  planName             String?
+  installedAt          DateTime @default(now())
+  uninstalledAt        DateTime?
+  settings             Json     @default("{}")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Shopify session storage compatibility
+  sessionId            String?
+
+  experiments          Experiment[]
+  variants             ExperimentVariant[]
+  assignments          ExperimentAssignment[]
+  personalizations     Personalization[]
+  offers               Offer[]
+  checkoutBlocks       CheckoutBlock[]
+  events               Event[]
+  orderAttributions    OrderAttribution[]
+  productCosts         ProductCost[]
+  dailyMetrics         DailyMetric[]
+  integrations         Integration[]
+  auditLogs            AuditLog[]
+  mutuallyExclusiveGroups MutuallyExclusiveGroup[]
+  customEvents         CustomEvent[]
+  webhookLogs          WebhookLog[]
+  shopPlan             ShopPlan?
+
+  @@index([shopDomain])
+}
+
+// ---------------------------------------------------------------------------
+// Experiments
+// ---------------------------------------------------------------------------
+
+model Experiment {
+  id                      String           @id @default(cuid())
+  shopId                  String
+  shop                    Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name                    String
+  slug                    String
+  description             String?
+  hypothesis              String?
+  type                    ExperimentType
+  status                  ExperimentStatus @default(DRAFT)
+
+  primaryMetric           String           @default("conversion_rate")
+  secondaryMetrics        String[]         @default([])
+
+  trafficAllocation       Float            @default(100.0) // % of total traffic eligible
+  assignmentStrategy      String           @default("visitor") // visitor | session | customer
+
+  mutuallyExclusiveGroupId String?
+  mutuallyExclusiveGroup   MutuallyExclusiveGroup? @relation(fields: [mutuallyExclusiveGroupId], references: [id])
+
+  startsAt                DateTime?
+  endsAt                  DateTime?
+  launchedAt              DateTime?
+  pausedAt                DateTime?
+  completedAt             DateTime?
+
+  targetingRules          Json             @default("[]")
+  goals                   Json             @default("[]")
+  settings                Json             @default("{}")
+
+  // For price tests
+  priceConfig             Json?
+  // For discount tests
+  discountConfig          Json?
+  // For shipping tests
+  shippingConfig          Json?
+  // For content tests
+  contentConfig           Json?
+  // For split URL tests
+  splitUrlConfig          Json?
+
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  variants                ExperimentVariant[]
+  assignments             ExperimentAssignment[]
+  events                  Event[]
+  dailyMetrics            DailyMetric[]
+  orderAttributions       OrderAttribution[]
+
+  @@unique([shopId, slug])
+  @@index([shopId, status])
+  @@index([shopId, type])
+}
+
+model ExperimentVariant {
+  id             String     @id @default(cuid())
+  experimentId   String
+  experiment     Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  shopId         String
+  shop           Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  key            String     // e.g. "control", "variant_a", "variant_b"
+  name           String
+  description    String?
+  isControl      Boolean    @default(false)
+  allocationPercent Float   // must sum to 100 across all variants
+
+  // Content/DOM modifications for content tests
+  modifications  Json       @default("[]")
+
+  // Price configuration for price tests
+  priceOverrides Json       @default("[]")
+
+  // Discount configuration
+  discountConfig Json?
+
+  // Split URL
+  redirectUrl    String?
+
+  // Checkout block assignment
+  checkoutBlockIds String[] @default([])
+
+  // Offer assignments
+  offerIds       String[]   @default([])
+
+  settings       Json       @default("{}")
+  previewToken   String     @unique @default(cuid())
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  assignments    ExperimentAssignment[]
+  events         Event[]
+  dailyMetrics   DailyMetric[]
+  orderAttributions OrderAttribution[]
+
+  @@unique([experimentId, key])
+  @@index([experimentId])
+}
+
+model ExperimentAssignment {
+  id              String    @id @default(cuid())
+  shopId          String
+  shop            Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  experimentId    String
+  experiment      Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variantId       String
+  variant         ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  visitorId       String
+  sessionId       String?
+  cartToken       String?
+  checkoutToken   String?
+  customerId      String?
+
+  source          AssignmentSource @default(COOKIE)
+
+  // Context at time of assignment
+  landingPage     String?
+  referrer        String?
+  deviceType      String?
+  country         String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+
+  @@unique([experimentId, visitorId])
+  @@index([shopId, visitorId])
+  @@index([experimentId])
+  @@index([cartToken])
+  @@index([checkoutToken])
+  @@index([customerId])
+}
+
+model MutuallyExclusiveGroup {
+  id          String       @id @default(cuid())
+  shopId      String
+  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  experiments Experiment[]
+
+  @@index([shopId])
+}
+
+// ---------------------------------------------------------------------------
+// Personalizations
+// ---------------------------------------------------------------------------
+
+model Personalization {
+  id             String                @id @default(cuid())
+  shopId         String
+  shop           Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name           String
+  type           PersonalizationType
+  status         PersonalizationStatus @default(DRAFT)
+  priority       Int                   @default(0)
+
+  targetingRules Json                  @default("[]")
+  modifications  Json                  @default("[]")
+
+  // Offer personalizations
+  offerIds       String[]              @default([])
+
+  // Checkout personalizations
+  checkoutBlockIds String[]            @default([])
+
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  events         Event[]
+  orderAttributions OrderAttribution[]
+
+  @@index([shopId, status])
+  @@index([shopId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Offers
+// ---------------------------------------------------------------------------
+
+model Offer {
+  id             String    @id @default(cuid())
+  shopId         String
+  shop           Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name           String
+  type           OfferType
+  status         String    @default("DRAFT") // DRAFT | ACTIVE | PAUSED | ARCHIVED
+
+  // Trigger rules (cart value, product in cart, etc.)
+  triggerRules   Json      @default("[]")
+
+  // Discount rules (amount, percentage, eligible products, etc.)
+  discountRules  Json      @default("{}")
+
+  // Frontend display settings
+  displaySettings Json     @default("{}")
+
+  // Shopify Function config (stored as metafield reference)
+  functionConfig  Json?
+
+  // Which Shopify Function ID handles this offer
+  shopifyFunctionId String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([shopId, status])
+  @@index([shopId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Checkout Blocks
+// ---------------------------------------------------------------------------
+
+model CheckoutBlock {
+  id             String            @id @default(cuid())
+  shopId         String
+  shop           Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name           String
+  type           CheckoutBlockType
+  status         String            @default("DRAFT") // DRAFT | ACTIVE | PAUSED | ARCHIVED
+
+  content        Json              @default("{}")
+  styles         Json              @default("{}")
+
+  targetingRules Json              @default("[]")
+
+  // If this block is part of an experiment
+  experimentId   String?
+  variantId      String?
+
+  // Display position in checkout
+  position       String            @default("AFTER_CONTACT") // Shopify checkout target
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([shopId, status])
+  @@index([shopId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+model Event {
+  id                 String    @id @default(cuid())
+  shopId             String
+  shop               Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  experimentId       String?
+  experiment         Experiment? @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+  variantId          String?
+  variant            ExperimentVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  personalizationId  String?
+  personalization    Personalization? @relation(fields: [personalizationId], references: [id], onDelete: SetNull)
+
+  visitorId          String
+  sessionId          String?
+
+  eventName          String
+  eventType          EventType
+
+  url                String?
+  path               String?
+  referrer           String?
+
+  deviceType         String?
+  country            String?
+  currency           String?
+
+  userAgentHash      String?
+
+  utmSource          String?
+  utmMedium          String?
+  utmCampaign        String?
+  utmContent         String?
+  utmTerm            String?
+
+  // Custom event or e-commerce event payload
+  metadata           Json      @default("{}")
+
+  occurredAt         DateTime
+  receivedAt         DateTime  @default(now())
+
+  @@index([shopId, eventType])
+  @@index([shopId, experimentId])
+  @@index([shopId, visitorId])
+  @@index([occurredAt])
+}
+
+model CustomEvent {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name        String   // e.g. "quiz_completed"
+  displayName String
+  description String?
+
+  // JSON schema for expected payload
+  schema      Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([shopId, name])
+  @@index([shopId])
+}
+
+// ---------------------------------------------------------------------------
+// Order Attribution
+// ---------------------------------------------------------------------------
+
+model OrderAttribution {
+  id                 String          @id @default(cuid())
+  shopId             String
+  shop               Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  shopifyOrderId     String
+  shopifyOrderName   String
+
+  experimentId       String?
+  experiment         Experiment?     @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+  variantId          String?
+  variant            ExperimentVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  personalizationId  String?
+  personalization    Personalization? @relation(fields: [personalizationId], references: [id], onDelete: SetNull)
+
+  visitorId          String?
+  sessionId          String?
+  cartToken          String?
+  checkoutToken      String?
+  customerId         String?
+
+  // Revenue
+  subtotalPrice      Float
+  totalPrice         Float
+  totalDiscounts     Float           @default(0)
+  totalShipping      Float           @default(0)
+  totalTax           Float           @default(0)
+  netRevenue         Float
+
+  currencyCode       String          @default("USD")
+
+  financialStatus    String?
+  fulfillmentStatus  String?
+
+  // Profit
+  cogs               Float?
+  estimatedShippingCost Float?
+  transactionFee     Float?
+  grossProfit        Float?
+  contributionMargin Float?
+
+  // Line items snapshot
+  lineItems          Json            @default("[]")
+
+  attributedAt       DateTime        @default(now())
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@unique([shopId, shopifyOrderId])
+  @@index([shopId, experimentId])
+  @@index([shopId, visitorId])
+  @@index([cartToken])
+  @@index([checkoutToken])
+}
+
+// ---------------------------------------------------------------------------
+// Product Cost (COGS)
+// ---------------------------------------------------------------------------
+
+model ProductCost {
+  id                String           @id @default(cuid())
+  shopId            String
+  shop              Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  shopifyProductId  String
+  shopifyVariantId  String           @unique
+  sku               String?
+
+  cost              Float
+  currencyCode      String           @default("USD")
+  source            ProductCostSource @default(MANUAL)
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([shopId])
+  @@index([shopId, shopifyProductId])
+}
+
+// ---------------------------------------------------------------------------
+// Daily Metrics (pre-aggregated for fast analytics reads)
+// ---------------------------------------------------------------------------
+
+model DailyMetric {
+  id                 String    @id @default(cuid())
+  shopId             String
+  shop               Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  experimentId       String?
+  experiment         Experiment? @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+  variantId          String?
+  variant            ExperimentVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  date               DateTime  @db.Date
+
+  visitors           Int       @default(0)
+  sessions           Int       @default(0)
+  pageViews          Int       @default(0)
+  productViews       Int       @default(0)
+  addToCarts         Int       @default(0)
+  checkoutsStarted   Int       @default(0)
+  orders             Int       @default(0)
+
+  revenue            Float     @default(0)
+  netRevenue         Float     @default(0)
+  discounts          Float     @default(0)
+  shippingRevenue    Float     @default(0)
+  tax                Float     @default(0)
+  cogs               Float     @default(0)
+  grossProfit        Float     @default(0)
+
+  conversionRate     Float     @default(0)
+  addToCartRate      Float     @default(0)
+  checkoutRate       Float     @default(0)
+  aov                Float     @default(0)
+  revenuePerVisitor  Float     @default(0)
+  profitPerVisitor   Float     @default(0)
+
+  metadata           Json      @default("{}")
+
+  @@unique([shopId, experimentId, variantId, date])
+  @@index([shopId, date])
+  @@index([experimentId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Integrations
+// ---------------------------------------------------------------------------
+
+model Integration {
+  id               String            @id @default(cuid())
+  shopId           String
+  shop             Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  provider         IntegrationProvider
+  status           IntegrationStatus @default(DISCONNECTED)
+
+  // Encrypted config (API keys, tokens, etc.)
+  configEncrypted  String?
+
+  // Non-sensitive config
+  publicConfig     Json              @default("{}")
+
+  lastSyncAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([shopId, provider])
+  @@index([shopId])
+}
+
+// ---------------------------------------------------------------------------
+// Shopify Session Storage (required by @shopify/shopify-app-session-storage-prisma)
+// ---------------------------------------------------------------------------
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+// ---------------------------------------------------------------------------
+// Audit Logs
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  actorId     String?  // Shopify user ID or "system"
+  actorEmail  String?
+
+  entityType  String   // "experiment" | "variant" | "offer" | etc.
+  entityId    String
+  entityName  String?
+
+  action      String   // "created" | "updated" | "launched" | "paused" | "completed" | etc.
+
+  before      Json?
+  after       Json?
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([shopId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// Webhook Logs
+// ---------------------------------------------------------------------------
+
+model WebhookLog {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  topic       String
+  payload     Json
+  status      String   @default("received") // received | processed | failed
+  error       String?
+
+  processedAt DateTime?
+  receivedAt  DateTime @default(now())
+
+  @@index([shopId, topic])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Billing / Plans
+// ---------------------------------------------------------------------------
+
+model ShopPlan {
+  id                 String     @id @default(cuid())
+  shopId             String     @unique
+  shop               Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  planKey            String     @default("free") // free | growth | pro | enterprise
+  status             PlanStatus @default(ACTIVE)
+
+  // Shopify recurring application charge ID
+  shopifyChargeId    String?    @unique
+
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelledAt        DateTime?
+
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([shopId])
+}

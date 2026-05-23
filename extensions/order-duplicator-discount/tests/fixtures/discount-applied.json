@@ -1,0 +1,39 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "discountNode": {
+        "metafield": {
+          "jsonValue": { "percentage": 15 }
+        }
+      },
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "attribute": { "value": "true" }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 2,
+            "attribute": { "value": "false" }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "FIRST",
+      "discounts": [
+        {
+          "targets": [
+            { "cartLine": { "id": "gid://shopify/CartLine/1", "quantity": 1 } }
+          ],
+          "value": { "percentage": { "value": "15.0" } },
+          "message": "15% off duplicated items"
+        }
+      ]
+    }
+  }
+}

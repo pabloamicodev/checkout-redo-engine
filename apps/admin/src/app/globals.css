@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand */
+    --color-brand: 99 102 241;
+    --radius: 0.5rem;
+
+    /* Content surface */
+    --surface-bg: 248 250 252;
+    --surface-card: 255 255 255;
+    --surface-border: 226 232 240;
+
+    /* Sidebar dark theme */
+    --sidebar-bg: 15 23 42;
+    --sidebar-surface: 30 41 59;
+    --sidebar-border: 30 41 59;
+    --sidebar-text: 148 163 184;
+    --sidebar-text-muted: 71 85 105;
+    --sidebar-text-active: 248 250 252;
+    --sidebar-item-active: 30 41 59;
+    --sidebar-item-hover: 22 32 50;
+
+    /* Status colors */
+    --status-running: 34 197 94;
+    --status-draft: 148 163 184;
+    --status-paused: 251 191 36;
+    --status-completed: 99 102 241;
+    --status-archived: 71 85 105;
+    --status-scheduled: 14 165 233;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-neutral-50 text-neutral-900;
+  }
+
+  /* Keyboard-only focus ring for all interactive elements */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-brand));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Skeleton / loading */
+  .skeleton {
+    @apply animate-pulse bg-neutral-100 rounded;
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      theme('colors.neutral.100') 25%,
+      theme('colors.neutral.200') 50%,
+      theme('colors.neutral.100') 75%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl border border-neutral-200 shadow-card;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-card-hover hover:border-neutral-300 transition-all duration-150;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-running {
+    @apply badge bg-success-50 text-success-700 border border-success-100;
+  }
+
+  .badge-draft {
+    @apply badge bg-neutral-100 text-neutral-500 border border-neutral-200;
+  }
+
+  .badge-paused {
+    @apply badge bg-warning-50 text-warning-600 border border-warning-100;
+  }
+
+  .badge-completed {
+    @apply badge bg-brand-50 text-brand-700 border border-brand-100;
+  }
+
+  .badge-archived {
+    @apply badge bg-neutral-100 text-neutral-400 border border-neutral-200;
+  }
+
+  /* Inputs */
+  .input-base {
+    @apply w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400/40 focus:border-brand-400 bg-white transition-colors;
+  }
+
+  /* Sidebar nav item */
+  .sidebar-item {
+    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-100 cursor-pointer;
+    color: rgb(var(--sidebar-text));
+  }
+
+  .sidebar-item:hover {
+    background: rgb(var(--sidebar-item-hover));
+    color: rgb(var(--sidebar-text-active));
+  }
+
+  .sidebar-item.active {
+    background: rgb(var(--sidebar-item-active));
+    color: rgb(var(--sidebar-text-active));
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  }
+
+  /* Metric card */
+  .metric-card {
+    @apply bg-white rounded-xl border border-neutral-200 p-4 shadow-card;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--sidebar-border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--sidebar-border));
+    border-radius: 9999px;
+  }
+}

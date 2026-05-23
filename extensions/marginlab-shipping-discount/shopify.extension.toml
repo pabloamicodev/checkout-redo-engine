@@ -1,0 +1,16 @@
+api_version = "2025-04"
+
+[[extensions]]
+name = "MarginLab Shipping Discount"
+handle = "marginlab-shipping-discount"
+uid = "fab092d3-08a8-aa42-324a-4c3af9a0c8bbaa0df7b7"
+type = "function"
+function_type = "shipping_discounts"
+
+[extensions.build]
+command = "cargo wasi build --release"
+path = "target/wasm32-wasi/release/marginlab_shipping_discount.wasm"
+
+[extensions.ui.paths]
+create = "/marginlab/functions/shipping-discount/new"
+details = "/marginlab/functions/shipping-discount/:id"

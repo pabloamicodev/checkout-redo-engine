@@ -1,0 +1,44 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 3,
+            "cost": {
+              "totalAmount": {
+                "amount": "60.00"
+              }
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "metafield": {
+                  "jsonValue": [
+                    { "qty": 2, "percent": 10, "discount_label": "10% off — buy 2" },
+                    { "qty": 5, "percent": 20, "discount_label": "20% off — buy 5" }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "ALL",
+      "discounts": [
+        {
+          "targets": [{ "cartLine": { "id": "gid://shopify/CartLine/1" } }],
+          "value": { "fixedAmount": { "amount": "6.00" } },
+          "message": "10% off — buy 2"
+        }
+      ]
+    }
+  }
+}

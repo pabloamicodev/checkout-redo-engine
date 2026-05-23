@@ -1,11 +1,22 @@
 {
-  "name": "checkout-redo-engine",
-  "version": "1.0.0",
+  "name": "marginlab",
+  "version": "0.1.0",
   "license": "UNLICENSED",
+  "private": true,
+  "workspaces": [
+    "extensions/*",
+    "apps/*"
+  ],
   "scripts": {
     "shopify": "shopify",
     "build": "shopify app build",
     "dev": "shopify app dev",
+    "dev:admin": "npm run dev --workspace=@marginlab/admin",
+    "build:admin": "npm run build --workspace=@marginlab/admin",
+    "db:generate": "npm run db:generate --workspace=@marginlab/admin",
+    "db:push": "npm run db:push --workspace=@marginlab/admin",
+    "db:migrate": "npm run db:migrate --workspace=@marginlab/admin",
+    "db:studio": "npm run db:studio --workspace=@marginlab/admin",
     "info": "shopify app info",
     "generate": "shopify app generate",
     "deploy": "shopify app deploy"
@@ -14,9 +25,5 @@
   "trustedDependencies": [
     "@shopify/plugin-cloudflare"
   ],
-  "author": "pol",
-  "private": true,
-  "workspaces": [
-    "extensions/*"
-  ]
+  "author": "pol"
 }

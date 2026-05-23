@@ -1,19 +1,44 @@
-# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+# Custom app — checkout redo engine
+# Dashboard: MarginLab (https://marginlab.vercel.app)
+# Deploy: shopify app deploy --config shopify.app.checkout-redo-engine.toml
 
 client_id = "c6f5026368ce8cc82561c106c8ccc9b4"
 name = "checkout redo engine"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://marginlab.vercel.app"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
 
 [webhooks]
-api_version = "2026-07"
+api_version = "2026-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create", "orders/updated", "orders/paid", "orders/cancelled" ]
+  uri = "/api/webhooks/orders"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/api/webhooks/app"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/update", "variants/in_stock", "variants/out_of_stock" ]
+  uri = "/api/webhooks/products"
+
+  [[webhooks.subscriptions]]
+  topics = [ "themes/publish" ]
+  uri = "/api/webhooks/shopify"
+
+  # GDPR webhooks omitted — required only for public App Store apps, not custom apps
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+scopes = "read_products,write_products,read_orders,read_customers,read_discounts,write_discounts,read_price_rules,write_price_rules,read_metaobjects,write_metaobjects,read_themes"
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [
+  "https://marginlab.vercel.app/api/auth",
+  "https://localhost/api/auth",
+]
+
+[pos]
+embedded = false

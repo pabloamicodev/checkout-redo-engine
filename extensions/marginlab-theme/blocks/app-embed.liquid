@@ -1,0 +1,39 @@
+{% comment %}
+  MarginLab App Embed Block
+  This block is injected into every page via the Theme App Extension.
+  It bootstraps the storefront runtime.
+{% endcomment %}
+
+{%- assign marginlab_api_base = block.settings.api_base | default: "https://your-marginlab-app.vercel.app" -%}
+
+<script>
+  window.marginlabConfig = {
+    apiBase: {{ marginlab_api_base | json }},
+    shopDomain: {{ shop.permanent_domain | json }},
+    debugMode: {{ block.settings.debug_mode | json }},
+  };
+</script>
+
+{{ 'marginlab-runtime.js' | asset_url | script_tag }}
+
+{% schema %}
+{
+  "name": "MarginLab Runtime",
+  "target": "body",
+  "settings": [
+    {
+      "type": "text",
+      "id": "api_base",
+      "label": "MarginLab API Base URL",
+      "info": "The URL of your MarginLab admin app (e.g. https://your-app.vercel.app)"
+    },
+    {
+      "type": "checkbox",
+      "id": "debug_mode",
+      "label": "Enable Debug Mode",
+      "default": false,
+      "info": "Shows the debug overlay on every page (for development only)"
+    }
+  ]
+}
+{% endschema %}

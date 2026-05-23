@@ -1,19 +1,55 @@
-# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+# MarginLab — Shopify A/B testing and profit optimization app
 
 client_id = "7a9e78917b8c78a28bd9ba7a2b907f98"
-name = "checkout redo engine"
-application_url = "https://shopify.dev/apps/default-app-home"
+name = "MarginLab"
+# Set SHOPIFY_APP_URL in your deployment environment (e.g. Vercel env vars).
+# During local dev, `shopify app dev` overrides this automatically via
+# automatically_update_urls_on_dev = true below.
+application_url = "https://marginlab.vercel.app"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
+include_config_on_deploy = true
 
 [webhooks]
 api_version = "2026-04"
 
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create", "orders/updated", "orders/paid", "orders/cancelled" ]
+  uri = "/api/webhooks/orders"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/api/webhooks/app"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/update", "variants/in_stock", "variants/out_of_stock" ]
+  uri = "/api/webhooks/products"
+
+  [[webhooks.subscriptions]]
+  # Auto-pause running theme tests when a merchant manually publishes a theme
+  topics = [ "themes/publish" ]
+  uri = "/api/webhooks/shopify"
+
+  [[webhooks.subscriptions]]
+  # GDPR mandatory webhooks — required for App Store submission
+  topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "/api/webhooks/shopify"
+
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+# Scopes required by MarginLab — see SCOPES.md for full audit.
+# Removed: write_themes (unused — theme tests use Theme App Extensions, not direct theme writes)
+# Removed: write_script_tags / read_script_tags (unused — no legacy script injection)
+scopes = "read_products,write_products,read_orders,read_customers,read_discounts,write_discounts,read_price_rules,write_price_rules,read_metaobjects,write_metaobjects,read_themes"
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [
+  # Production — update to match your deployed domain
+  "https://marginlab.vercel.app/api/auth",
+  # Local dev — added automatically by `shopify app dev`
+  "https://localhost/api/auth",
+]
+
+[pos]
+embedded = false

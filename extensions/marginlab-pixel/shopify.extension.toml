@@ -1,0 +1,14 @@
+api_version = "2025-04"
+
+[[extensions]]
+name = "MarginLab Web Pixel"
+handle = "marginlab-pixel"
+uid = "33cfb0ee-a38b-0fce-969c-954ea4549c52d7fad110"
+type = "web_pixel"
+runtime_context = "strict"
+
+[extensions.settings]
+type = "object"
+fields = [
+  { key = "accountId", name = "Account ID", type = "single_line_text_field" }
+]

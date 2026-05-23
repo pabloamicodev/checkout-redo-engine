@@ -1,0 +1,16 @@
+api_version = "2025-04"
+
+[[extensions]]
+name = "MarginLab Product Discount"
+handle = "marginlab-product-discount"
+uid = "998ce381-6066-b5d8-f42e-40ba42425896c991c8e8"
+type = "function"
+function_type = "product_discounts"
+
+[extensions.build]
+command = "cargo wasi build --release"
+path = "target/wasm32-wasi/release/marginlab_product_discount.wasm"
+
+[extensions.ui.paths]
+create = "/marginlab/functions/product-discount/new"
+details = "/marginlab/functions/product-discount/:id"

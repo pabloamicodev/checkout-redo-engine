@@ -1,0 +1,37 @@
+query RunInput {
+  cart {
+    cost {
+      subtotalAmount {
+        amount
+        currencyCode
+      }
+    }
+    attribute {
+      key
+      value
+    }
+    lines {
+      id
+      quantity
+      cost {
+        totalAmount {
+          amount
+        }
+      }
+      merchandise {
+        ... on ProductVariant {
+          __typename
+          id
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  discountNode {
+    metafield(namespace: "$app:marginlab", key: "order-discount-config") {
+      value
+    }
+  }
+}

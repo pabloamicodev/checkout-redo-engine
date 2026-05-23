@@ -1,0 +1,21 @@
+{
+  "disclaimer": {
+    "general": "* These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease.",
+    "protein": "* These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease. Consult a physician before use if you have any medical conditions or are taking any medications.",
+    "preworkout": "* These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease. Contains caffeine. Not recommended for persons under 18 years of age, pregnant or nursing women, or individuals sensitive to caffeine.",
+    "vitamins": "* These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease. Keep out of reach of children.",
+    "weight-loss": "* These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease. Results may vary. Intended to be used in conjunction with a healthy diet and regular exercise program."
+  },
+  "category_label": {
+    "general": "Dietary Supplement",
+    "protein": "Protein Supplement",
+    "preworkout": "Pre-Workout Supplement",
+    "vitamins": "Vitamins & Supplements",
+    "weight-loss": "Weight Management Supplement"
+  },
+  "checkbox_label": "I have read and understand the above statement.",
+  "errors": {
+    "must_accept_all": "Please accept all disclaimer statements to continue.",
+    "must_accept_one": "Please accept the disclaimer statement to continue."
+  }
+}

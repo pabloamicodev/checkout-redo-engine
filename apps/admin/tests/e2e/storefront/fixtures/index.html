@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarginLab Storefront Fixture</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .product-price { font-size: 24px; color: #111; }
+    .product-title { font-size: 20px; }
+    #cart-drawer { padding: 10px; border: 1px solid #ccc; margin-top: 10px; }
+    .ml-test-target { background: #f5f5f5; padding: 8px; margin: 4px 0; }
+    #ml-debug-overlay { position: fixed; top: 0; right: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 11px; max-width: 300px; display: none; }
+  </style>
+</head>
+<body>
+  <!-- Shopify globals stub -->
+  <script>
+    window.Shopify = { shop: "fixture.myshopify.com" };
+    window.marginlabConfig = { apiBase: "" }; // will be overridden by tests
+  </script>
+
+  <h1 class="product-title">Test Product</h1>
+  <div class="product-price" data-ml-mod="price">$29.99</div>
+  <div class="ml-test-target" id="headline-target">Original Headline</div>
+  <div id="cart-drawer">
+    <span id="cart-item-count">2 items</span>
+    <span id="cart-subtotal">$59.98</span>
+  </div>
+
+  <button id="add-to-cart">Add to Cart</button>
+
+  <!-- MarginLab Runtime — loaded by the test via page.addScriptTag -->
+  <div id="ml-debug-overlay"></div>
+</body>
+</html>

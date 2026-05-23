@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "export": "run",
+    "target": "purchase.product-discount.run",
+    "input": {
+      "discountNode": {
+        "metafield": {
+          "jsonValue": { "percentage": 0 }
+        }
+      },
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "attribute": { "value": "true" }
+          }
+        ]
+      }
+    },
+    "output": {
+      "discountApplicationStrategy": "FIRST",
+      "discounts": []
+    }
+  }
+}

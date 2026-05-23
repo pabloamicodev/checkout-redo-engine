@@ -1,0 +1,11 @@
+api_version = "2025-04"
+
+[[extensions]]
+name = "MarginLab Checkout"
+handle = "marginlab-checkout"
+uid = "da0ac1b9-1ccf-3812-dcec-4623c5c153ab0ebbe27e"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.tsx"
+target = "purchase.checkout.block.render"
