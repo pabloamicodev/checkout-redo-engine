@@ -182,7 +182,7 @@ export default async function PersonalizationDetailPage({
             </div>
             <div className="px-5 py-4">
               <div className="space-y-2">
-                {offerIds.map((offerId) => (
+                {offerIds.map((offerId: string) => (
                   <Link
                     key={offerId}
                     href={`/offers-library/${offerId}`}
