@@ -21,7 +21,8 @@
     "generate": "shopify app generate",
     "deploy": "shopify app deploy"
   },
-  "dependencies": {},
+  "dependencies": {
+  },
   "trustedDependencies": [
     "@shopify/plugin-cloudflare"
   ],

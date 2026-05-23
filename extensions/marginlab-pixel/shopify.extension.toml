@@ -9,6 +9,11 @@ runtime_context = "strict"
 
 [extensions.settings]
 type = "object"
-fields = [
-  { key = "accountId", name = "Account ID", type = "single_line_text_field" }
-]
+
+[extensions.settings.fields]
+
+  [extensions.settings.fields.apiBase]
+  name = "API Base URL"
+  description = "The base URL of the MarginLab app (e.g. https://checkout-redo-engine.vercel.app)"
+  type = "single_line_text_field"
+

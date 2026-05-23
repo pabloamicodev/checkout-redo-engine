@@ -8,5 +8,5 @@ type = "function"
 function_type = "delivery_customization"
 
 [extensions.build]
-command = "cargo wasi build --release"
+command = "cargo build --target wasm32-wasip1 --release"
 path = "dist/index.wasm"

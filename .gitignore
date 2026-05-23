@@ -36,3 +36,4 @@ next-env.d.ts
 
 # Internal team documents
 EXTENSION_OPPORTUNITIES.md
+.vercel

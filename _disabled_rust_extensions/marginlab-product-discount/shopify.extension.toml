@@ -8,7 +8,7 @@ type = "function"
 function_type = "product_discounts"
 
 [extensions.build]
-command = "cargo wasi build --release"
+command = "cargo build --target wasm32-wasip1 --release"
 path = "target/wasm32-wasi/release/marginlab_product_discount.wasm"
 
 [extensions.ui.paths]
