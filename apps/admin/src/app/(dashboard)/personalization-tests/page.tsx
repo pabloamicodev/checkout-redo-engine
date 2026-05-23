@@ -24,7 +24,10 @@ export default async function PersonalizationTestsPage() {
     prisma.experiment.count({ where: { shopId: shop.id, type: "PERSONALIZATION_TEST" } }),
   ]);
 
-  const initialItems = items.map((e) => ({
+  type ExperimentItem = (typeof items)[number];
+
+
+  const initialItems = items.map((e: ExperimentItem) => ({
     id: e.id,
     name: e.name,
     status: e.status,
@@ -53,3 +56,4 @@ export default async function PersonalizationTestsPage() {
     </div>
   );
 }
+

@@ -18,11 +18,12 @@ export default async function PersonalizationsPage() {
   const { items, total } = shop
     ? await service.list(shop.id, { page: 1, limit: PAGE_SIZE })
     : { items: [], total: 0 };
+  type PersonalizationItem = (typeof items)[number];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-neutral-50">
       <PersonalizationsClient
-        initialItems={items.map((p) => ({
+        initialItems={items.map((p: PersonalizationItem) => ({
           id: p.id,
           name: p.name,
           status: p.status,

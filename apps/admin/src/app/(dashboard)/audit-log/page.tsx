@@ -46,6 +46,7 @@ export default async function AuditLogPage({
   const { page: pageParam, type } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const { logs, total } = await getAuditLogs(shopDomain, page, type);
+  type AuditLogRow = (typeof logs)[number];
 
   const PAGE_SIZE = 50;
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -104,7 +105,7 @@ export default async function AuditLogPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((log) => (
+                  {logs.map((log: AuditLogRow) => (
                     <tr key={log.id} className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50 transition-colors">
                       <td className="px-5 py-3.5">
                         <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full capitalize ${ACTION_COLORS[log.action] ?? "bg-neutral-100 text-neutral-700"}`}>

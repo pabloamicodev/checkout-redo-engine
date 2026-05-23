@@ -70,6 +70,7 @@ export default async function ExperimentsPage({
   const shopDomain = await getSessionShop();
   const { status } = await searchParams;
   const { experiments, total } = await getExperiments(shopDomain, status);
+  type ExperimentRow = (typeof experiments)[number];
 
   const statusFilters = [
     { label: "All", value: "all" },
@@ -148,7 +149,7 @@ export default async function ExperimentsPage({
                 </tr>
               </thead>
               <tbody>
-                {experiments.map((exp) => {
+                {experiments.map((exp: ExperimentRow) => {
                   const statusTheme = getStatusTheme(exp.status);
                   const typeTheme = getTestTypeTheme(exp.type);
                   return (
