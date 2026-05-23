@@ -1,0 +1,15 @@
+[package]
+name = "marginlab-delivery-customization"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "marginlab-delivery-customization"
+path = "src/main.rs"
+
+[dependencies]
+shopify_function = "*"
+serde = { version = "1.0", features = ["derive"] }

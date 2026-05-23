@@ -1,0 +1,9 @@
+{
+  "name": "marginlab-checkout",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@shopify/ui-extensions-react": "*",
+    "react": "^18.0.0"
+  }
+}

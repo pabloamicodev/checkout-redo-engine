@@ -6,3 +6,7 @@ handle = "marginlab-delivery-customization"
 uid = "27d252ec-d65c-b53d-1ff2-85ff760111c06a561515"
 type = "function"
 function_type = "delivery_customization"
+
+[extensions.build]
+command = "cargo wasi build --release"
+path = "dist/index.wasm"
