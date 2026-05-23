@@ -5,10 +5,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "./prisma";
 
 export const shopify = shopifyApi({
-  apiKey: process.env.SHOPIFY_API_KEY!,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET!,
+  apiKey: process.env.SHOPIFY_API_KEY ?? "",
+  apiSecretKey: process.env.SHOPIFY_API_SECRET ?? "",
   scopes: (process.env.SHOPIFY_APP_SCOPES ?? "").split(","),
-  hostName: process.env.HOST!.replace(/^https?:\/\//, ""),
+  hostName: (process.env.HOST ?? "localhost").replace(/^https?:\/\//, ""),
   apiVersion: ApiVersion.April25,
   isEmbeddedApp: true,
 });
