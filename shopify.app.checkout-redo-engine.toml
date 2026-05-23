@@ -1,10 +1,10 @@
 # Custom app — checkout redo engine
-# Dashboard: MarginLab (https://marginlab.vercel.app)
+# Dashboard: MarginLab (https://checkout-redo-engine.vercel.app)
 # Deploy: shopify app deploy --config shopify.app.checkout-redo-engine.toml
 
 client_id = "c6f5026368ce8cc82561c106c8ccc9b4"
 name = "checkout redo engine"
-application_url = "https://marginlab.vercel.app"
+application_url = "https://checkout-redo-engine.vercel.app"
 embedded = true
 
 [build]
@@ -36,7 +36,7 @@ scopes = "read_products,write_products,read_orders,read_customers,read_discounts
 
 [auth]
 redirect_urls = [
-  "https://marginlab.vercel.app/api/auth",
+  "https://checkout-redo-engine.vercel.app/api/auth",
   "https://localhost/api/auth",
 ]
 
