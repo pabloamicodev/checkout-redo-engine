@@ -5,6 +5,8 @@ import Link from "next/link";
 import { getSessionShop } from "@/lib/session-shop";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
 
+
+export const dynamic = 'force-dynamic';
 async function getAnalyticsOverview(shopDomain: string) {
   const shop = await prisma.shop.findUnique({
     where: { shopDomain },

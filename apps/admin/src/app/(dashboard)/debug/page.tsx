@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+
+export const dynamic = 'force-dynamic';
+
 import {
   Search,
   Terminal,

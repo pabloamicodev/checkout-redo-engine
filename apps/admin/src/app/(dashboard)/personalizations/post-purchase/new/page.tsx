@@ -5,6 +5,8 @@ import { OfferService } from "@/services/offer.service";
 import { prisma } from "@/lib/prisma";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const offerService = new OfferService();
 
 export const metadata = { title: "New Post-Purchase Personalization — MarginLab" };

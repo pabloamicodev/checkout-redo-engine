@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { SplitUrlWizard } from "@/components/experiments/SplitUrlWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Split URL Test — MarginLab" };
 
 export default function NewSplitUrlTestPage() {

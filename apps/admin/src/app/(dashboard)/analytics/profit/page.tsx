@@ -8,6 +8,8 @@ import { formatCurrency, formatPercent, formatRelativeLift } from "@/lib/utils";
 import { TrendingUp, DollarSign, BarChart3, AlertTriangle, ExternalLink, Download } from "lucide-react";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const analyticsService = new AnalyticsService();
 const cogsService = new CogsService();
 

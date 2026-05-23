@@ -2,6 +2,8 @@ import Link from "next/link";
 import { OfferWizard } from "@/components/offers/OfferWizard";
 import { ChevronLeft } from "lucide-react";
 
+
+export const dynamic = 'force-dynamic';
 export default function NewOfferPage() {
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">

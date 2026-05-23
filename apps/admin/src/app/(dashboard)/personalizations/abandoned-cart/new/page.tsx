@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { AbandonedCartClient } from "@/components/personalizations/AbandonedCartClient";
 
+
+export const dynamic = 'force-dynamic';
 export default function AbandonedCartNewPage() {
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">

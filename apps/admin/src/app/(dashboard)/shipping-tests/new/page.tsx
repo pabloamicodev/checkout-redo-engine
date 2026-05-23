@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ShippingTestWizard } from "@/components/shipping/ShippingTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Shipping Test — MarginLab" };
 
 export default function NewShippingTestPage() {

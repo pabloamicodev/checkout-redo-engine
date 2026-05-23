@@ -6,6 +6,8 @@ import { Plus, ExternalLink } from "lucide-react";
 import { getSessionShop } from "@/lib/session-shop";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 
+
+export const dynamic = 'force-dynamic';
 const service = new CheckoutBlockService();
 
 const TYPE_LABELS: Record<string, string> = {

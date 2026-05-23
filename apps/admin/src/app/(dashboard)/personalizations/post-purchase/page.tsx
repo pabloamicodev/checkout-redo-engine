@@ -3,6 +3,8 @@ import { getSessionShop } from "@/lib/session-shop";
 import { PostPurchaseClient } from "@/components/personalizations/PostPurchaseClient";
 import { Prisma } from "@prisma/client";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Post-Purchase Personalizations — MarginLab" };
 
 const PAGE_SIZE = 50;

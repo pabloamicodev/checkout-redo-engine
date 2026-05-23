@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { CheckoutBlockWizard } from "@/components/checkout-blocks/CheckoutBlockWizard";
 
+
+export const dynamic = 'force-dynamic';
 export default function NewCheckoutBlockPage() {
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">

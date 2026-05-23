@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { ExperimentTypeList } from "@/components/experiments/ExperimentTypeList";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Split URL Tests — MarginLab" };
 
 export default async function SplitUrlTestsPage() {

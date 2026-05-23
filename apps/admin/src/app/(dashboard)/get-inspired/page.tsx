@@ -2,6 +2,8 @@ import Link from "next/link";
 import { CreateTestModal } from "@/components/experiments/CreateTestModal";
 import { Plus, Clock, BookOpen, Video, Star, Code2 } from "lucide-react";
 
+
+export const dynamic = 'force-dynamic';
 // ── Static template/guide data ─────────────────────────────────────────────
 
 const TEMPLATE_TABS = [

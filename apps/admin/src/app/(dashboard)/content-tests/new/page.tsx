@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ContentTestWizard } from "@/components/content-tests/ContentTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Content Test — MarginLab" };
 
 export default function NewContentTestPage() {

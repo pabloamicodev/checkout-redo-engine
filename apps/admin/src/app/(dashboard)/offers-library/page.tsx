@@ -3,6 +3,8 @@ import { OfferService } from "@/services/offer.service";
 import { prisma } from "@/lib/prisma";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const offerService = new OfferService();
 const PAGE_SIZE = 50;
 

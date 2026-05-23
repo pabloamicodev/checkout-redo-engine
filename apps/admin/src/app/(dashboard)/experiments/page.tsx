@@ -7,6 +7,8 @@ import { CreateTestModal } from "@/components/experiments/CreateTestModal";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
 
+
+export const dynamic = 'force-dynamic';
 const TYPE_LABELS: Record<string, string> = {
   PRICE_TEST: "Pricing+",
   DISCOUNT_TEST: "Discount",

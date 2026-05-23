@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { DiscountTestWizard } from "@/components/discount-tests/DiscountTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Discount Test — MarginLab" };
 
 export default function NewDiscountTestPage() {

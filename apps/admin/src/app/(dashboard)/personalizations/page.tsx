@@ -3,6 +3,8 @@ import { OfferPersonalizationService } from "@/services/offer-personalization.se
 import { prisma } from "@/lib/prisma";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const service = new OfferPersonalizationService();
 const PAGE_SIZE = 50;
 

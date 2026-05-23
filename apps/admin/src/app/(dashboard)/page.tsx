@@ -18,6 +18,8 @@ import {
   Lightbulb,
 } from "lucide-react";
 
+
+export const dynamic = 'force-dynamic';
 async function getDashboardData(shopDomain: string) {
   const shop = await prisma.shop.findUnique({
     where: { shopDomain },

@@ -3,6 +3,8 @@ import { getSessionShop } from "@/lib/session-shop";
 import { AbandonedCartClient, type AcrItem } from "@/components/personalizations/AbandonedCartClient";
 import { Prisma } from "@prisma/client";
 
+
+export const dynamic = 'force-dynamic';
 const PAGE_SIZE = 50;
 
 export default async function AbandonedCartPage() {

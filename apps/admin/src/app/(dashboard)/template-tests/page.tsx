@@ -3,6 +3,8 @@ import { ExperimentTypeList } from "@/components/experiments/ExperimentTypeList"
 import { getSessionShop } from "@/lib/session-shop";
 import { prisma } from "@/lib/prisma";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Template Tests — MarginLab" };
 
 const service = new TemplateTestService();

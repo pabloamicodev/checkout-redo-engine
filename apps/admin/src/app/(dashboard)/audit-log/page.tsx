@@ -4,6 +4,8 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const ACTION_COLORS: Record<string, string> = {
   created: "bg-brand-100 text-brand-700",
   launched: "bg-emerald-100 text-emerald-700",

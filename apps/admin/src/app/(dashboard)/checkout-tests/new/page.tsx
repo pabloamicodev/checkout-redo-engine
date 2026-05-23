@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { CheckoutTestWizard } from "@/components/checkout-tests/CheckoutTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Checkout Test — MarginLab" };
 
 export default function NewCheckoutTestPage() {

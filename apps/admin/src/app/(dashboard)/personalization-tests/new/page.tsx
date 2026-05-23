@@ -2,6 +2,8 @@ import Link from "next/link";
 import { PersonalizationTestWizard } from "@/components/personalization-tests/PersonalizationTestWizard";
 import { ChevronLeft } from "lucide-react";
 
+
+export const dynamic = 'force-dynamic';
 export default function NewPersonalizationTestPage() {
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">

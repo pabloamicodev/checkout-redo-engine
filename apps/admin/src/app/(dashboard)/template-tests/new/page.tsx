@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { TemplateTestWizard } from "@/components/template-tests/TemplateTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Template Test — MarginLab" };
 
 export default function NewTemplateTestPage() {

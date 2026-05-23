@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ThemeTestWizard } from "@/components/theme-tests/ThemeTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Theme Test — MarginLab" };
 
 export default function NewThemeTestPage() {

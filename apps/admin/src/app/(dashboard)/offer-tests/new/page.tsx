@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { OfferTestWizard } from "@/components/offer-tests/OfferTestWizard";
 
+
+export const dynamic = 'force-dynamic';
 export const metadata = { title: "Create Offer Test — MarginLab" };
 
 export default function NewOfferTestPage() {

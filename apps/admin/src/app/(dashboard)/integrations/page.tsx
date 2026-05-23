@@ -3,6 +3,8 @@ import { IntegrationService } from "@/services/integration.service";
 import { IntegrationsClient } from "@/components/integrations/IntegrationsClient";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const service = new IntegrationService();
 
 export const metadata = { title: "Integrations — MarginLab" };

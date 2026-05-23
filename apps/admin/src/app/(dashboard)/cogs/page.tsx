@@ -5,6 +5,8 @@ import { CogsClient } from "@/components/cogs/CogsClient";
 import { CogsSettingsForm } from "@/components/cogs/CogsSettingsForm";
 import { getSessionShop } from "@/lib/session-shop";
 
+
+export const dynamic = 'force-dynamic';
 const cogsService = new CogsService();
 
 async function getData(shopDomain: string) {
