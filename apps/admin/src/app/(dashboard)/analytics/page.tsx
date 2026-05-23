@@ -1,17 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
 import { formatCurrency } from "@/lib/utils";
 import { BarChart3, TrendingUp, ShoppingCart, Users, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { getSessionShop } from "@/lib/session-shop";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
 
-type RunningExperiment = Prisma.ExperimentGetPayload<{
-  include: {
-    variants: true;
-    _count: { select: { assignments: true; orderAttributions: true } };
-  };
-}>;
+type RunningExperiment = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>["runningExperiments"][number];
 
 
 export const dynamic = 'force-dynamic';
