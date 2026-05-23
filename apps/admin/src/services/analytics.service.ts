@@ -351,9 +351,7 @@ export class AnalyticsService {
     const startDate = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
     const endDate = dateRange?.end ?? new Date();
 
-    const rows = await prisma.$queryRaw<
-      Array<{ variantId: string; dimensionValue: string; visitors: bigint }>
-    >(Prisma.sql`
+    const rows = (await prisma.$queryRaw(Prisma.sql`
       SELECT
         "variantId",
         ${Prisma.raw(`"${col}"`)} AS "dimensionValue",
@@ -367,7 +365,7 @@ export class AnalyticsService {
       GROUP BY "variantId", ${Prisma.raw(`"${col}"`)}
       ORDER BY visitors DESC
       LIMIT 100
-    `);
+    `)) as Array<{ variantId: string; dimensionValue: string; visitors: bigint }>;
 
     const variantMap = new Map(
       experiment.variants.map((v) => [v.id, { key: v.key, name: v.name }])
@@ -447,7 +445,7 @@ export class AnalyticsService {
     );
 
     // Unique visitors who triggered the event per variant
-    const uniqueRows = await prisma.$queryRaw<Array<{ variantId: string; uniqueVisitors: bigint }>>`
+    const uniqueRows = (await prisma.$queryRaw`
       SELECT "variantId", COUNT(DISTINCT "visitorId") AS "uniqueVisitors"
       FROM "Event"
       WHERE "shopId" = ${shopId}
@@ -456,7 +454,7 @@ export class AnalyticsService {
         AND "occurredAt" >= ${startDate}
         AND "occurredAt" <= ${endDate}
       GROUP BY "variantId"
-    `;
+    `) as Array<{ variantId: string; uniqueVisitors: bigint }>;
     const uniqueMap = new Map(
       uniqueRows.map((r) => [r.variantId, Number(r.uniqueVisitors)])
     );

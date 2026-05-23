@@ -137,7 +137,7 @@ export class DailyMetricService {
     endDate: Date
   ): Promise<void> {
     // Get all distinct dates with events for this variant
-    const eventDates = await prisma.$queryRaw<Array<{ date: Date }>>`
+    const eventDates = (await prisma.$queryRaw`
       SELECT DISTINCT DATE_TRUNC('day', "occurredAt" AT TIME ZONE 'UTC') AS date
       FROM "Event"
       WHERE "shopId" = ${shopId}
@@ -146,7 +146,7 @@ export class DailyMetricService {
         AND "occurredAt" >= ${startDate}
         AND "occurredAt" <= ${endDate}
       ORDER BY date ASC
-    `;
+    `) as Array<{ date: Date }>;
 
     for (const { date } of eventDates) {
       const dayStart = new Date(date);
