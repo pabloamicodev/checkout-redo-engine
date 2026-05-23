@@ -127,8 +127,8 @@ async function main() {
 
   // Daily metrics for the price test (last 7 days)
   const variants = priceTest.variants;
-  const control = variants.find((v) => v.isControl)!;
-  const variantA = variants.find((v) => !v.isControl)!;
+  const control = variants.find((v: (typeof variants)[number]) => v.isControl)!;
+  const variantA = variants.find((v: (typeof variants)[number]) => !v.isControl)!;
 
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
