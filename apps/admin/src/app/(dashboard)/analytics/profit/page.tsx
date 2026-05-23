@@ -47,9 +47,11 @@ async function getData(shopDomain: string) {
     cogsService.getCoverage(shop.id),
   ]);
 
+  type ExperimentRow = (typeof experiments)[number];
+
   // Fetch analytics per experiment in parallel (max 10 at a time)
   const experimentMetrics = await Promise.all(
-    experiments.map(async (exp) => {
+    experiments.map(async (exp: ExperimentRow) => {
       const analytics = await analyticsService.getExperimentAnalytics(shop.id, exp.id);
       return { experiment: exp, analytics };
     })

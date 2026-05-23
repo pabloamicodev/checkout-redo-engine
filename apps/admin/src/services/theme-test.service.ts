@@ -216,9 +216,11 @@ export class ThemeTestService {
 
     if (running.length === 0) return { paused: 0, ids: [] };
 
+    type RunningExp = (typeof running)[number];
+
     // Pause each one and append a warning note to its settings
     await Promise.all(
-      running.map(async (exp) => {
+      running.map(async (exp: RunningExp) => {
         await prisma.experiment.update({
           where: { id: exp.id },
           data: {

@@ -54,11 +54,13 @@ export async function GET(request: NextRequest) {
   let processed = 0;
   let errors = 0;
 
+  type ShopRow = (typeof shops)[number];
+
   // Process in batches to limit concurrency
   for (let i = 0; i < shops.length; i += BATCH_SIZE) {
     const batch = shops.slice(i, i + BATCH_SIZE);
     await Promise.allSettled(
-      batch.map(async (shop) => {
+      batch.map(async (shop: ShopRow) => {
         try {
           await dailyMetricService.aggregateForDate(shop.id, targetDate);
           processed++;
