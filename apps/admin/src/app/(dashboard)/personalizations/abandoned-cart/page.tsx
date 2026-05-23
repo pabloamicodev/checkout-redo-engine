@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionShop } from "@/lib/session-shop";
 import { AbandonedCartClient, type AcrItem } from "@/components/personalizations/AbandonedCartClient";
-import { Prisma } from "@prisma/client";
 
 
 export const dynamic = 'force-dynamic';
@@ -33,8 +32,7 @@ export default async function AbandonedCartPage() {
         createdAt: Date;
         updatedAt: Date;
       };
-      const rows = (await prisma.$queryRaw(
-        Prisma.sql`
+      const rows = (await prisma.$queryRaw`
           SELECT id, name, status, priority, modifications, "targetingRules", "offerIds",
                  "startsAt", "endsAt", "createdAt", "updatedAt"
           FROM "Personalization"
@@ -43,8 +41,7 @@ export default async function AbandonedCartPage() {
             AND status != 'ARCHIVED'
           ORDER BY priority ASC, "updatedAt" DESC
           LIMIT ${PAGE_SIZE}
-        `
-      )) as AbandonedCartRow[];
+        `) as AbandonedCartRow[];
 
       items = rows.map((p) => ({
         id: p.id,

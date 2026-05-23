@@ -6,7 +6,6 @@
  * by implementing the same interface with ClickHouse queries.
  */
 
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { twoProportionZTest, welchTTest, minimumSampleSize } from "@/lib/statistics";
 import { cacheGet, cacheSet, CACHE_TTL } from "@/lib/redis";
@@ -351,21 +350,21 @@ export class AnalyticsService {
     const startDate = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
     const endDate = dateRange?.end ?? new Date();
 
-    const rows = (await prisma.$queryRaw(Prisma.sql`
+    const rows = (await prisma.$queryRawUnsafe(`
       SELECT
         "variantId",
-        ${Prisma.raw(`"${col}"`)} AS "dimensionValue",
+        "${col}" AS "dimensionValue",
         COUNT(DISTINCT "visitorId") AS visitors
       FROM "Event"
-      WHERE "shopId" = ${shopId}
-        AND "experimentId" = ${experimentId}
-        AND ${Prisma.raw(`"${col}"`)} IS NOT NULL
-        AND "occurredAt" >= ${startDate}
-        AND "occurredAt" <= ${endDate}
-      GROUP BY "variantId", ${Prisma.raw(`"${col}"`)}
+      WHERE "shopId" = $1
+        AND "experimentId" = $2
+        AND "${col}" IS NOT NULL
+        AND "occurredAt" >= $3
+        AND "occurredAt" <= $4
+      GROUP BY "variantId", "${col}"
       ORDER BY visitors DESC
       LIMIT 100
-    `)) as Array<{ variantId: string; dimensionValue: string; visitors: bigint }>;
+    `, shopId, experimentId, startDate, endDate)) as Array<{ variantId: string; dimensionValue: string; visitors: bigint }>;
 
     const variantMap = new Map(
       experiment.variants.map((v) => [v.id, { key: v.key, name: v.name }])
