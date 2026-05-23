@@ -1,9 +1,17 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { formatCurrency } from "@/lib/utils";
 import { BarChart3, TrendingUp, ShoppingCart, Users, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { getSessionShop } from "@/lib/session-shop";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
+
+type RunningExperiment = Prisma.ExperimentGetPayload<{
+  include: {
+    variants: true;
+    _count: { select: { assignments: true; orderAttributions: true } };
+  };
+}>;
 
 
 export const dynamic = 'force-dynamic';
@@ -122,7 +130,7 @@ export default async function AnalyticsPage() {
             <div className="py-12 text-center text-sm text-neutral-400">No running experiments</div>
           ) : (
             <div className="divide-y divide-neutral-50">
-              {data.runningExperiments.map((exp) => {
+              {(data.runningExperiments as RunningExperiment[]).map((exp) => {
                 const typeTheme = getTestTypeTheme(exp.type);
                 return (
                   <Link key={exp.id} href={`/experiments/${exp.id}`}

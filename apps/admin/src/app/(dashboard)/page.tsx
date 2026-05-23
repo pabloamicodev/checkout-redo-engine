@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { getSessionShop } from "@/lib/session-shop";
@@ -20,6 +21,13 @@ import {
 
 
 export const dynamic = 'force-dynamic';
+
+type DashboardExperiment = Prisma.ExperimentGetPayload<{
+  include: {
+    variants: true;
+    _count: { select: { assignments: true } };
+  };
+}>;
 async function getDashboardData(shopDomain: string) {
   const shop = await prisma.shop.findUnique({
     where: { shopDomain },
@@ -194,7 +202,7 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="divide-y divide-neutral-50">
-                {activeTests.map((exp) => {
+                {(activeTests as DashboardExperiment[]).map((exp) => {
                   const typeTheme = getTestTypeTheme(exp.type);
                   return (
                     <Link
@@ -223,7 +231,7 @@ export default async function DashboardPage() {
                   );
                 })}
 
-                {otherTests.slice(0, 3).map((exp) => {
+                {(otherTests.slice(0, 3) as DashboardExperiment[]).map((exp) => {
                   const statusTheme = getStatusTheme(exp.status);
                   return (
                     <Link
