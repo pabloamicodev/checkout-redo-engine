@@ -6,6 +6,7 @@ import { getSessionShop } from "@/lib/session-shop";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
 
 type RunningExperiment = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>["runningExperiments"][number];
+type RecentOrder = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>["recentOrders"][number];
 
 
 export const dynamic = 'force-dynamic';
@@ -166,7 +167,7 @@ export default async function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50">
-                {data.recentOrders.map((order, i) => (
+                {(data.recentOrders as RecentOrder[]).map((order, i) => (
                   <tr key={i} className="hover:bg-neutral-50/60 transition-colors">
                     <td className="px-5 py-3 font-mono text-xs text-neutral-700">{order.shopifyOrderName}</td>
                     <td className="px-4 py-3 text-xs text-neutral-500 max-w-[160px] truncate">{order.experiment?.name ?? "—"}</td>
