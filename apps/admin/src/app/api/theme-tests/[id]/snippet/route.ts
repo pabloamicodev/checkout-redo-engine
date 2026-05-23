@@ -72,7 +72,7 @@ export async function GET(
   const shopDomain = experiment.shop.shopDomain;
 
   // Map variants to ThemeAbVariant
-  const variants: ThemeAbVariant[] = experiment.variants.map((v) => {
+  const variants: ThemeAbVariant[] = experiment.variants.map((v: (typeof experiment.variants)[number]) => {
     const settings = v.settings as Record<string, unknown> | null;
     return {
       key: v.key,

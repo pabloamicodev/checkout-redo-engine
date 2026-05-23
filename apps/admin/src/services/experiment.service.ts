@@ -346,7 +346,7 @@ export class ExperimentService {
         contentConfig: source.contentConfig as never,
         splitUrlConfig: source.splitUrlConfig as never,
         variants: {
-          create: source.variants.map((v) => ({
+          create: source.variants.map((v: (typeof source.variants)[number]) => ({
             shopId,
             key: v.key,
             name: v.name,

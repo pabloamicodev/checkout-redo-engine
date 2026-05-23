@@ -6,7 +6,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withShopAuth } from "@/lib/api-middleware";
 import { AbandonedCartService, AbandonedCartInput } from "@/services/abandoned-cart.service";
-import { PersonalizationStatus } from "@prisma/client";
+
+type PersonalizationStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "SCHEDULED" | "ARCHIVED";
 
 const svc = new AbandonedCartService();
 

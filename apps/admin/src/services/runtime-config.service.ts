@@ -146,7 +146,7 @@ export class RuntimeConfigService {
     const config: RuntimeConfig = {
       shopDomain,
       updatedAt: new Date().toISOString(),
-      experiments: shop.experiments.map((exp) => ({
+      experiments: shop.experiments.map((exp: (typeof shop.experiments)[number]) => ({
         id: exp.id,
         slug: exp.slug,
         name: exp.name,
@@ -155,7 +155,7 @@ export class RuntimeConfigService {
         trafficAllocation: exp.trafficAllocation,
         assignmentStrategy: exp.assignmentStrategy,
         targetingRules: exp.targetingRules as unknown[],
-        variants: exp.variants.map((v) => ({
+        variants: exp.variants.map((v: (typeof exp.variants)[number]) => ({
           id: v.id,
           key: v.key,
           name: v.name,
@@ -172,7 +172,7 @@ export class RuntimeConfigService {
         contentConfig: exp.contentConfig,
         splitUrlConfig: exp.splitUrlConfig,
       })),
-      offers: shop.offers.map((offer) => ({
+      offers: shop.offers.map((offer: (typeof shop.offers)[number]) => ({
         id: offer.id,
         name: offer.name,
         type: offer.type,
@@ -180,7 +180,7 @@ export class RuntimeConfigService {
         discountRules: offer.discountRules,
         displaySettings: offer.displaySettings,
       })),
-      checkoutBlocks: shop.checkoutBlocks.map((block) => ({
+      checkoutBlocks: shop.checkoutBlocks.map((block: (typeof shop.checkoutBlocks)[number]) => ({
         id: block.id,
         name: block.name,
         type: block.type,
@@ -191,7 +191,7 @@ export class RuntimeConfigService {
         experimentId: block.experimentId,
         variantId: block.variantId,
       })),
-      personalizations: shop.personalizations.map((p) => ({
+      personalizations: shop.personalizations.map((p: (typeof shop.personalizations)[number]) => ({
         id: p.id,
         type: p.type,
         name: p.name,

@@ -186,7 +186,7 @@ export class PriceTestService {
       throw new Error("Invalid confirmation token — pass the experiment ID to confirm rollout");
     }
 
-    const winner = experiment.variants.find((v) => v.id === winnerVariantId);
+    const winner = experiment.variants.find((v: (typeof experiment.variants)[number]) => v.id === winnerVariantId);
     if (!winner) throw new Error("Winner variant not found in this experiment");
 
     const priceOverrides = winner.priceOverrides as Array<{

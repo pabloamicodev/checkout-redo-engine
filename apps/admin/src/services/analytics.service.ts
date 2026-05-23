@@ -308,7 +308,7 @@ export class AnalyticsService {
     });
 
     const variantMap = new Map(
-      experiment.variants.map((v) => [v.id, { key: v.key, name: v.name, isControl: v.isControl }])
+      experiment.variants.map((v: (typeof experiment.variants)[number]) => [v.id, { key: v.key, name: v.name, isControl: v.isControl }])
     );
 
     const byDate = new Map<string, Record<string, number>>();
@@ -367,10 +367,10 @@ export class AnalyticsService {
     `, shopId, experimentId, startDate, endDate)) as Array<{ variantId: string; dimensionValue: string; visitors: bigint }>;
 
     const variantMap = new Map(
-      experiment.variants.map((v) => [v.id, { key: v.key, name: v.name }])
+      experiment.variants.map((v: (typeof experiment.variants)[number]) => [v.id, { key: v.key, name: v.name }])
     );
 
-    return rows.map((r) => ({
+    return rows.map((r: (typeof rows)[number]) => ({
       dimensionValue: r.dimensionValue,
       variantId: r.variantId,
       variantKey: variantMap.get(r.variantId)?.key ?? r.variantId,
@@ -458,7 +458,7 @@ export class AnalyticsService {
       uniqueRows.map((r) => [r.variantId, Number(r.uniqueVisitors)])
     );
 
-    const variantStats = experiment.variants.map((v) => {
+    const variantStats = experiment.variants.map((v: (typeof experiment.variants)[number]) => {
       const totalVisitors = visitorMap.get(v.id) ?? 0;
       const eventCount = eventCountMap.get(v.id) ?? 0;
       const uniqueVisitors = uniqueMap.get(v.id) ?? 0;
@@ -467,8 +467,8 @@ export class AnalyticsService {
     });
 
     // Compute z-test vs control for each non-control variant
-    const control = variantStats.find((v) => v.isControl);
-    const results = variantStats.map((v) => {
+    const control = variantStats.find((v: (typeof variantStats)[number]) => v.isControl);
+    const results = variantStats.map((v: (typeof variantStats)[number]) => {
       if (v.isControl || !control) return { ...v };
       const test = twoProportionZTest(
         { visitors: control.totalVisitors, conversions: control.uniqueVisitors, totalRevenue: 0, totalProfit: 0 },

@@ -193,11 +193,11 @@ export class SplitUrlTestService {
       select: { variantId: true, netRevenue: true },
     });
 
-    return exp.variants.map((v) => {
-      const asgn = assignments.find((a) => a.variantId === v.id);
-      const orders = attributions.filter((a) => a.variantId === v.id);
+    return exp.variants.map((v: (typeof exp.variants)[number]) => {
+      const asgn = assignments.find((a: (typeof assignments)[number]) => a.variantId === v.id);
+      const orders = attributions.filter((a: (typeof attributions)[number]) => a.variantId === v.id);
       const visitors = asgn?._count.visitorId ?? 0;
-      const revenue = orders.reduce((s, a) => s + Number(a.netRevenue ?? 0), 0);
+      const revenue = orders.reduce((s: number, a: (typeof attributions)[number]) => s + Number(a.netRevenue ?? 0), 0);
       return {
         variantId: v.id,
         variantKey: v.key,

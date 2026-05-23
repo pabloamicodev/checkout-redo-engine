@@ -9,7 +9,9 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import type { Personalization } from "@prisma/client";
+
+// Use inferred return type instead of importing the model directly from @prisma/client
+type Personalization = Awaited<ReturnType<typeof prisma.personalization.findFirst>> & {};
 
 export interface OfferPersonalizationInput {
   name: string;
@@ -191,7 +193,7 @@ export class OfferPersonalizationService {
     ]);
 
     const views = viewEvents.length;
-    const uniqueViewers = new Set(viewEvents.map((e) => e.visitorId)).size;
+    const uniqueViewers = new Set(viewEvents.map((e: (typeof viewEvents)[number]) => e.visitorId)).size;
     const claims = claimEvents;
     const conversionRate = uniqueViewers > 0 ? claims / uniqueViewers : 0;
     const attributedRevenue = Number(revenueAgg._sum.netRevenue ?? 0);

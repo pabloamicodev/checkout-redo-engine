@@ -143,7 +143,7 @@ export class ThemeTestService {
         const { themes } = await restFetch<{ themes: ShopifyTheme[] }>("/themes.json");
 
         const publishedTheme = themes.find((t) => t.role === "main");
-        const themeMap = new Map(themes.map((t) => [t.id, t]));
+        const themeMap = new Map(themes.map((t: (typeof themes)[number]) => [t.id, t]));
 
         // Guard 3: control theme must match the currently published theme
         // (We check if the control variant has a themeId set that differs from the live theme)
@@ -238,6 +238,6 @@ export class ThemeTestService {
       `[ThemeTestService] Auto-paused ${running.length} running theme test(s) for shop ${shopId} — reason: ${reason}`
     );
 
-    return { paused: running.length, ids: running.map((e) => e.id) };
+    return { paused: running.length, ids: running.map((e: (typeof running)[number]) => e.id) };
   }
 }

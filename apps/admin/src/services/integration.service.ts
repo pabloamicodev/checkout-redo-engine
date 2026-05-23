@@ -14,8 +14,14 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { IntegrationProvider, IntegrationStatus } from "@prisma/client";
 import { createHmac } from "crypto";
+
+// ---------------------------------------------------------------------------
+// Local string-union types (mirrors Prisma enums — avoids @prisma/client
+// dependency before `prisma generate` runs in CI/sandbox environments)
+// ---------------------------------------------------------------------------
+type IntegrationProvider = "GA4" | "KLAVIYO" | "CLARITY" | "HEAP" | "SEGMENT" | "ELEVAR" | "SLACK" | "WEBHOOK" | "RECHARGE";
+type IntegrationStatus = "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,7 +108,7 @@ export class IntegrationService {
       },
     });
 
-    return rows.map((r) => this.toRecord(r));
+    return rows.map((r: (typeof rows)[number]) => this.toRecord(r));
   }
 
   async get(shopId: string, id: string) {

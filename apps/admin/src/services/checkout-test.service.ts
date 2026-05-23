@@ -141,7 +141,7 @@ export class CheckoutTestService {
     }
 
     // Re-check block conflicts at activation time (another test may have started since creation)
-    const allBlockIds = exp.variants.flatMap((v) => v.checkoutBlockIds);
+    const allBlockIds = exp.variants.flatMap((v: (typeof exp.variants)[number]) => v.checkoutBlockIds);
     if (allBlockIds.length > 0) {
       await this.assertBlocksNotInUse(shopId, allBlockIds, id);
     }
@@ -193,7 +193,7 @@ export class CheckoutTestService {
         where: { id: { in: allBlockIds }, shopId },
         select: { id: true },
       });
-      const foundIds = new Set(found.map((b) => b.id));
+      const foundIds = new Set(found.map((b: (typeof found)[number]) => b.id));
       const missing = allBlockIds.filter((id) => !foundIds.has(id));
       if (missing.length > 0) {
         throw new Error(`Checkout block(s) not found: ${missing.join(", ")}`);
@@ -226,7 +226,7 @@ export class CheckoutTestService {
     });
 
     if (conflicts.length > 0) {
-      const conflictingIds = conflicts.flatMap((c) => c.checkoutBlockIds).filter((id) => blockIds.includes(id));
+      const conflictingIds = conflicts.flatMap((c: (typeof conflicts)[number]) => c.checkoutBlockIds).filter((id: string) => blockIds.includes(id));
       const experimentName = conflicts[0]!.experiment.name;
       throw new Error(
         `Checkout block(s) ${[...new Set(conflictingIds)].join(", ")} are already used in the running test "${experimentName}"`

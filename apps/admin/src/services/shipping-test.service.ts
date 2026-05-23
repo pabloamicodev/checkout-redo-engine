@@ -180,15 +180,15 @@ export class ShippingTestService {
       },
     });
 
-    const variantStats = experiment.variants.map((v) => {
-      const orders = attributions.filter((a) => a.variantId === v.id);
+    const variantStats = experiment.variants.map((v: (typeof experiment.variants)[number]) => {
+      const orders = attributions.filter((a: (typeof attributions)[number]) => a.variantId === v.id);
       const totalOrders = orders.length;
-      const totalRevenue = orders.reduce((s, a) => s + Number(a.netRevenue ?? 0), 0);
-      const totalShippingCost = orders.reduce((s, a) => s + Number(a.estimatedShippingCost ?? 0), 0);
+      const totalRevenue = orders.reduce((s: number, a: (typeof attributions)[number]) => s + Number(a.netRevenue ?? 0), 0);
+      const totalShippingCost = orders.reduce((s: number, a: (typeof attributions)[number]) => s + Number(a.estimatedShippingCost ?? 0), 0);
       const avgShippingCost = totalOrders > 0 ? totalShippingCost / totalOrders : 0;
       const freeShippingRate =
         totalOrders > 0
-          ? orders.filter((a) => Number(a.estimatedShippingCost ?? 0) === 0).length / totalOrders
+          ? orders.filter((a: (typeof attributions)[number]) => Number(a.estimatedShippingCost ?? 0) === 0).length / totalOrders
           : 0;
 
       return {

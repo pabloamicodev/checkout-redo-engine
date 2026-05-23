@@ -123,7 +123,7 @@ async function processWebhook(
         const events = await prisma.event.findMany({
           where: {
             shopId,
-            visitorId: { in: orders.map((o) => o.visitorId).filter(Boolean) as string[] },
+            visitorId: { in: orders.map((o: (typeof orders)[number]) => o.visitorId).filter(Boolean) as string[] },
           },
           select: { eventName: true, eventType: true, occurredAt: true, url: true },
         });
@@ -153,7 +153,7 @@ async function processWebhook(
             where: { shopId, customerId: customerIdToRedact },
             select: { visitorId: true },
           });
-          const visitorIds = affectedOrders.map((o) => o.visitorId).filter(Boolean) as string[];
+          const visitorIds = affectedOrders.map((o: (typeof affectedOrders)[number]) => o.visitorId).filter(Boolean) as string[];
           if (visitorIds.length > 0) {
             await prisma.event.deleteMany({ where: { shopId, visitorId: { in: visitorIds } } });
             await prisma.experimentAssignment.deleteMany({ where: { shopId, visitorId: { in: visitorIds } } });

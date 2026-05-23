@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the variant matching variantKey
-    const variant = experiment.variants.find((v) => v.key === variantKey);
+    const variant = experiment.variants.find((v: (typeof experiment.variants)[number]) => v.key === variantKey);
     if (!variant) {
       return NextResponse.json({ block: null });
     }

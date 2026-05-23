@@ -21,7 +21,10 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { Prisma, PersonalizationStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+
+// Local string-union type — mirrors Prisma enum, avoids @prisma/client dependency before generate
+type PersonalizationStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "SCHEDULED" | "ARCHIVED";
 
 // ── Input types ───────────────────────────────────────────────────────────────
 
