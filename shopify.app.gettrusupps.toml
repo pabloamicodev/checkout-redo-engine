@@ -2,7 +2,7 @@
 
 client_id = "ef05a2cf8735057b2c9e043d26225eb0"
 name = "checkout redo engine"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://checkout-redo-engine.vercel.app"
 embedded = true
 
 [build]
@@ -16,4 +16,4 @@ api_version = "2026-07"
 scopes = "write_products,read_products"
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [ "https://checkout-redo-engine.vercel.app/api/auth/callback", "https://localhost/api/auth/callback" ]
