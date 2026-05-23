@@ -22,8 +22,9 @@ export default async function NewPostPurchasePage() {
     ? await offerService.list(shop.id, { limit: 200 })
     : { items: [] };
 
+  type AvailableOffer = (typeof availableOffers)[number];
   const eligibleOffers = availableOffers.filter(
-    (o) => o.status === "ACTIVE" || o.status === "DRAFT"
+    (o: AvailableOffer) => o.status === "ACTIVE" || o.status === "DRAFT"
   );
   type EligibleOffer = (typeof eligibleOffers)[number];
 

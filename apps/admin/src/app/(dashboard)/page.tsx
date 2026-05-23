@@ -81,8 +81,8 @@ export default async function DashboardPage() {
   }
 
   const { stats, shop } = data;
-  const activeTests = shop.experiments.filter((e) => e.status === "RUNNING");
-  const otherTests = shop.experiments.filter((e) => e.status !== "RUNNING");
+  const activeTests = shop.experiments.filter((e: DashboardExperiment) => e.status === "RUNNING");
+  const otherTests = shop.experiments.filter((e: DashboardExperiment) => e.status !== "RUNNING");
 
   return (
     <div className="flex-1 overflow-auto" style={{ background: "#F8FAFC" }}>
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
           />
           <MetricCard
             label="Tests Completed"
-            value={shop.experiments.filter((e) => e.status === "COMPLETED").length.toString()}
+            value={shop.experiments.filter((e: DashboardExperiment) => e.status === "COMPLETED").length.toString()}
             icon={<TrendingUp className="w-4 h-4" />}
             iconColor="#f59e0b"
             iconBg="rgba(245,158,11,0.1)"
