@@ -425,7 +425,7 @@ export class AnalyticsService {
       _count: { visitorId: true },
     });
     const visitorMap = new Map(
-      visitorCounts.map((r) => [r.variantId, r._count.visitorId])
+      visitorCounts.map((r: (typeof visitorCounts)[number]) => [r.variantId, r._count.visitorId])
     );
 
     // Custom event occurrences per variant
@@ -440,7 +440,7 @@ export class AnalyticsService {
       _count: { id: true },
     });
     const eventCountMap = new Map(
-      eventCounts.map((r) => [r.variantId ?? "", r._count.id])
+      eventCounts.map((r: (typeof eventCounts)[number]) => [r.variantId ?? "", r._count.id])
     );
 
     // Unique visitors who triggered the event per variant

@@ -35,10 +35,12 @@ export async function GET(
     }),
   ]);
 
-  const countMap = new Map(eventCounts.map((e) => [e.eventName, e._count.id]));
+  const countMap = new Map(
+    eventCounts.map((e: (typeof eventCounts)[number]) => [e.eventName, e._count.id])
+  );
 
   return NextResponse.json({
-    events: customEvents.map((e) => ({
+    events: customEvents.map((e: (typeof customEvents)[number]) => ({
       name: e.name,
       displayName: e.displayName,
       description: e.description,
