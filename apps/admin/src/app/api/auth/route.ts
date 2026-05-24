@@ -44,10 +44,8 @@ export async function GET(request: NextRequest) {
   }
 
   const state = randomBytes(16).toString("hex");
-  // Include the host param (forwarded from Shopify) in callback so we can
-  // redirect back into the embedded admin after OAuth completes.
-  const hostParam = searchParams.get("host");
-  const redirectUri = `${host}/api/auth/callback${hostParam ? `?host=${encodeURIComponent(hostParam)}` : ""}`;
+  // Simple callback URL — no extra params. Shopify will append host, shop, code, etc. itself.
+  const redirectUri = `${host}/api/auth/callback`;
 
   const authUrl =
     `https://${shop}/admin/oauth/authorize` +
