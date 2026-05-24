@@ -31,7 +31,7 @@ async function getRegisteredCustomEvents(shopId: string): Promise<Set<string>> {
     where: { shopId },
     select: { name: true },
   });
-  const names = new Set(events.map((e: (typeof events)[number]) => e.name));
+  const names = new Set<string>(events.map((e: (typeof events)[number]) => e.name as string));
   customEventCache.set(shopId, names);
   customEventCacheTimestamps.set(shopId, now);
   return names;

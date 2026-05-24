@@ -147,7 +147,7 @@ export class ThemeTestService {
 
         // Guard 3: control theme must match the currently published theme
         // (We check if the control variant has a themeId set that differs from the live theme)
-        const controlVariant = exp.variants.find((v) => v.isControl);
+        const controlVariant = exp.variants.find((v: typeof exp.variants[number]) => v.isControl);
         const controlSettings = controlVariant?.settings as Record<string, unknown> | null;
         const controlThemeId = controlSettings?.themeId as number | undefined;
 

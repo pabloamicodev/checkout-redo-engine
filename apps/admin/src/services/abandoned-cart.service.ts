@@ -155,7 +155,7 @@ export class AbandonedCartService {
   async list(shopId: string, opts?: { status?: PersonalizationStatus; page?: number }) {
     const PAGE_SIZE = 50;
     const page = Math.max(1, opts?.page ?? 1);
-    const where: Prisma.PersonalizationWhereInput = {
+    const where = {
       shopId,
       type: "ABANDONED_CART",
       ...(opts?.status ? { status: opts.status } : { status: { not: "ARCHIVED" } }),

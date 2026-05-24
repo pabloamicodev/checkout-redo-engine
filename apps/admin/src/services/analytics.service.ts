@@ -307,7 +307,7 @@ export class AnalyticsService {
       orderBy: { date: "asc" },
     });
 
-    const variantMap = new Map(
+    const variantMap = new Map<string, { key: string; name: string; isControl: boolean }>(
       experiment.variants.map((v: (typeof experiment.variants)[number]) => [v.id, { key: v.key, name: v.name, isControl: v.isControl }])
     );
 
@@ -366,7 +366,7 @@ export class AnalyticsService {
       LIMIT 100
     `, shopId, experimentId, startDate, endDate)) as Array<{ variantId: string; dimensionValue: string; visitors: bigint }>;
 
-    const variantMap = new Map(
+    const variantMap = new Map<string, { key: string; name: string }>(
       experiment.variants.map((v: (typeof experiment.variants)[number]) => [v.id, { key: v.key, name: v.name }])
     );
 
@@ -459,7 +459,7 @@ export class AnalyticsService {
     );
 
     const variantStats = experiment.variants.map((v: (typeof experiment.variants)[number]) => {
-      const totalVisitors = visitorMap.get(v.id) ?? 0;
+      const totalVisitors = Number(visitorMap.get(v.id) ?? 0);
       const eventCount = eventCountMap.get(v.id) ?? 0;
       const uniqueVisitors = uniqueMap.get(v.id) ?? 0;
       const conversionRate = totalVisitors > 0 ? uniqueVisitors / totalVisitors : 0;
