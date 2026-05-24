@@ -87,7 +87,17 @@ export async function GET(request: NextRequest) {
     digestBuf.length !== hmacBuf.length ||
     !timingSafeEqual(digestBuf, hmacBuf)
   ) {
-    return NextResponse.json({ error: "Invalid HMAC signature" }, { status: 403 });
+    // DEBUG: temporary — remove after fixing
+    return NextResponse.json({
+      error: "Invalid HMAC signature",
+      debug: {
+        secretLen: apiSecret.length,
+        secretPrefix: apiSecret.substring(0, 8),
+        messageUsed: message,
+        computed: digest,
+        received: hmac,
+      }
+    }, { status: 403 });
   }
 
   // Exchange code for permanent access token

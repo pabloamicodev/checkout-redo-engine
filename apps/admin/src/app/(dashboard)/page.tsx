@@ -260,7 +260,7 @@ export default async function DashboardPage() {
         {/* Get inspired callout */}
         <Link href="/get-inspired">
           <div
-            className="flex items-center justify-between px-5 py-4 rounded-xl cursor-pointer transition-all duration-150 hover:opacity-95"
+            className="flex items-center justify-between px-5 py-4 rounded-xl cursor-pointer transition-all duration-150 hover:opacity-95 mt-8"
             style={{
               background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
               border: "1px solid #2d2d6b",

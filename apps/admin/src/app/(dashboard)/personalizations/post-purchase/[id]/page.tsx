@@ -37,6 +37,16 @@ export default async function PostPurchaseDetailPage({
   const rules = (personalization.targetingRules as TargetingRule[] | null) ?? [];
   const offerIds = personalization.offerIds ?? [];
 
+  const offers = offerIds.length > 0
+    ? await prisma.offer.findMany({
+        where: { id: { in: offerIds as string[] }, shopId: shop.id },
+        select: { id: true, name: true, type: true, status: true },
+      })
+    : [];
+
+  // Preserve the order from offerIds
+  const offersById = Object.fromEntries(offers.map((o) => [o.id, o]));
+
   const now = new Date();
   const isScheduled = personalization.startsAt && personalization.startsAt > now;
   const isExpired = personalization.endsAt && personalization.endsAt < now;
@@ -168,18 +178,43 @@ export default async function PostPurchaseDetailPage({
             </div>
             <div className="px-5 py-4">
               <div className="space-y-2">
-                {offerIds.map((offerId: string) => (
-                  <Link
-                    key={offerId}
-                    href={`/offers-library/${offerId}`}
-                    className="flex items-center justify-between px-3 py-2 rounded-lg border border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50 transition-colors group"
-                  >
-                    <span className="text-xs font-mono text-neutral-600 group-hover:text-neutral-800 transition-colors">
-                      {offerId}
-                    </span>
-                    <span className="text-[10px] text-neutral-400 group-hover:text-neutral-600 transition-colors">View →</span>
-                  </Link>
-                ))}
+                {(offerIds as string[]).map((offerId) => {
+                  const offer = offersById[offerId];
+                  return (
+                    <Link
+                      key={offerId}
+                      href={`/offers-library/${offerId}`}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${ACCENT}12` }}
+                        >
+                          <Zap className="w-3.5 h-3.5" style={{ color: ACCENT }} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-neutral-800 truncate group-hover:text-neutral-900 transition-colors">
+                            {offer?.name ?? offerId}
+                          </p>
+                          {offer && (
+                            <p className="text-[10px] text-neutral-400 mt-0.5">
+                              {offer.type.replace(/_/g, " ")}
+                              {" · "}
+                              <span className={offer.status === "ACTIVE" ? "text-emerald-500" : "text-neutral-400"}>
+                                {offer.status.charAt(0) + offer.status.slice(1).toLowerCase()}
+                              </span>
+                            </p>
+                          )}
+                          {!offer && (
+                            <p className="text-[10px] font-mono text-neutral-300 mt-0.5">{offerId}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-neutral-400 group-hover:text-neutral-600 transition-colors shrink-0 ml-2">View →</span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>

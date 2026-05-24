@@ -215,6 +215,7 @@ function StepThemeSelection({
   state,
   onChange,
   onRefresh,
+  shopDomain,
 }: {
   themes: ShopifyThemeOption[];
   loadingThemes: boolean;
@@ -222,8 +223,10 @@ function StepThemeSelection({
   state: WizardState;
   onChange: (p: Partial<WizardState>) => void;
   onRefresh: () => void;
+  shopDomain: string;
 }) {
   const publishedTheme = themes.find((t) => t.isPublished);
+  const unpublishedCount = themes.filter((t) => !t.isPublished && !t.processing).length;
 
   // Auto-select published theme as control on load
   useEffect(() => {
@@ -240,13 +243,13 @@ function StepThemeSelection({
   return (
     <div className="space-y-6">
       <FormSection
-        title="Control theme — the live theme"
-        description="The control is always the theme currently published to your store. It cannot be changed here."
+        title="Your live (control) theme"
+        description="The control is always the theme your shoppers see right now. MarginLab sets this automatically — you cannot change it."
         accent={ACCENT}
       >
         {loadingThemes && (
           <div className="flex items-center gap-2 text-sm text-neutral-500 py-6 justify-center">
-            <RefreshCw className="w-4 h-4 animate-spin" /> Loading themes from Shopify…
+            <RefreshCw className="w-4 h-4 animate-spin" /> Connecting to your Shopify store…
           </div>
         )}
 
@@ -258,9 +261,9 @@ function StepThemeSelection({
             <button
               type="button"
               onClick={onRefresh}
-              className="text-sm text-zinc-600 underline hover:no-underline"
+              className="text-sm text-sky-600 underline hover:no-underline"
             >
-              Retry
+              Try again
             </button>
           </div>
         )}
@@ -269,53 +272,57 @@ function StepThemeSelection({
           <>
             {publishedTheme ? (
               <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-neutral-900">{publishedTheme.name}</p>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-neutral-900">{publishedTheme.name}</p>
+                      <span className="text-[9px] font-bold bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                        Live now
+                      </span>
+                    </div>
                     <p className="text-xs text-neutral-500 mt-0.5">
-                      Currently published · Updated {new Date(publishedTheme.updatedAt).toLocaleDateString()}
+                      Last updated {new Date(publishedTheme.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </p>
                   </div>
                   <a
-                    href={`https://${typeof window !== "undefined" ? window.location.hostname.replace("admin.", "") : "your-store.myshopify.com"}/admin/themes/${publishedTheme.id}/editor`}
+                    href={`https://${shopDomain}/admin/themes/${publishedTheme.id}/editor`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-auto text-xs text-zinc-500 hover:text-zinc-700 flex items-center gap-1"
+                    className="text-xs text-sky-600 hover:text-sky-800 flex items-center gap-1 shrink-0"
                   >
-                    Edit <ExternalLink className="w-3 h-3" />
+                    View in editor <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
               </div>
             ) : (
-              <InlineAlert variant="warning">No published theme found. Ensure your store has an active theme.</InlineAlert>
+              <InlineAlert variant="warning">
+                No live theme found. Go to Shopify admin and publish a theme before creating a test.
+              </InlineAlert>
             )}
 
-            <div className="mt-4">
-              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-                All themes ({themes.length})
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-xs text-neutral-500">
+                {unpublishedCount > 0
+                  ? `${unpublishedCount} unpublished theme${unpublishedCount !== 1 ? "s" : ""} available for variants in the next step.`
+                  : "No unpublished themes found — you will need to duplicate a theme before the next step."}
               </p>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {themes.map((t) => (
-                  <ThemeCard
-                    key={t.id}
-                    theme={t}
-                    selected={state.variants[0]?.themeId === t.id}
-                    onSelect={() => {}}
-                    disabled={!t.isPublished}
-                    badgeLabel={state.variants[0]?.themeId === t.id ? "Control" : undefined}
-                  />
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={onRefresh}
+                className="text-xs text-neutral-400 hover:text-neutral-600 flex items-center gap-1 shrink-0 ml-3"
+              >
+                <RefreshCw className="w-3 h-3" /> Refresh
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" /> Refresh theme list
-            </button>
+            {unpublishedCount === 0 && !loadingThemes && (
+              <InlineAlert variant="info">
+                To run a theme test, you need at least one unpublished theme to use as a variant.
+                In Shopify admin, go to <strong>Online Store → Themes</strong> and click <strong>Duplicate</strong>
+                on your live theme. Then come back and refresh.
+              </InlineAlert>
+            )}
           </>
         )}
       </FormSection>
@@ -332,11 +339,13 @@ function StepVariantThemes({
   loadingThemes,
   state,
   onChange,
+  shopDomain,
 }: {
   themes: ShopifyThemeOption[];
   loadingThemes: boolean;
   state: WizardState;
   onChange: (p: Partial<WizardState>) => void;
+  shopDomain: string;
 }) {
   const treatmentVariants = state.variants.filter((v) => !v.isControl);
   const usedThemeIds = new Set(
@@ -416,12 +425,12 @@ function StepVariantThemes({
 
           {variant.themeId && (
             <a
-              href={`https://your-store.myshopify.com/admin/themes/${variant.themeId}/editor`}
+              href={`https://${shopDomain}/admin/themes/${variant.themeId}/editor`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 text-xs text-zinc-500 hover:text-zinc-700 flex items-center gap-1"
+              className="mt-2 text-xs text-sky-600 hover:text-sky-800 flex items-center gap-1"
             >
-              Preview theme <ExternalLink className="w-3 h-3" />
+              Preview in theme editor <ExternalLink className="w-3 h-3" />
             </a>
           )}
         </FormSection>
@@ -837,7 +846,7 @@ function ThemePreviewPanel({
 // Wizard shell
 // ---------------------------------------------------------------------------
 
-export function ThemeTestWizard() {
+export function ThemeTestWizard({ shopDomain }: { shopDomain: string }) {
   const router = useRouter();
   const { success: showSuccess } = useToast();
   const [step, setStep] = useState(0);
@@ -1002,6 +1011,7 @@ export function ThemeTestWizard() {
                   state={state}
                   onChange={patch}
                   onRefresh={fetchThemes}
+                  shopDomain={shopDomain}
                 />
               )}
               {step === 2 && (
@@ -1010,6 +1020,7 @@ export function ThemeTestWizard() {
                   loadingThemes={loadingThemes}
                   state={state}
                   onChange={patch}
+                  shopDomain={shopDomain}
                 />
               )}
               {step === 3 && <StepTraffic state={state} onChange={patch} />}

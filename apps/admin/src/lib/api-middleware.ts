@@ -120,12 +120,21 @@ export async function getShopFromRequest(request: NextRequest): Promise<{ shopId
       shopDomain = shopDomainFromJwt(payload);
       actorId = payload.sub !== "0" ? payload.sub : undefined;
     }
-    // If JWT present but invalid, fall through to header/query fallbacks
-    // (allows dev mode with X-Shop-Domain without a real JWT)
+    // If JWT present but invalid, fall through to cookie/header fallbacks
   }
 
-  // 2. Fallback: explicit X-Shop-Domain header (dev / server-to-server calls only)
-  // GUARD: These fallbacks are NEVER allowed in production — production requires a valid App Bridge JWT.
+  // 2. Fallback: shopify_session_shop cookie (set by OAuth callback, httpOnly + Secure)
+  // This is the same source used by server components via getSessionShop().
+  // Safe to use in production: the cookie is httpOnly (XSS-proof), set only after
+  // successful OAuth, and the shop domain is validated against the DB below.
+  if (!shopDomain) {
+    const sessionCookie = request.cookies.get("shopify_session_shop")?.value;
+    if (sessionCookie && sessionCookie.endsWith(".myshopify.com")) {
+      shopDomain = sessionCookie;
+    }
+  }
+
+  // 3. Fallback: explicit X-Shop-Domain header / query param (dev only)
   if (!shopDomain && process.env.NODE_ENV !== "production") {
     shopDomain =
       request.headers.get("x-shop-domain") ??
