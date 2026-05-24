@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
   }
 
   const state = randomBytes(16).toString("hex");
-  const redirectUri = `${host}/api/auth/callback`;
+  // Include the host param (forwarded from Shopify) in callback so we can
+  // redirect back into the embedded admin after OAuth completes.
+  const hostParam = searchParams.get("host");
+  const redirectUri = `${host}/api/auth/callback${hostParam ? `?host=${encodeURIComponent(hostParam)}` : ""}`;
 
   const authUrl =
     `https://${shop}/admin/oauth/authorize` +
@@ -58,8 +61,8 @@ export async function GET(request: NextRequest) {
   // CSRF state cookie — expires after 10 minutes
   response.cookies.set("shopify_oauth_state", state, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    secure: true,
     maxAge: 600,
     path: "/",
   });

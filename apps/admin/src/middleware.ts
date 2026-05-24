@@ -39,10 +39,13 @@ export function middleware(request: NextRequest) {
 
   if (shopParam && SHOPIFY_SHOP_REGEX.test(shopParam)) {
     // Must break OUT of the Shopify iframe to do OAuth.
-    // A server-side redirect inside the iframe causes Shopify to redirect
+    // A server-side 302 redirect inside the iframe causes Shopify to redirect
     // the user to the app settings page instead.
     // Solution: serve an HTML page that sets window.top.location (top-level redirect).
-    const authUrl = `/api/auth?shop=${encodeURIComponent(shopParam)}`;
+    // IMPORTANT: must use ABSOLUTE URL — relative URLs resolve against admin.shopify.com
+    // (the parent frame), not against our app domain.
+    const appHost = process.env.HOST ?? "https://checkout-redo-engine.vercel.app";
+    const authUrl = `${appHost}/api/auth?shop=${encodeURIComponent(shopParam)}`;
     const html = `<!DOCTYPE html>
 <html>
   <head><meta charset="utf-8" /></head>

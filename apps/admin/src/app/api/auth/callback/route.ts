@@ -155,15 +155,32 @@ export async function GET(request: NextRequest) {
     console.error("[OAuth] Webhook registration failed:", err)
   );
 
-  // Redirect to app dashboard, clearing the state cookie
-  const host = process.env.HOST!;
-  const response = NextResponse.redirect(`${host}/`);
+  // Redirect back into Shopify admin embedded context, clearing the state cookie.
+  // We must redirect to admin.shopify.com (not our app host directly) so Shopify
+  // re-embeds the app in the iframe with a valid session.
+  // The `host` query param Shopify sends is base64(shop-admin-URL) — use it if present,
+  // otherwise fall back to the canonical admin URL.
+  const hostParam = new URL(request.url).searchParams.get("host");
+  let redirectTarget: string;
+  if (hostParam) {
+    try {
+      const decoded = Buffer.from(hostParam, "base64").toString("utf8");
+      // decoded is like "admin.shopify.com/store/hpn-supplements"
+      redirectTarget = `https://${decoded}/apps/checkout-redo-engine`;
+    } catch {
+      redirectTarget = `https://${shop}/admin/apps/checkout-redo-engine`;
+    }
+  } else {
+    redirectTarget = `https://${shop}/admin/apps/checkout-redo-engine`;
+  }
+
+  const response = NextResponse.redirect(redirectTarget);
   response.cookies.delete("shopify_oauth_state");
   // Set session shop cookie so server components can resolve the shop
   response.cookies.set("shopify_session_shop", shop, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    secure: true,
     maxAge: 60 * 60 * 24 * 30, // 30 days
     path: "/",
   });
