@@ -55,6 +55,52 @@
 }
 
 @layer components {
+  /* ── TrafficSlider range input ──────────────────────────────────────────── */
+  .traffic-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--ts-accent, #6366f1) 0%,
+      var(--ts-accent, #6366f1) var(--ts-pct, 50%),
+      #e5e7eb var(--ts-pct, 50%),
+      #e5e7eb 100%
+    );
+    outline: none;
+    cursor: pointer;
+  }
+  .traffic-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2.5px solid var(--ts-accent, #6366f1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14), 0 0 0 3px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.1s;
+  }
+  .traffic-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18), 0 0 0 5px color-mix(in srgb, var(--ts-accent, #6366f1) 14%, transparent);
+    transform: scale(1.1);
+  }
+  .traffic-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2.5px solid var(--ts-accent, #6366f1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    cursor: pointer;
+  }
+  .traffic-slider:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ts-accent, #6366f1) 25%, transparent);
+  }
+
   /* Skeleton / loading */
   .skeleton {
     @apply animate-pulse bg-neutral-100 rounded;

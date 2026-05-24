@@ -9,6 +9,8 @@ import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea, WizardNumberInput, WizardRadioGroup, WizardCheckCardGroup } from "@/components/experiments/WizardControls";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -729,50 +731,37 @@ function StepSetup({
         accent={EMERALD}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required>
-            <InputBase
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              placeholder="Free Gift vs Bundle Offer Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Free Gift vs Bundle Offer Test"
+            maxLength={80}
+            accentColor={EMERALD}
+            hint="Use a name that describes the offer types you're comparing."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="e.g. A free gift threshold offer will increase AOV more than a percentage discount"
+            rows={3}
+            maxLength={400}
+            accentColor={EMERALD}
             hint="Describe what you expect to happen and why."
-          >
-            <TextareaBase
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              placeholder="e.g. A free gift threshold offer will increase AOV more than a percentage discount"
-            />
-          </FormField>
+            templateText="If we show a [free shipping / free gift / volume discount] offer when cart reaches $[X], then average order value will increase because customers add more items to qualify."
+          />
         </div>
       </FormSection>
 
-      <FormSection
-        title="Traffic"
-        description="What share of your visitors will be enrolled in this experiment."
-        accent={EMERALD}
-      >
-        <FormField
-          label="Traffic allocation (%)"
-          hint="Remaining visitors see the default storefront experience."
-        >
-          <InputBase
-            type="number"
-            min={1}
-            max={100}
-            value={state.trafficAllocation}
-            onChange={(e) =>
-              onChange({ trafficAllocation: parseFloat(e.target.value) || 100 })
-            }
-            className="!w-32"
-          />
-        </FormField>
-      </FormSection>
+      <TrafficSlider
+        value={state.trafficAllocation}
+        onChange={(v) => onChange({ trafficAllocation: v })}
+        accentColor={EMERALD}
+        holdoutLabel="See default offers"
+      />
     </div>
   );
 }
@@ -890,36 +879,25 @@ function StepTriggerRules({
         accent={EMERALD}
       >
         <div className="grid grid-cols-2 gap-4">
-          <FormField
-            label="Minimum cart subtotal ($)"
-            hint="Set to 0 for no minimum."
-          >
-            <InputBase
-              type="number"
-              min={0}
-              step={0.01}
-              value={r.minCartSubtotal}
-              onChange={(e) =>
-                patchRules({ minCartSubtotal: parseFloat(e.target.value) || 0 })
-              }
-              placeholder="0"
-            />
-          </FormField>
-
-          <FormField
+          <WizardNumberInput
+            label="Minimum cart subtotal"
+            prefix="$"
+            value={r.minCartSubtotal}
+            onChange={(v) => patchRules({ minCartSubtotal: v })}
+            min={0}
+            step={0.01}
+            hint="0 = no minimum"
+            accentColor={EMERALD}
+          />
+          <WizardNumberInput
             label="Minimum item quantity"
-            hint="Set to 0 for no minimum."
-          >
-            <InputBase
-              type="number"
-              min={0}
-              value={r.minItemQty}
-              onChange={(e) =>
-                patchRules({ minItemQty: parseInt(e.target.value) || 0 })
-              }
-              placeholder="0"
-            />
-          </FormField>
+            value={r.minItemQty}
+            onChange={(v) => patchRules({ minItemQty: v })}
+            min={0}
+            step={1}
+            hint="0 = no minimum"
+            accentColor={EMERALD}
+          />
         </div>
       </FormSection>
 
@@ -929,49 +907,28 @@ function StepTriggerRules({
         accent={EMERALD}
       >
         <div className="space-y-3">
-          {/* Toggle */}
-          <div className="flex gap-3">
-            {(
-              [
-                { value: true, label: "All products" },
-                { value: false, label: "Specific products" },
-              ] as const
-            ).map(({ value, label }) => (
-              <label
-                key={String(value)}
-                className={
-                  "flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer text-sm transition-colors " +
-                  (r.eligibleAllProducts === value
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-800 font-medium"
-                    : "border-neutral-200 text-neutral-600 hover:border-neutral-300")
-                }
-              >
-                <input
-                  type="radio"
-                  name="eligible"
-                  checked={r.eligibleAllProducts === value}
-                  onChange={() => patchRules({ eligibleAllProducts: value })}
-                  className="accent-emerald-600"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
+          <WizardRadioGroup
+            options={[
+              { value: "true",  label: "All products",      description: "The offer applies to any product in the cart." },
+              { value: "false", label: "Specific products", description: "Only items matching the product IDs below qualify." },
+            ]}
+            value={String(r.eligibleAllProducts)}
+            onChange={(v) => patchRules({ eligibleAllProducts: v === "true" })}
+            accentColor={EMERALD}
+            columns={2}
+          />
 
           {!r.eligibleAllProducts && (
-            <FormField
-              label="Product IDs (comma-separated)"
-              hint="Paste Shopify product GIDs or numeric IDs."
-            >
-              <TextareaBase
-                rows={2}
-                value={r.eligibleProductIds}
-                onChange={(e) =>
-                  patchRules({ eligibleProductIds: e.target.value })
-                }
-                placeholder="gid://shopify/Product/123456, gid://shopify/Product/789012"
-              />
-            </FormField>
+            <WizardTextarea
+              label="Product IDs"
+              value={r.eligibleProductIds}
+              onChange={(v) => patchRules({ eligibleProductIds: v })}
+              placeholder="gid://shopify/Product/123456, gid://shopify/Product/789012"
+              hint="Paste Shopify product GIDs or numeric IDs, comma-separated."
+              rows={2}
+              mono
+              accentColor={EMERALD}
+            />
           )}
         </div>
       </FormSection>
@@ -981,54 +938,15 @@ function StepTriggerRules({
         description="How customers receive the offer."
         accent={EMERALD}
       >
-        <div className="space-y-2">
-          {(
-            [
-              {
-                value: "automatic",
-                label: "Applies automatically",
-                hint: "The offer is applied without any customer action.",
-              },
-              {
-                value: "click",
-                label: "Customer must click to claim",
-                hint: "A CTA button is shown; the offer applies on click.",
-              },
-            ] as const
-          ).map(({ value, label, hint }) => (
-            <label
-              key={value}
-              className={
-                "flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors " +
-                (r.claimBehavior === value
-                  ? "border-emerald-400 bg-emerald-50"
-                  : "border-neutral-200 hover:border-neutral-300")
-              }
-            >
-              <input
-                type="radio"
-                name="claimBehavior"
-                value={value}
-                checked={r.claimBehavior === value}
-                onChange={() => patchRules({ claimBehavior: value })}
-                className="mt-0.5 accent-emerald-600"
-              />
-              <div>
-                <p
-                  className={
-                    "text-sm font-medium " +
-                    (r.claimBehavior === value
-                      ? "text-emerald-800"
-                      : "text-neutral-800")
-                  }
-                >
-                  {label}
-                </p>
-                <p className="text-xs text-neutral-500 mt-0.5">{hint}</p>
-              </div>
-            </label>
-          ))}
-        </div>
+        <WizardRadioGroup
+          options={[
+            { value: "automatic", label: "Applies automatically",      description: "The offer is applied without any customer action." },
+            { value: "click",     label: "Customer clicks to claim",   description: "A CTA button is shown; the offer applies on click." },
+          ]}
+          value={r.claimBehavior}
+          onChange={(v) => patchRules({ claimBehavior: v as TriggerRules["claimBehavior"] })}
+          accentColor={EMERALD}
+        />
       </FormSection>
     </div>
   );

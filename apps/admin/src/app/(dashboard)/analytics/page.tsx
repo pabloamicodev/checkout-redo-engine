@@ -4,12 +4,22 @@ import { BarChart3, TrendingUp, ShoppingCart, Users, ArrowRight } from "lucide-r
 import Link from "next/link";
 import { getSessionShop } from "@/lib/session-shop";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
+import { RevenueChart, ParticipantsChart, ProfitChart, type DailyPoint, type DailyProfitPoint } from "@/components/analytics/AnalyticsCharts";
 
 type RunningExperiment = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>["runningExperiments"][number];
 type RecentOrder = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>["recentOrders"][number];
 
 
 export const dynamic = 'force-dynamic';
+
+function buildDaySeries(daysBack = 30): string[] {
+  return Array.from({ length: daysBack }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (daysBack - 1 - i));
+    return d.toISOString().slice(0, 10);
+  });
+}
+
 async function getAnalyticsOverview(shopDomain: string) {
   const shop = await prisma.shop.findUnique({
     where: { shopDomain },
@@ -17,39 +27,92 @@ async function getAnalyticsOverview(shopDomain: string) {
   });
   if (!shop) return null;
 
-  const [totalRevenue, totalAssignments, runningExperiments, recentOrders] =
-    await Promise.all([
-      prisma.orderAttribution.aggregate({
-        where: { shopId: shop.id },
-        _sum: { netRevenue: true, grossProfit: true, totalDiscounts: true },
-        _count: true,
-      }),
-      prisma.experimentAssignment.count({ where: { shopId: shop.id } }),
-      prisma.experiment.findMany({
-        where: { shopId: shop.id, status: "RUNNING" },
-        include: {
-          variants: true,
-          _count: { select: { assignments: true, orderAttributions: true } },
-        },
-        orderBy: { launchedAt: "desc" },
-        take: 5,
-      }),
-      prisma.orderAttribution.findMany({
-        where: { shopId: shop.id },
-        orderBy: { attributedAt: "desc" },
-        take: 10,
-        select: {
-          shopifyOrderName: true,
-          netRevenue: true,
-          grossProfit: true,
-          currencyCode: true,
-          financialStatus: true,
-          attributedAt: true,
-          experiment: { select: { name: true } },
-          variant: { select: { name: true } },
-        },
-      }),
-    ]);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [
+    totalRevenue,
+    totalAssignments,
+    runningExperiments,
+    recentOrders,
+    rawRevenue,
+    rawParticipants,
+  ] = await Promise.all([
+    prisma.orderAttribution.aggregate({
+      where: { shopId: shop.id },
+      _sum: { netRevenue: true, grossProfit: true, totalDiscounts: true },
+      _count: true,
+    }),
+    prisma.experimentAssignment.count({ where: { shopId: shop.id } }),
+    prisma.experiment.findMany({
+      where: { shopId: shop.id, status: "RUNNING" },
+      include: {
+        variants: true,
+        _count: { select: { assignments: true, orderAttributions: true } },
+      },
+      orderBy: { launchedAt: "desc" },
+      take: 5,
+    }),
+    prisma.orderAttribution.findMany({
+      where: { shopId: shop.id },
+      orderBy: { attributedAt: "desc" },
+      take: 10,
+      select: {
+        shopifyOrderName: true,
+        netRevenue: true,
+        grossProfit: true,
+        currencyCode: true,
+        financialStatus: true,
+        attributedAt: true,
+        experiment: { select: { name: true } },
+        variant: { select: { name: true } },
+      },
+    }),
+    // Time-series: 30 days of revenue + profit
+    prisma.orderAttribution.findMany({
+      where: { shopId: shop.id, attributedAt: { gte: thirtyDaysAgo } },
+      select: { attributedAt: true, netRevenue: true, grossProfit: true },
+      orderBy: { attributedAt: "asc" },
+    }),
+    // Time-series: 30 days of participant enrollments
+    prisma.experimentAssignment.findMany({
+      where: { shopId: shop.id, firstSeenAt: { gte: thirtyDaysAgo } },
+      select: { firstSeenAt: true },
+      orderBy: { firstSeenAt: "asc" },
+    }),
+  ]);
+
+  // Build 30-day time series
+  const days = buildDaySeries(30);
+
+  const revenueByDay: DailyPoint[] = days.map((day) => {
+    const dayRecords = rawRevenue.filter(
+      (r) => r.attributedAt.toISOString().slice(0, 10) === day
+    );
+    return {
+      date: day,
+      revenue: dayRecords.reduce((s, r) => s + r.netRevenue, 0),
+      participants: 0,
+    };
+  });
+
+  const participantsByDay: DailyPoint[] = days.map((day) => ({
+    date: day,
+    revenue: 0,
+    participants: rawParticipants.filter(
+      (p) => p.firstSeenAt.toISOString().slice(0, 10) === day
+    ).length,
+  }));
+
+  const profitByDay: DailyProfitPoint[] = days.map((day) => {
+    const dayRecords = rawRevenue.filter(
+      (r) => r.attributedAt.toISOString().slice(0, 10) === day
+    );
+    return {
+      date: day,
+      revenue: dayRecords.reduce((s, r) => s + r.netRevenue, 0),
+      profit: dayRecords.reduce((s, r) => s + (r.grossProfit ?? 0), 0),
+    };
+  });
 
   return {
     currencyCode: shop.currencyCode,
@@ -59,6 +122,9 @@ async function getAnalyticsOverview(shopDomain: string) {
     totalAssignments,
     runningExperiments,
     recentOrders,
+    revenueByDay,
+    participantsByDay,
+    profitByDay,
   };
 }
 
@@ -112,6 +178,15 @@ export default async function AnalyticsPage() {
             </div>
           ))}
         </div>
+
+        {/* Charts row */}
+        <div className="grid grid-cols-2 gap-5">
+          <RevenueChart data={data.revenueByDay} currency={data.currencyCode} />
+          <ParticipantsChart data={data.participantsByDay} />
+        </div>
+
+        {/* Revenue vs Profit full-width */}
+        <ProfitChart data={data.profitByDay} currency={data.currencyCode} />
 
         {/* Running experiments */}
         <div className="bg-white rounded-xl border border-neutral-200 shadow-card overflow-hidden">

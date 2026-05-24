@@ -11,6 +11,8 @@ import { WizardStepNav } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { UpgradePlanModal } from "@/components/ui/UpgradePlanModal";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea, WizardNumberInput, WizardRadioGroup } from "@/components/experiments/WizardControls";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -633,52 +635,37 @@ function StepSetup({
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required>
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className="input-base"
-              placeholder="15% vs 20% Discount Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="15% vs 20% Discount Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="Use a name that clearly identifies what discount values you're comparing."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="A fixed $15 discount will create higher perceived value than 10% off, increasing conversion without hurting revenue per visitor."
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
             hint="Describe what you expect to happen and why."
-          >
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className="input-base resize-none"
-              placeholder="A fixed $15 discount will create higher perceived value than 10% off, increasing conversion without hurting revenue per visitor."
-            />
-          </FormField>
+            templateText="If we offer [X% / $Y] off instead of [current discount], then [conversion rate / AOV] will [increase/decrease] because [reason]."
+          />
         </div>
       </FormSection>
 
-      <FormSection
-        title="Traffic"
-        description="What percentage of visitors should be included in this test?"
-        accent={ACCENT}
-      >
-        <FormField
-          label="Traffic allocation (%)"
-          hint="The remaining visitors see your default pricing."
-        >
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={state.trafficAllocation}
-            onChange={(e) =>
-              onChange({ trafficAllocation: parseFloat(e.target.value) || 100 })
-            }
-            className="input-base w-32"
-          />
-        </FormField>
-      </FormSection>
+      <TrafficSlider
+        value={state.trafficAllocation}
+        onChange={(v) => onChange({ trafficAllocation: v })}
+        accentColor={ACCENT}
+        holdoutLabel="See default discount"
+      />
     </div>
   );
 }
@@ -772,33 +759,25 @@ function StepEligibility({
         accent={ACCENT}
       >
         <div className="grid grid-cols-2 gap-4">
-          <FormField
-            label="Min order subtotal ($)"
+          <WizardNumberInput
+            label="Min order subtotal"
+            prefix="$"
+            value={state.minOrderSubtotal}
+            onChange={(v) => onChange({ minOrderSubtotal: v })}
+            min={0}
+            step={0.01}
             hint="0 = no minimum"
-          >
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={state.minOrderSubtotal}
-              onChange={(e) =>
-                onChange({ minOrderSubtotal: parseFloat(e.target.value) || 0 })
-              }
-              className="input-base"
-            />
-          </FormField>
-          <FormField label="Min quantity" hint="0 = no minimum">
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={state.minQuantity}
-              onChange={(e) =>
-                onChange({ minQuantity: parseInt(e.target.value) || 0 })
-              }
-              className="input-base"
-            />
-          </FormField>
+            accentColor={ACCENT}
+          />
+          <WizardNumberInput
+            label="Min item quantity"
+            value={state.minQuantity}
+            onChange={(v) => onChange({ minQuantity: v })}
+            min={0}
+            step={1}
+            hint="0 = no minimum"
+            accentColor={ACCENT}
+          />
         </div>
       </FormSection>
 
@@ -808,69 +787,39 @@ function StepEligibility({
         accent={ACCENT}
       >
         <div className="space-y-3">
-          {(
-            [
-              { value: "all",                  label: "All products" },
-              { value: "specific_products",    label: "Specific products" },
-              { value: "specific_collections", label: "Specific collections" },
-            ] as const
-          ).map((opt) => (
-            <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
-              <span
-                className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors"
-                style={{
-                  borderColor:
-                    state.targetingScope === opt.value ? ACCENT : "#d1d5db",
-                  background:
-                    state.targetingScope === opt.value ? ACCENT : "white",
-                }}
-              >
-                {state.targetingScope === opt.value && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                )}
-              </span>
-              <input
-                type="radio"
-                className="sr-only"
-                checked={state.targetingScope === opt.value}
-                onChange={() => onChange({ targetingScope: opt.value })}
-              />
-              <span className="text-sm text-neutral-700">{opt.label}</span>
-            </label>
-          ))}
+          <WizardRadioGroup
+            options={[
+              { value: "all",                  label: "All products",         description: "The discount applies to every product in the cart." },
+              { value: "specific_products",    label: "Specific products",    description: "Only items matching the product IDs below qualify." },
+              { value: "specific_collections", label: "Specific collections", description: "Only items from the listed collections qualify." },
+            ]}
+            value={state.targetingScope}
+            onChange={(v) => onChange({ targetingScope: v as WizardState["targetingScope"] })}
+            accentColor={ACCENT}
+          />
 
           {state.targetingScope === "specific_products" && (
-            <FormField
+            <WizardInput
               label="Product IDs"
-              hint="Enter Shopify product IDs, e.g. 12345,67890"
-              className="mt-3"
-            >
-              <input
-                type="text"
-                value={state.targetProductIds}
-                onChange={(e) => onChange({ targetProductIds: e.target.value })}
-                className="input-base"
-                placeholder="12345,67890,11223"
-              />
-            </FormField>
+              value={state.targetProductIds}
+              onChange={(v) => onChange({ targetProductIds: v })}
+              placeholder="12345, 67890, 11223"
+              hint="Shopify product IDs separated by commas."
+              mono
+              accentColor={ACCENT}
+            />
           )}
 
           {state.targetingScope === "specific_collections" && (
-            <FormField
+            <WizardInput
               label="Collection IDs"
-              hint="Enter Shopify collection IDs, e.g. 12345,67890"
-              className="mt-3"
-            >
-              <input
-                type="text"
-                value={state.targetCollectionIds}
-                onChange={(e) =>
-                  onChange({ targetCollectionIds: e.target.value })
-                }
-                className="input-base"
-                placeholder="12345,67890"
-              />
-            </FormField>
+              value={state.targetCollectionIds}
+              onChange={(v) => onChange({ targetCollectionIds: v })}
+              placeholder="12345, 67890"
+              hint="Shopify collection IDs separated by commas."
+              mono
+              accentColor={ACCENT}
+            />
           )}
 
           {isProductType && state.targetingScope === "all" && (
@@ -886,22 +835,15 @@ function StepEligibility({
         description="Optionally cap how many times a customer can redeem this discount."
         accent={ACCENT}
       >
-        <FormField label="Usage limit per customer" hint="Leave blank for unlimited.">
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={state.usageLimitPerCustomer}
-            onChange={(e) =>
-              onChange({
-                usageLimitPerCustomer:
-                  e.target.value === "" ? "" : parseInt(e.target.value) || 1,
-              })
-            }
-            className="input-base w-32"
-            placeholder="—"
-          />
-        </FormField>
+        <WizardNumberInput
+          label="Usage limit per customer"
+          value={typeof state.usageLimitPerCustomer === "number" ? state.usageLimitPerCustomer : 0}
+          onChange={(v) => onChange({ usageLimitPerCustomer: v === 0 ? "" : v })}
+          min={0}
+          step={1}
+          hint="Set to 0 for unlimited uses per customer."
+          accentColor={ACCENT}
+        />
       </FormSection>
     </div>
   );

@@ -10,6 +10,8 @@ import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea, WizardCheckCard } from "@/components/experiments/WizardControls";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,8 +87,6 @@ interface WizardState {
 
 const inputCls =
   "w-full text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white placeholder:text-neutral-400";
-const textareaCls =
-  "w-full text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white resize-none placeholder:text-neutral-400";
 
 const DEFAULT_STATE: WizardState = {
   name: "",
@@ -174,25 +174,28 @@ function StepSetup({ state, onChange }: { state: WizardState; onChange: (p: Part
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required hint="Describe what you are testing, e.g. 'Redesign vs Current Theme'.">
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className={inputCls}
-              placeholder="Theme Redesign A/B Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Theme Redesign A/B Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="Describe what you are testing — e.g. 'Redesign vs Current Theme'."
+          />
 
-          <FormField label="Hypothesis" hint="What do you expect to happen and why?">
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className={textareaCls}
-              placeholder="e.g. The new minimalist theme will increase conversion rate by reducing visual noise on the product page."
-            />
-          </FormField>
+          <WizardTextarea
+            label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="e.g. The new minimalist theme will increase conversion rate by reducing visual noise on the product page."
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
+            hint="What do you expect to happen and why?"
+            templateText="If we test [variant theme name], then [conversion rate / bounce rate] will improve because [specific UX improvement addresses a known friction point]."
+          />
         </div>
       </FormSection>
 
@@ -461,20 +464,12 @@ function StepTraffic({ state, onChange }: { state: WizardState; onChange: (p: Pa
         percentage (e.g. 20–40%) until you confirm the variant theme behaves correctly in production.
       </InlineAlert>
 
-      <FormSection title="Overall traffic" description="Percentage of visitors enrolled in the test." accent={ACCENT}>
-        <FormField label="Traffic allocation (%)" hint="Visitors outside this percentage see the live theme unchanged.">
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={state.trafficAllocation}
-            onChange={(e) =>
-              onChange({ trafficAllocation: Math.min(100, Math.max(1, parseInt(e.target.value, 10) || 1)) })
-            }
-            className="w-28 text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-          />
-        </FormField>
-      </FormSection>
+      <TrafficSlider
+        value={state.trafficAllocation}
+        onChange={(v) => onChange({ trafficAllocation: v })}
+        accentColor={ACCENT}
+        holdoutLabel="See live theme unchanged"
+      />
 
       <FormSection title="Variant split" description="Distribute traffic between variants. Must total 100%." accent={ACCENT}>
         <VariantAllocationEditor
@@ -549,18 +544,12 @@ function StepRiskReview({ state, onChange }: { state: WizardState; onChange: (p:
         ))}
       </div>
 
-      <label className="flex items-start gap-3 cursor-pointer group">
-        <input
-          type="checkbox"
-          checked={state.riskConfirmed}
-          onChange={(e) => onChange({ riskConfirmed: e.target.checked })}
-          className="mt-0.5 w-4 h-4 rounded accent-sky-500 cursor-pointer"
-        />
-        <span className="text-sm text-neutral-700 leading-relaxed group-hover:text-neutral-900 transition-colors">
-          I understand the risks above and confirm that the variant theme has been tested in a preview
-          environment before activating this experiment.
-        </span>
-      </label>
+      <WizardCheckCard
+        checked={state.riskConfirmed}
+        onChange={(checked) => onChange({ riskConfirmed: checked })}
+        label="I understand the risks above and confirm that the variant theme has been tested in a preview environment before activating this experiment."
+        accentColor={ACCENT}
+      />
 
       {!state.riskConfirmed && (
         <InlineAlert variant="info">

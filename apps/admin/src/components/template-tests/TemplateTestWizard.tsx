@@ -8,10 +8,12 @@ import {
   ChevronRight, Layers, Eye, Zap,
 } from "lucide-react";
 import { InlineAlert } from "@/components/ui/InlineAlert";
-import { FormSection, FormField } from "@/components/forms/FormSection";
+import { FormSection } from "@/components/forms/FormSection";
 import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardStepNav";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea } from "@/components/experiments/WizardControls";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { UpgradePlanModal } from "@/components/ui/UpgradePlanModal";
 
@@ -130,11 +132,6 @@ interface WizardState {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const inputCls =
-  "w-full text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 bg-white placeholder:text-neutral-400";
-const inputFocusCls = "focus:ring-orange-400";
-const textareaCls =
-  "w-full text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white resize-none placeholder:text-neutral-400";
 
 const DEFAULT_STATE: WizardState = {
   name: "",
@@ -173,29 +170,29 @@ function StepSetup({ state, onChange }: { state: WizardState; onChange: (p: Part
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required hint="Be specific — e.g. 'Product Page: Compact vs Detailed Layout'">
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className={`${inputCls} ${inputFocusCls}`}
-              placeholder="Product Page Template A/B Test"
-              autoFocus
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Product Page Template A/B Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="Be specific — e.g. 'Product Page: Compact vs Detailed Layout'."
+            autoFocus
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="e.g. The compact product layout will increase add-to-cart rate by reducing distractions above the fold."
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
             hint="What do you expect to happen and why? A good hypothesis makes results easier to act on."
-          >
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className={textareaCls}
-              placeholder="e.g. The compact product layout will increase add-to-cart rate by reducing distractions above the fold."
-            />
-          </FormField>
+            templateText="If we use the [variant] template for [product/collection] pages, then add-to-cart rate will increase because [specific improvement addresses a known friction point]."
+          />
         </div>
       </FormSection>
     </div>
@@ -577,36 +574,12 @@ function StepTraffic({ state, onChange }: { state: WizardState; onChange: (p: Pa
 
   return (
     <div className="space-y-6">
-      <FormSection
-        title="Overall traffic participation"
-        description="What percentage of your store visitors will be enrolled in this test?"
-        accent={ACCENT}
-      >
-        <FormField
-          label="Traffic participation (%)"
-          hint="Visitors not enrolled see your current template as usual. Start with 50–100% for faster results."
-        >
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={state.trafficAllocation}
-              onChange={(e) =>
-                onChange({ trafficAllocation: Math.min(100, Math.max(1, parseInt(e.target.value, 10) || 1)) })
-              }
-              className="w-24 text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
-            />
-            <span className="text-sm text-neutral-500">% of visitors</span>
-          </div>
-        </FormField>
-
-        {state.trafficAllocation < 20 && (
-          <InlineAlert variant="warning">
-            Low traffic allocation means slower results. We recommend at least 50% for template tests to get statistically significant data within a reasonable time.
-          </InlineAlert>
-        )}
-      </FormSection>
+      <TrafficSlider
+        value={state.trafficAllocation}
+        onChange={(v) => onChange({ trafficAllocation: v })}
+        accentColor={ACCENT}
+        holdoutLabel="See current template"
+      />
 
       <FormSection
         title="Split between templates"

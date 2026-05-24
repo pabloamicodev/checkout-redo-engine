@@ -11,6 +11,8 @@ import { WizardStepNav } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { UpgradePlanModal } from "@/components/ui/UpgradePlanModal";
 import { VariantAllocationEditor, AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea } from "@/components/experiments/WizardControls";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -563,44 +565,35 @@ function StepSetup({
     <div className="space-y-6">
       <FormSection title="Test Details" accent={ACCENT}>
         <div className="space-y-4">
-          <FormField label="Test name" required hint="A clear, descriptive name for your experiment">
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className="input-base w-full"
-              placeholder="Free Shipping Threshold Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Free Shipping Threshold Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="Use a name that clearly describes what shipping variable you're changing."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="Lowering the free shipping threshold from $75 to $50 will increase checkout completion without reducing profit per visitor."
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
             hint="What do you expect will happen and why?"
-          >
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className="input-base w-full resize-none"
-              placeholder="Lowering the free shipping threshold from $75 to $50 will increase checkout completion without reducing profit per visitor."
-            />
-          </FormField>
+            templateText="If we [lower/raise] the free shipping threshold from $[current] to $[new], then average order value will increase because customers are motivated to reach the threshold."
+          />
 
-          <FormField
-            label="Traffic allocation (%)"
-            hint="Percentage of visitors included in this test. The rest see the default experience."
-          >
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={state.trafficAllocation}
-              onChange={(e) =>
-                onChange({ trafficAllocation: Math.min(100, Math.max(1, parseFloat(e.target.value) || 1)) })
-              }
-              className="input-base w-28"
-            />
-          </FormField>
+          <TrafficSlider
+            value={state.trafficAllocation}
+            onChange={(v) => onChange({ trafficAllocation: v })}
+            accentColor={ACCENT}
+            holdoutLabel="See default shipping"
+          />
         </div>
       </FormSection>
     </div>

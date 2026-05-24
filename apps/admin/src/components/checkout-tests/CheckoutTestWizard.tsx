@@ -10,6 +10,8 @@ import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea } from "@/components/experiments/WizardControls";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -704,42 +706,35 @@ function StepSetup({
     <div className="space-y-6">
       <FormSection title="Test details" accent={ACCENT}>
         <div className="space-y-4">
-          <FormField label="Test name" required>
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className="input-base"
-              placeholder="Trust Badge Placement Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Trust Badge Placement Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="Use a name that describes the block type and what you're measuring."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="Adding payment security badges above the payment step will increase checkout completion rate."
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
             hint="Describe what you expect to happen and why."
-          >
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className="input-base resize-none"
-              placeholder="Adding payment security badges above the payment step will increase checkout completion rate."
-            />
-          </FormField>
+            templateText="If we add [trust badge / social proof / shipping message] to [placement], then checkout completion rate will increase because it reduces purchase anxiety."
+          />
 
-          <FormField
-            label="Traffic allocation (%)"
-            hint="Percentage of visitors included in this test. The rest see the default checkout."
-          >
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={state.trafficAllocation}
-              onChange={(e) => onChange({ trafficAllocation: parseFloat(e.target.value) || 100 })}
-              className="input-base w-28"
-            />
-          </FormField>
+          <TrafficSlider
+            value={state.trafficAllocation}
+            onChange={(v) => onChange({ trafficAllocation: v })}
+            accentColor={ACCENT}
+            holdoutLabel="See default checkout"
+          />
         </div>
       </FormSection>
     </div>

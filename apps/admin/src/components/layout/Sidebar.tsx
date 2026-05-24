@@ -108,7 +108,7 @@ export function Sidebar() {
     <aside
       className={cn(
         "shrink-0 flex flex-col h-dvh sticky top-0 overflow-y-auto overflow-x-hidden transition-all duration-200 scrollbar-thin",
-        collapsed ? "w-12" : "w-52"
+        collapsed ? "w-12" : "w-64"
       )}
       style={sidebarStyle}
     >

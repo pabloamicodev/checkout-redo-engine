@@ -9,6 +9,8 @@ import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea, WizardNumberInput, WizardCheckCard } from "@/components/experiments/WizardControls";
 import { useToast } from "@/components/ui/Toast";
 
 // ---------------------------------------------------------------------------
@@ -563,42 +565,35 @@ function StepSetup({
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required hint="Use a descriptive name that identifies the element and goal.">
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className={inputCls}
-              placeholder="Hero Headline Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Hero Headline Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="Use a descriptive name that identifies the element and goal."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="e.g. Changing the hero headline to focus on price will increase CVR by 10%"
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
             hint="Describe what you expect to happen and why. Include the expected lift."
-          >
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className={textareaCls}
-              placeholder="e.g. Changing the hero headline to focus on price will increase CVR by 10%"
-            />
-          </FormField>
+            templateText="If we change [element] to [new content], then [click-through rate / conversion rate] will increase because [reason]."
+          />
 
-          <FormField
-            label="Traffic allocation (%)"
-            hint="Percentage of site visitors enrolled in this test. The rest see the original page."
-          >
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={state.trafficAllocation}
-              onChange={(e) => onChange({ trafficAllocation: Math.min(100, Math.max(1, parseInt(e.target.value, 10) || 1)) })}
-              className="w-28 text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
-            />
-          </FormField>
+          <TrafficSlider
+            value={state.trafficAllocation}
+            onChange={(v) => onChange({ trafficAllocation: v })}
+            accentColor={ACCENT}
+            holdoutLabel="See original page"
+          />
         </div>
       </FormSection>
     </div>
@@ -627,22 +622,17 @@ function StepPageTargeting({
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField
+          <WizardInput
             label="URL pattern"
+            value={state.urlPattern}
+            onChange={(v) => onChange({ urlPattern: v })}
+            onBlur={() => setUrlTouched(true)}
+            placeholder="/products/*"
             hint="Supports * wildcards. Examples: /products/*, /collections/summer, /pages/about"
-          >
-            <input
-              type="text"
-              value={state.urlPattern}
-              onChange={(e) => onChange({ urlPattern: e.target.value })}
-              onBlur={() => setUrlTouched(true)}
-              className={`${inputCls}${urlError ? " border-red-400" : ""}`}
-              placeholder="/products/*"
-            />
-            {urlError && (
-              <p className="text-xs text-red-500 mt-1">URL pattern is required to proceed</p>
-            )}
-          </FormField>
+            error={urlError ? "URL pattern is required to proceed" : undefined}
+            mono
+            accentColor={ACCENT}
+          />
 
           <InlineAlert variant="info" title="How it works">
             The runtime evaluates targeting on every page load before showing modifications. Visitors
@@ -1139,22 +1129,17 @@ function StepAntiFlicker({
 
           {state.antiFickerEnabled && (
             <>
-              <FormField
-                label="Timeout (ms)"
+              <WizardNumberInput
+                label="Timeout"
+                value={state.antiFlickerTimeout}
+                onChange={(v) => onChange({ antiFlickerTimeout: v })}
+                min={500}
+                max={10000}
+                step={100}
+                unit="ms"
                 hint="Maximum time to wait before revealing the page regardless of modification status."
-              >
-                <input
-                  type="number"
-                  min={500}
-                  max={10000}
-                  step={100}
-                  value={state.antiFlickerTimeout}
-                  onChange={(e) =>
-                    onChange({ antiFlickerTimeout: parseInt(e.target.value, 10) || 3000 })
-                  }
-                  className="w-32 text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                />
-              </FormField>
+                accentColor={ACCENT}
+              />
 
               <div>
                 <p className="text-xs font-medium text-neutral-600 mb-2">Anti-flicker CSS snippet</p>
@@ -1200,33 +1185,34 @@ function StepQAChecklist({
       >
         <div className="space-y-2">
           {QA_ITEMS.map((item) => (
-            <label
+            <WizardCheckCard
               key={item.id}
-              className="flex items-center gap-3 p-3 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={state.qaChecklist[item.id] ?? false}
-                onChange={() => toggle(item.id)}
-                className="w-4 h-4 rounded accent-violet-600"
-              />
-              <span
-                className={`text-sm ${
-                  state.qaChecklist[item.id] ? "text-neutral-500 line-through" : "text-neutral-800"
-                }`}
-              >
-                {item.label}
-              </span>
-              {state.qaChecklist[item.id] && (
-                <span className="ml-auto text-emerald-500 text-xs font-medium">Done</span>
-              )}
-            </label>
+              checked={state.qaChecklist[item.id] ?? false}
+              onChange={() => toggle(item.id)}
+              label={item.label}
+              accentColor={ACCENT}
+              strikeOnCheck
+            />
           ))}
         </div>
 
-        <p className="text-xs text-neutral-400 mt-3">
-          {checkedCount}/{QA_ITEMS.length} items completed
-        </p>
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-xs text-neutral-400">
+            {checkedCount}/{QA_ITEMS.length} items completed
+          </p>
+          <div className="flex-1 mx-4 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${QA_ITEMS.length > 0 ? (checkedCount / QA_ITEMS.length) * 100 : 0}%`,
+                background: checkedCount === QA_ITEMS.length ? "#10b981" : ACCENT,
+              }}
+            />
+          </div>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: checkedCount === QA_ITEMS.length ? "#10b981" : ACCENT }}>
+            {QA_ITEMS.length > 0 ? Math.round((checkedCount / QA_ITEMS.length) * 100) : 0}%
+          </span>
+        </div>
       </FormSection>
     </div>
   );

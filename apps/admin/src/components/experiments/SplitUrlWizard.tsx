@@ -10,6 +10,8 @@ import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav, WizardStep } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { VariantAllocationEditor, AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea, WizardRadioGroup } from "@/components/experiments/WizardControls";
 
 const SplitUrlPreviewPanel = lazy(() => import("./SplitUrlPreviewPanel"));
 
@@ -214,44 +216,35 @@ function StepSetup({
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required hint="A short, descriptive label visible across the dashboard.">
-            <input
-              type="text"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              className="input-base w-full"
-              placeholder="New Landing Page Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="New Landing Page Test"
+            maxLength={80}
+            accentColor={ACCENT}
+            hint="A short, descriptive label visible across the dashboard."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="Sending paid traffic to the long-form landing page will increase conversion rate compared to the standard PDP."
+            rows={3}
+            maxLength={400}
+            accentColor={ACCENT}
             hint="Describe what you expect to happen and why. A clear hypothesis makes results easier to interpret."
-          >
-            <textarea
-              rows={3}
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              className="input-base w-full resize-none"
-              placeholder="Sending paid traffic to the long-form landing page will increase conversion rate compared to the standard PDP."
-            />
-          </FormField>
+            templateText="If we send [traffic source] visitors to [new URL] instead of the standard PDP, then conversion rate will increase because the landing page is more targeted."
+          />
 
-          <FormField
-            label="Traffic allocation (%)"
-            hint="Percentage of all visitors included in this test. The rest always see the original URL."
-          >
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={state.trafficAllocation}
-              onChange={(e) =>
-                onChange({ trafficAllocation: Math.min(100, Math.max(1, parseInt(e.target.value) || 100)) })
-              }
-              className="input-base w-28"
-            />
-          </FormField>
+          <TrafficSlider
+            value={state.trafficAllocation}
+            onChange={(v) => onChange({ trafficAllocation: v })}
+            accentColor={ACCENT}
+            holdoutLabel="See original URL"
+          />
         </div>
       </FormSection>
 
@@ -546,29 +539,31 @@ function StepTrafficTargeting({
         accent={ACCENT}
       >
         <div className="space-y-4">
-          <FormField label="Device type">
-            <select
-              value={state.targeting.deviceType}
-              onChange={(e) => patchTargeting({ deviceType: e.target.value as TargetingConfig["deviceType"] })}
-              className="input-base w-full"
-            >
-              <option value="all">All devices</option>
-              <option value="mobile">Mobile only</option>
-              <option value="desktop">Desktop only</option>
-            </select>
-          </FormField>
+          <WizardRadioGroup
+            label="Device type"
+            options={[
+              { value: "all",     label: "All devices",   description: "Test runs on both mobile and desktop." },
+              { value: "mobile",  label: "Mobile only",   description: "Only mobile visitors are enrolled." },
+              { value: "desktop", label: "Desktop only",  description: "Only desktop visitors are enrolled." },
+            ]}
+            value={state.targeting.deviceType}
+            onChange={(v) => patchTargeting({ deviceType: v as TargetingConfig["deviceType"] })}
+            accentColor={ACCENT}
+            columns={3}
+          />
 
-          <FormField label="Traffic source">
-            <select
-              value={state.targeting.trafficSource}
-              onChange={(e) => patchTargeting({ trafficSource: e.target.value as TargetingConfig["trafficSource"] })}
-              className="input-base w-full"
-            >
-              <option value="all">All sources</option>
-              <option value="paid">Paid traffic (UTM) only</option>
-              <option value="organic">Organic only</option>
-            </select>
-          </FormField>
+          <WizardRadioGroup
+            label="Traffic source"
+            options={[
+              { value: "all",     label: "All sources",  description: "Any traffic regardless of origin." },
+              { value: "paid",    label: "Paid (UTM)",   description: "Only visitors arriving via UTM-tagged URLs." },
+              { value: "organic", label: "Organic only", description: "Only visitors from organic/direct sources." },
+            ]}
+            value={state.targeting.trafficSource}
+            onChange={(v) => patchTargeting({ trafficSource: v as TargetingConfig["trafficSource"] })}
+            accentColor={ACCENT}
+            columns={3}
+          />
 
           <FormField label="Visitor type">
             <label className="flex items-center gap-2.5 cursor-pointer select-none">

@@ -11,6 +11,8 @@ import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardS
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { UpgradePlanModal } from "@/components/ui/UpgradePlanModal";
 import { VariantAllocationEditor, type AllocationVariant } from "@/components/experiments/VariantAllocationEditor";
+import { TrafficSlider } from "@/components/experiments/TrafficSlider";
+import { WizardInput, WizardTextarea } from "@/components/experiments/WizardControls";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -376,40 +378,35 @@ function StepSetup({
         accent={ROSE}
       >
         <div className="space-y-4">
-          <FormField label="Test name" required>
-            <input
-              className="input-base"
-              value={state.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              placeholder="Premium Price Elasticity Test"
-            />
-          </FormField>
+          <WizardInput
+            label="Test name"
+            required
+            value={state.name}
+            onChange={(v) => onChange({ name: v })}
+            placeholder="Premium Price Elasticity Test"
+            maxLength={80}
+            accentColor={ROSE}
+            hint="Be specific — e.g. 'Premium Hoodie: $89 vs $99 vs $109'."
+          />
 
-          <FormField
+          <WizardTextarea
             label="Hypothesis"
+            value={state.hypothesis}
+            onChange={(v) => onChange({ hypothesis: v })}
+            placeholder="e.g. A 10% price increase on premium products will maintain CVR and improve profit margin"
+            rows={3}
+            maxLength={400}
+            accentColor={ROSE}
             hint="Articulate what you expect to happen and why."
-          >
-            <textarea
-              className="input-base min-h-[80px] resize-none"
-              value={state.hypothesis}
-              onChange={(e) => onChange({ hypothesis: e.target.value })}
-              placeholder="e.g. A 10% price increase on premium products will maintain CVR and improve profit margin"
-            />
-          </FormField>
+            templateText="If we [raise/lower] the price of [product] by [X%], then [revenue per visitor] will increase because customers are less price-sensitive than expected."
+          />
 
-          <FormField
-            label="Traffic allocation (%)"
-            hint="Percentage of visitors enrolled in this test. The remainder see default prices."
-          >
-            <input
-              className="input-base w-32"
-              type="number"
-              min={1}
-              max={100}
-              value={state.traffic}
-              onChange={(e) => onChange({ traffic: Number(e.target.value) })}
-            />
-          </FormField>
+          <TrafficSlider
+            value={state.traffic}
+            onChange={(v) => onChange({ traffic: v })}
+            accentColor={ROSE}
+            holdoutLabel="See default prices"
+          />
         </div>
       </FormSection>
     </div>
