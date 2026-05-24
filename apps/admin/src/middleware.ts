@@ -38,10 +38,30 @@ export function middleware(request: NextRequest) {
   const shopParam = searchParams.get("shop")?.toLowerCase().trim();
 
   if (shopParam && SHOPIFY_SHOP_REGEX.test(shopParam)) {
-    // Redirect to OAuth initiation
-    const authUrl = new URL("/api/auth", request.url);
-    authUrl.searchParams.set("shop", shopParam);
-    return NextResponse.redirect(authUrl);
+    // Must break OUT of the Shopify iframe to do OAuth.
+    // A server-side redirect inside the iframe causes Shopify to redirect
+    // the user to the app settings page instead.
+    // Solution: serve an HTML page that sets window.top.location (top-level redirect).
+    const authUrl = `/api/auth?shop=${encodeURIComponent(shopParam)}`;
+    const html = `<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <script>
+      // Break out of Shopify iframe and navigate top-level to OAuth
+      if (window.top && window.top !== window) {
+        window.top.location.href = ${JSON.stringify(authUrl)};
+      } else {
+        window.location.href = ${JSON.stringify(authUrl)};
+      }
+    </script>
+    <p>Redirecting to authorization&hellip;</p>
+  </body>
+</html>`;
+    return new Response(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    });
   }
 
   // No shop param and no session → allow through (demo mode)
