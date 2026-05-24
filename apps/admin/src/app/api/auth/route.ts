@@ -32,9 +32,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid shop domain" }, { status: 400 });
   }
 
-  const apiKey = process.env.SHOPIFY_API_KEY;
-  const scopes = process.env.SHOPIFY_APP_SCOPES ?? "";
-  const host = process.env.HOST;
+  const apiKey = process.env.SHOPIFY_API_KEY?.trim();
+  const scopes = (process.env.SHOPIFY_APP_SCOPES ?? "").trim();
+  const host = process.env.HOST?.trim().replace(/[\r\n]+$/, "");
 
   if (!apiKey || !host) {
     return NextResponse.json(

@@ -44,7 +44,7 @@ export function middleware(request: NextRequest) {
     // Solution: serve an HTML page that sets window.top.location (top-level redirect).
     // IMPORTANT: must use ABSOLUTE URL — relative URLs resolve against admin.shopify.com
     // (the parent frame), not against our app domain.
-    const appHost = process.env.HOST ?? "https://checkout-redo-engine.vercel.app";
+    const appHost = (process.env.HOST ?? "https://checkout-redo-engine.vercel.app").trim().replace(/[\r\n]+$/, "");
     const authUrl = `${appHost}/api/auth?shop=${encodeURIComponent(shopParam)}`;
     const html = `<!DOCTYPE html>
 <html>
