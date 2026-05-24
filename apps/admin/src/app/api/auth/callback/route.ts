@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
   }
 
   // GUARD: HMAC validation
-  const apiSecret = process.env.SHOPIFY_API_SECRET;
+  const apiSecret = process.env.SHOPIFY_API_SECRET?.replace(/[\r\n\s]+/g, "");
   if (!apiSecret) {
     return NextResponse.json({ error: "App not configured" }, { status: 500 });
   }
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      client_id: process.env.SHOPIFY_API_KEY,
+      client_id: process.env.SHOPIFY_API_KEY?.trim().replace(/[\r\n]+$/, ""),
       client_secret: apiSecret,
       code,
     }),
