@@ -157,8 +157,8 @@ export class AbandonedCartService {
     const page = Math.max(1, opts?.page ?? 1);
     const where = {
       shopId,
-      type: "ABANDONED_CART",
-      ...(opts?.status ? { status: opts.status } : { status: { not: "ARCHIVED" } }),
+      type: "ABANDONED_CART" as const,
+      ...(opts?.status ? { status: opts.status } : { status: { not: "ARCHIVED" as const } }),
     };
 
     const [items, total] = await prisma.$transaction([

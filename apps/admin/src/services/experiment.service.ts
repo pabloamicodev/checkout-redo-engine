@@ -314,6 +314,23 @@ export class ExperimentService {
     return updated;
   }
 
+  async hardDelete(shopId: string, id: string, actorId?: string) {
+    const experiment = await this.get(shopId, id);
+
+    await prisma.experiment.delete({ where: { id } });
+
+    await this.auditLog.log({
+      shopId,
+      actorId,
+      entityType: "experiment",
+      entityId: id,
+      entityName: experiment.name,
+      action: "deleted",
+    });
+
+    await this.invalidateCache(shopId);
+  }
+
   async duplicate(shopId: string, id: string, actorId?: string) {
     const source = await prisma.experiment.findFirst({
       where: { id, shopId },

@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsService } from "@/services/analytics.service";
 import { ExperimentTabs } from "@/components/experiments/ExperimentTabs";
+import { ExperimentStatusActions } from "@/components/experiments/ExperimentStatusActions";
 import { getSessionShop } from "@/lib/session-shop";
+import { getStatusTheme } from "@/lib/design/statusTheme";
 import { ChevronRight, Settings, Share2, LogOut } from "lucide-react";
 
 const analyticsService = new AnalyticsService();
@@ -55,8 +57,8 @@ export default async function ExperimentDetailPage({
 
   const { experiment, analytics, currencyCode } = data;
 
-  // Short display name for breadcrumb/title
   const displayName = experiment.name;
+  const statusTheme = getStatusTheme(experiment.status);
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
@@ -85,24 +87,33 @@ export default async function ExperimentDetailPage({
         </div>
       </div>
 
-      {/* Title + Save row */}
-      <div className="flex items-start justify-between px-6 pt-4 pb-2 bg-white">
-        <h1 className="text-lg font-semibold text-neutral-900 leading-tight">
-          {displayName}
-        </h1>
-        <button
-          className="px-5 py-2 text-sm font-semibold text-white rounded-lg shrink-0 hover:opacity-90 transition-opacity"
-          style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
-        >
-          Save
-        </button>
-      </div>
-
-      {/* All Visitors badge */}
-      <div className="px-6 pb-2 bg-white">
-        <button className="flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors">
-          All Visitors
-        </button>
+      {/* Title + actions row */}
+      <div className="flex items-center justify-between gap-4 px-6 pt-4 pb-3 bg-white">
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="text-lg font-semibold text-neutral-900 leading-tight truncate">
+            {displayName}
+          </h1>
+          <span
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border shrink-0"
+            style={{
+              color: statusTheme.hex,
+              background: `${statusTheme.hex}12`,
+              borderColor: `${statusTheme.hex}30`,
+            }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusTheme.hex }} />
+            {statusTheme.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <ExperimentStatusActions experimentId={id} status={experiment.status} />
+          <button
+            className="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+            style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       {/* Tab navigation */}

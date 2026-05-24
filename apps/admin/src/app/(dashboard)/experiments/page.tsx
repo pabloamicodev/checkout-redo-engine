@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus, FlaskConical, ArrowRight } from "lucide-react";
+import { Plus, FlaskConical } from "lucide-react";
 import { getSessionShop } from "@/lib/session-shop";
 import { CreateTestModal } from "@/components/experiments/CreateTestModal";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { getTestTypeTheme } from "@/lib/design/testTypeTheme";
+import { ExperimentActionsMenu } from "@/components/experiments/ExperimentActionsMenu";
 
 
 export const dynamic = 'force-dynamic';
@@ -197,11 +198,9 @@ export default async function ExperimentsPage({
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        <Link href={`/experiments/${exp.id}`}>
-                          <button className="p-1 text-neutral-300 hover:text-neutral-600 rounded transition-colors opacity-0 group-hover:opacity-100">
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </Link>
+                        <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ExperimentActionsMenu experimentId={exp.id} status={exp.status} />
+                        </div>
                       </td>
                     </tr>
                   );
