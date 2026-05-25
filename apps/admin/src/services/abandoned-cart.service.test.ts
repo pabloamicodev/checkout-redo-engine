@@ -303,7 +303,7 @@ describe("AbandonedCartService.create — success paths", () => {
   it("omits returning visitor rule when returningOnly is false", async () => {
     await svc.create(SHOP, { ...VALID_INPUT, returningOnly: false });
 
-    const call = mockCreate.mock.calls[0]![0] as { data: { targetingRules: unknown[] } };
+    const call = mockCreate.mock.calls[0]![0] as unknown as { data: { targetingRules: unknown[] } };
     const hasReturning = call.data.targetingRules.some(
       (r) => (r as Record<string, unknown>)["field"] === "visitor_type"
     );

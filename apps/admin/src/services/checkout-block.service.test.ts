@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CheckoutBlockService } from "./checkout-block.service";
+import type { z } from "zod";
+import { TargetingRulesSchema } from "@/lib/zod-schemas";
+
+type TargetingRules = z.infer<typeof TargetingRulesSchema>;
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -174,7 +178,7 @@ describe("CheckoutBlockService.update", () => {
     await svc.update(SHOP, "block-1", {
       name: "New Name",
       content: { text: "hello" },
-      targetingRules: [{ operator: "AND" as const, conditions: [{ type: "device", operator: "eq" as const, value: "mobile" }] }],
+      targetingRules: [{ operator: "AND" as const, conditions: [{ type: "device", operator: "eq" as const, value: "mobile" }] }] as TargetingRules,
     });
 
     expect(mockUpdate).toHaveBeenCalledWith(
@@ -189,7 +193,7 @@ describe("CheckoutBlockService.update", () => {
       name: "Safe Update",
       styles: { color: "red" },
       content: { text: "blocked" },
-      targetingRules: [{ operator: "AND" as const, conditions: [{ type: "device", operator: "eq" as const, value: "mobile" }] }],
+      targetingRules: [{ operator: "AND" as const, conditions: [{ type: "device", operator: "eq" as const, value: "mobile" }] }] as TargetingRules,
     });
 
     const callData = mockUpdate.mock.calls[0]![0] as { data: Record<string, unknown> };
