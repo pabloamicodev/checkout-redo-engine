@@ -174,7 +174,7 @@ describe("CheckoutBlockService.update", () => {
     await svc.update(SHOP, "block-1", {
       name: "New Name",
       content: { text: "hello" },
-      targetingRules: [{ type: "device", value: "mobile" }],
+      targetingRules: [{ operator: "AND" as const, conditions: [{ type: "device", operator: "eq" as const, value: "mobile" }] }],
     });
 
     expect(mockUpdate).toHaveBeenCalledWith(
@@ -189,7 +189,7 @@ describe("CheckoutBlockService.update", () => {
       name: "Safe Update",
       styles: { color: "red" },
       content: { text: "blocked" },
-      targetingRules: [{ type: "device", value: "mobile" }],
+      targetingRules: [{ operator: "AND" as const, conditions: [{ type: "device", operator: "eq" as const, value: "mobile" }] }],
     });
 
     const callData = mockUpdate.mock.calls[0]![0] as { data: Record<string, unknown> };

@@ -92,7 +92,8 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(npm run *)",
-      "Bash(git commit -m 'fix: remove GraphQL extension validation errors in function-config.service.ts *)"
+      "Bash(git commit -m 'fix: remove GraphQL extension validation errors in function-config.service.ts *)",
+      "Bash(grep -v \"^$\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\pol\\.claude\\projects\\c--Users-pol-Desktop-checkout-redo-engine\\memory",
