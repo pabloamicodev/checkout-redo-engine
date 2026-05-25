@@ -102,8 +102,8 @@ export function Sidebar() {
     isActive("/checkout-blocks");
 
   const sidebarStyle = {
-    background: "#0F172A",
-    borderRight: "1px solid #1E293B",
+    background: "#ffffff",
+    borderRight: "1px solid #e2e8f0",
   };
 
   return (
@@ -126,7 +126,7 @@ export function Sidebar() {
           <LogoIcon />
           {!collapsed && (
             <span
-              className="text-sm font-semibold text-slate-100 truncate"
+              className="text-sm font-semibold text-slate-800 truncate"
               style={{ letterSpacing: "-0.025em" }}
             >
               MarginLab
@@ -137,9 +137,9 @@ export function Sidebar() {
           <button
             onClick={() => setCollapsed(true)}
             className="p-1 rounded-md transition-colors shrink-0"
-            style={{ color: "#475569" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#94a3b8")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#475569")}
+            style={{ color: "#94a3b8" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#64748b")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
             title="Collapse sidebar"
           >
             <PanelLeftClose className="w-3.5 h-3.5" />
@@ -151,9 +151,9 @@ export function Sidebar() {
         <button
           onClick={() => setCollapsed(false)}
           className="mx-auto mt-1 mb-2 p-1.5 rounded-md transition-colors"
-          style={{ color: "#475569" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#94a3b8")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#475569")}
+          style={{ color: "#94a3b8" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#64748b")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
           title="Expand sidebar"
         >
           <PanelLeftOpen className="w-3.5 h-3.5" />
@@ -162,7 +162,7 @@ export function Sidebar() {
 
       {!collapsed && (
         <div className="px-3.5 pb-3">
-          <p className="text-[10px] font-medium" style={{ color: "#475569" }}>
+          <p className="text-[10px] font-medium" style={{ color: "#94a3b8" }}>
             Profit optimization platform
           </p>
         </div>
@@ -175,24 +175,24 @@ export function Sidebar() {
             onClick={openPalette}
             className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors"
             style={{
-              background: "#162032",
-              border: "1px solid #1E293B",
-              color: "#475569",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              color: "#94a3b8",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#334155";
+              e.currentTarget.style.borderColor = "#cbd5e1";
               e.currentTarget.style.color = "#64748b";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#1E293B";
-              e.currentTarget.style.color = "#475569";
+              e.currentTarget.style.borderColor = "#e2e8f0";
+              e.currentTarget.style.color = "#94a3b8";
             }}
           >
             <span className="flex items-center gap-1.5">
               <Search className="w-3 h-3" />
               Search tests, analytics…
             </span>
-            <kbd className="text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "#1E293B", color: "#334155" }}>
+            <kbd className="text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "#f1f5f9", color: "#94a3b8" }}>
               ⌘K
             </kbd>
           </button>
@@ -200,9 +200,9 @@ export function Sidebar() {
           <button
             onClick={openPalette}
             className="w-7 h-7 mx-auto flex items-center justify-center rounded-lg transition-colors"
-            style={{ color: "#475569" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#94a3b8")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#475569")}
+            style={{ color: "#94a3b8" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#64748b")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
           >
             <Search className="w-3.5 h-3.5" />
           </button>
@@ -238,35 +238,35 @@ export function Sidebar() {
               )}
               style={
                 isTestsActive
-                  ? { background: "#1E293B", color: "#F8FAFC", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.06)" }
-                  : { color: "#94A3B8" }
+                  ? { background: "#f1f5f9", color: "#0f172a", boxShadow: "inset 0 0 0 1px rgb(0 0 0 / 0.06)" }
+                  : { color: "#64748b" }
               }
               onMouseEnter={(e) => {
                 if (!isTestsActive) {
-                  e.currentTarget.style.background = "#162032";
-                  e.currentTarget.style.color = "#F8FAFC";
+                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.color = "#0f172a";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isTestsActive) {
                   e.currentTarget.style.background = "";
-                  e.currentTarget.style.color = "#94A3B8";
+                  e.currentTarget.style.color = "#64748b";
                 }
               }}
             >
               <FlaskConical
                 className="w-3.5 h-3.5 shrink-0"
-                style={{ color: isTestsActive ? "#818cf8" : "#475569" }}
+                style={{ color: isTestsActive ? "#6366f1" : "#94a3b8" }}
               />
               <span className="flex-1 text-left">Tests</span>
               <ChevronDown
                 className={cn("w-3 h-3 transition-transform shrink-0", testsOpen && "rotate-180")}
-                style={{ color: "#334155" }}
+                style={{ color: "#cbd5e1" }}
               />
             </button>
 
             {testsOpen && (
-              <div className="ml-4 mt-0.5 space-y-0.5 pl-2.5" style={{ borderLeft: "1px solid #1E293B" }}>
+              <div className="ml-4 mt-0.5 space-y-0.5 pl-2.5" style={{ borderLeft: "1px solid #e2e8f0" }}>
                 {[
                   { label: "All Tests", href: "/experiments" },
                   { label: "Content", href: "/content-tests" },
@@ -289,13 +289,13 @@ export function Sidebar() {
                       className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all duration-100"
                       style={
                         active
-                          ? { color: "#F8FAFC", background: "#1E293B" }
+                          ? { color: "#0f172a", background: "#f1f5f9" }
                           : { color: "#64748b" }
                       }
                       onMouseEnter={(e) => {
                         if (!active) {
-                          e.currentTarget.style.color = "#CBD5E1";
-                          e.currentTarget.style.background = "#162032";
+                          e.currentTarget.style.color = "#334155";
+                          e.currentTarget.style.background = "#f8fafc";
                         }
                       }}
                       onMouseLeave={(e) => {
@@ -336,35 +336,35 @@ export function Sidebar() {
               className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-100"
               style={
                 isPersonalizationsActive
-                  ? { background: "#1E293B", color: "#F8FAFC", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.06)" }
-                  : { color: "#94A3B8" }
+                  ? { background: "#f1f5f9", color: "#0f172a", boxShadow: "inset 0 0 0 1px rgb(0 0 0 / 0.06)" }
+                  : { color: "#64748b" }
               }
               onMouseEnter={(e) => {
                 if (!isPersonalizationsActive) {
-                  e.currentTarget.style.background = "#162032";
-                  e.currentTarget.style.color = "#F8FAFC";
+                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.color = "#0f172a";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isPersonalizationsActive) {
                   e.currentTarget.style.background = "";
-                  e.currentTarget.style.color = "#94A3B8";
+                  e.currentTarget.style.color = "#64748b";
                 }
               }}
             >
               <LayoutGrid
                 className="w-3.5 h-3.5 shrink-0"
-                style={{ color: isPersonalizationsActive ? "#818cf8" : "#475569" }}
+                style={{ color: isPersonalizationsActive ? "#6366f1" : "#94a3b8" }}
               />
               <span className="flex-1 text-left">Personalizations</span>
               <ChevronDown
                 className={cn("w-3 h-3 transition-transform shrink-0", personalizationsOpen && "rotate-180")}
-                style={{ color: "#334155" }}
+                style={{ color: "#cbd5e1" }}
               />
             </button>
 
             {personalizationsOpen && (
-              <div className="ml-4 mt-0.5 space-y-0.5 pl-2.5" style={{ borderLeft: "1px solid #1E293B" }}>
+              <div className="ml-4 mt-0.5 space-y-0.5 pl-2.5" style={{ borderLeft: "1px solid #e2e8f0" }}>
                 {[
                   { label: "Site content", href: "/personalizations" },
                   { label: "Abandoned Cart", href: "/personalizations/abandoned-cart" },
@@ -378,13 +378,13 @@ export function Sidebar() {
                       className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all duration-100"
                       style={
                         active
-                          ? { color: "#F8FAFC", background: "#1E293B" }
+                          ? { color: "#0f172a", background: "#f1f5f9" }
                           : { color: "#64748b" }
                       }
                       onMouseEnter={(e) => {
                         if (!active) {
-                          e.currentTarget.style.color = "#CBD5E1";
-                          e.currentTarget.style.background = "#162032";
+                          e.currentTarget.style.color = "#334155";
+                          e.currentTarget.style.background = "#f8fafc";
                         }
                       }}
                       onMouseLeave={(e) => {
@@ -403,13 +403,13 @@ export function Sidebar() {
                   className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all duration-100"
                   style={
                     isActive("/personalizations/post-purchase")
-                      ? { color: "#F8FAFC", background: "#1E293B" }
+                      ? { color: "#0f172a", background: "#f1f5f9" }
                       : { color: "#64748b" }
                   }
                   onMouseEnter={(e) => {
                     if (!isActive("/personalizations/post-purchase")) {
-                      e.currentTarget.style.color = "#CBD5E1";
-                      e.currentTarget.style.background = "#162032";
+                      e.currentTarget.style.color = "#334155";
+                      e.currentTarget.style.background = "#f8fafc";
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -451,17 +451,17 @@ export function Sidebar() {
           <a
             href="/onboarding"
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-100"
-            style={{ color: "#475569" }}
+            style={{ color: "#94a3b8" }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.background = "#162032";
+              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.background = "#f8fafc";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#475569";
+              e.currentTarget.style.color = "#94a3b8";
               e.currentTarget.style.background = "";
             }}
           >
-            <GraduationCap className="w-3.5 h-3.5 shrink-0" style={{ color: "#334155" }} />
+            <GraduationCap className="w-3.5 h-3.5 shrink-0" style={{ color: "#cbd5e1" }} />
             Getting started guide
           </a>
         </div>
@@ -474,11 +474,11 @@ export function Sidebar() {
 
 function SectionDivider({ label, collapsed }: { label: string; collapsed: boolean }) {
   if (collapsed) {
-    return <div className="my-3 mx-2.5" style={{ borderTop: "1px solid #1E293B" }} />;
+    return <div className="my-3 mx-2.5" style={{ borderTop: "1px solid #e2e8f0" }} />;
   }
   return (
     <div className="px-3.5 pt-4 pb-1.5">
-      <p className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: "#334155", letterSpacing: "0.1em" }}>
+      <p className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: "#cbd5e1", letterSpacing: "0.1em" }}>
         {label}
       </p>
     </div>
@@ -508,25 +508,25 @@ function SidebarNavItem({
       )}
       style={
         active
-          ? { background: "#1E293B", color: "#F8FAFC", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.06)" }
-          : { color: "#94A3B8" }
+          ? { background: "#f1f5f9", color: "#0f172a", boxShadow: "inset 0 0 0 1px rgb(0 0 0 / 0.06)" }
+          : { color: "#64748b" }
       }
       onMouseEnter={(e) => {
         if (!active) {
-          e.currentTarget.style.background = "#162032";
-          e.currentTarget.style.color = "#F8FAFC";
+          e.currentTarget.style.background = "#f8fafc";
+          e.currentTarget.style.color = "#0f172a";
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           e.currentTarget.style.background = "";
-          e.currentTarget.style.color = "#94A3B8";
+          e.currentTarget.style.color = "#64748b";
         }
       }}
     >
       <Icon
         className={cn("shrink-0", collapsed ? "w-4 h-4" : "w-3.5 h-3.5")}
-        style={{ color: active ? "#818cf8" : "#475569" }}
+        style={{ color: active ? "#6366f1" : "#94a3b8" }}
       />
       {!collapsed && label}
     </Link>
