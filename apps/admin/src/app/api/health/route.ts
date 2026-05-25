@@ -54,17 +54,22 @@ export async function GET() {
     ...(missingEnvs.length > 0 ? { error: `Missing: ${missingEnvs.join(", ")}` } : {}),
   };
 
+  // Redis is optional — treat it as a warning, not a hard failure
+  const criticalChecks = Object.entries(checks)
+    .filter(([key]) => key !== "redis")
+    .every(([, c]) => c.ok);
   const allOk = Object.values(checks).every((c) => c.ok);
+  const status = allOk ? "ok" : criticalChecks ? "degraded" : "unhealthy";
 
   return NextResponse.json(
     {
-      status: allOk ? "ok" : "degraded",
+      status,
       version: VERSION,
       timestamp: new Date().toISOString(),
       checks,
     },
     {
-      status: allOk ? 200 : 503,
+      status: status === "unhealthy" ? 503 : 200,
       headers: { "Cache-Control": "no-store" },
     }
   );
