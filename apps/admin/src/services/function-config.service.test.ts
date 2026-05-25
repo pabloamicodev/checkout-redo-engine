@@ -28,6 +28,11 @@ const mockGraphQL = vi.mocked(shopifyAdminGraphQL);
 const SHOP = "test-shop.myshopify.com";
 const DISCOUNT_GID = "gid://shopify/DiscountAutomaticNode/123";
 
+function parseSetBody(callIndex: number): { variant_discounts: Record<string, unknown>[]; offer_rules: Record<string, unknown>[] } {
+  const args = mockGraphQL.mock.calls[callIndex]! as [string, string, { metafields: Array<{ value: string }> }];
+  return JSON.parse(args[2]!.metafields[0]!.value) as ReturnType<typeof parseSetBody>;
+}
+
 function makeShopSettings(discountIds: Record<string, string> = {}) {
   return { settings: { functionDiscountIds: discountIds } };
 }
@@ -211,8 +216,7 @@ describe("FunctionConfigService.registerDiscountExperiment", () => {
       ],
     });
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.variant_discounts).toHaveLength(1);
     expect(body.variant_discounts[0]).toMatchObject({
       experiment_id: "exp-1",
@@ -243,16 +247,15 @@ describe("FunctionConfigService.registerDiscountExperiment", () => {
       ],
     });
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     // exp-2 rule preserved, exp-1 replaced
     expect(body.variant_discounts).toHaveLength(2);
-    expect(body.variant_discounts.find((r: { experiment_id: string }) => r.experiment_id === "exp-1")).toMatchObject({
+    expect(body.variant_discounts.find((r) => r["experiment_id"] === "exp-1")).toMatchObject({
       variant_key: "variant_b",
       discount_type: "FIXED_AMOUNT",
       value: 10,
     });
-    expect(body.variant_discounts.find((r: { experiment_id: string }) => r.experiment_id === "exp-2")).toBeDefined();
+    expect(body.variant_discounts.find((r) => r["experiment_id"] === "exp-2")).toBeDefined();
   });
 
   it("skips variants with no discountConfig value", async () => {
@@ -268,8 +271,7 @@ describe("FunctionConfigService.registerDiscountExperiment", () => {
       ],
     });
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.variant_discounts).toHaveLength(0);
   });
 });
@@ -301,10 +303,9 @@ describe("FunctionConfigService.deregisterDiscountExperiment", () => {
 
     await svc.deregisterDiscountExperiment(SHOP, "exp-1");
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.variant_discounts).toHaveLength(1);
-    expect(body.variant_discounts[0].experiment_id).toBe("exp-2");
+    expect(body.variant_discounts[0]!["experiment_id"]).toBe("exp-2");
   });
 
   it("no-ops when no discount node GID is stored for the shop", async () => {
@@ -341,8 +342,7 @@ describe("FunctionConfigService.registerOffer", () => {
       triggerRules: [],
     });
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.offer_rules).toHaveLength(1);
     expect(body.offer_rules[0]).toMatchObject({
       offer_id: "offer-1",
@@ -367,10 +367,9 @@ describe("FunctionConfigService.registerOffer", () => {
       triggerRules: [],
     });
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.offer_rules).toHaveLength(1);
-    expect(body.offer_rules[0].value).toBe(10);
+    expect(body.offer_rules[0]!["value"]).toBe(10);
   });
 
   it("skips Shopify calls for CAMPAIGN_LINK_OFFER (no function)", async () => {
@@ -399,8 +398,7 @@ describe("FunctionConfigService.registerOffer", () => {
       triggerRules: [{ type: "min_cart_value", minValue: 50 }],
     });
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.offer_rules[0]).toMatchObject({
       offer_id: "offer-fs",
       discount_type: "FREE",
@@ -437,10 +435,9 @@ describe("FunctionConfigService.deregisterOffer", () => {
 
     await svc.deregisterOffer(SHOP, "offer-1", "ORDER_DISCOUNT");
 
-    const setCall = mockGraphQL.mock.calls[1];
-    const body = JSON.parse(setCall![2]!.metafields[0].value);
+    const body = parseSetBody(1);
     expect(body.offer_rules).toHaveLength(1);
-    expect(body.offer_rules[0].offer_id).toBe("offer-2");
+    expect(body.offer_rules[0]!["offer_id"]).toBe("offer-2");
   });
 
   it("no-ops when no discount GID is stored", async () => {
