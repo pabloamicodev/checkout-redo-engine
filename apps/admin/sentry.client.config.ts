@@ -1,22 +1,25 @@
 import * as Sentry from "@sentry/nextjs";
 
+const isDev = process.env.NODE_ENV === "development";
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.NODE_ENV,
-  enabled: process.env.NODE_ENV === "production",
 
-  // Capture 10% of transactions for performance monitoring
-  tracesSampleRate: 0.1,
+  enabled: isDev ? !!process.env.NEXT_PUBLIC_SENTRY_DSN : true,
 
-  // Replay 1% of sessions, 100% of sessions with errors
-  replaysSessionSampleRate: 0.01,
-  replaysOnErrorSampleRate: 1.0,
+  tracesSampleRate: isDev ? 0 : 0.1,
 
-  integrations: [
-    Sentry.replayIntegration({
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
-  ],
+  // Session replay: only in production
+  replaysSessionSampleRate: isDev ? 0 : 0.01,
+  replaysOnErrorSampleRate: isDev ? 0 : 1.0,
 
+  integrations: isDev
+    ? []
+    : [
+        Sentry.replayIntegration({
+          maskAllText: true,
+          blockAllMedia: true,
+        }),
+      ],
 });
