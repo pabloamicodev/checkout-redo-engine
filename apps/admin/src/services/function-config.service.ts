@@ -20,7 +20,7 @@ import { shopifyAdminGraphQL as shopifyGraphQL } from "@/lib/shopify-admin-graph
 // GQL mutations
 // ---------------------------------------------------------------------------
 
-const DISCOUNT_AUTOMATIC_CREATE_MUTATION = /* GraphQL */ `
+const DISCOUNT_AUTOMATIC_CREATE_MUTATION = /* gql */ `
   mutation discountAutomaticAppCreate($automaticAppDiscount: DiscountAutomaticAppInput!) {
     discountAutomaticAppCreate(automaticAppDiscount: $automaticAppDiscount) {
       automaticAppDiscount {
@@ -34,7 +34,7 @@ const DISCOUNT_AUTOMATIC_CREATE_MUTATION = /* GraphQL */ `
   }
 `;
 
-const METAFIELD_SET_MUTATION = /* GraphQL */ `
+const METAFIELD_SET_MUTATION = /* gql */ `
   mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
     metafieldsSet(metafields: $metafields) {
       metafields {
@@ -51,7 +51,7 @@ const METAFIELD_SET_MUTATION = /* GraphQL */ `
   }
 `;
 
-const DISCOUNT_QUERY = /* GraphQL */ `
+const DISCOUNT_QUERY = /* gql */ `
   query getDiscount($id: ID!) {
     discountNode(id: $id) {
       id
