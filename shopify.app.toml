@@ -9,8 +9,7 @@ application_url = "https://checkout-redo-engine.vercel.app"
 embedded = true
 
 [build]
-automatically_update_urls_on_dev = true
-include_config_on_deploy = true
+automatically_update_urls_on_ploy = true
 
 [webhooks]
 api_version = "2026-04"

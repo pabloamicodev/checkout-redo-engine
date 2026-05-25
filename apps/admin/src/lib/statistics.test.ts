@@ -130,10 +130,10 @@ describe("minimumSampleSize", () => {
   });
 
   it("produces realistic numbers for e-commerce scenarios", () => {
-    // 3% baseline, 10% MDE → typically around 3-4k per variant
+    // 3% baseline, 10% MDE → typically 40k-60k per variant at 95% confidence
     const n = minimumSampleSize(0.03, 0.1);
     expect(n).toBeGreaterThan(1000);
-    expect(n).toBeLessThan(50000);
+    expect(n).toBeLessThan(100000);
   });
 });
 

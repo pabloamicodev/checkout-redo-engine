@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # ─── Type check + lint ─────────────────────────────────────────────────────
+  typecheck:
+    name: Type Check & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (admin)
+        working-directory: apps/admin
+        run: npx tsc --noEmit
+
+  # ─── Unit & integration tests ─────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit & integration tests with coverage
+        working-directory: apps/admin
+        run: npm run test:ci
+        env:
+          # Test-only environment — no real services
+          NODE_ENV: test
+          SHOPIFY_API_KEY: test-api-key
+          SHOPIFY_API_SECRET: test-api-secret
+          DATABASE_URL: file:./test.db
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/admin/coverage/
+          retention-days: 14
+
+  # ─── Build check ──────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [typecheck, test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: apps/admin
+        run: npx prisma generate
+
+      - name: Build admin app
+        working-directory: apps/admin
+        run: npm run build
+        env:
+          NODE_ENV: production
+          # Required build-time env vars (values don't matter for build check)
+          SHOPIFY_API_KEY: ci-build-key
+          SHOPIFY_API_SECRET: ci-build-secret
+          DATABASE_URL: postgresql://user:pass@localhost:5432/ci
+          NEXT_PUBLIC_APP_URL: https://app.marginlab.com
+          REDIS_URL: redis://localhost:6379

@@ -57,6 +57,8 @@ const TEST_TYPE_DOTS: Record<string, string> = {
   "/discount-tests": "#d97706",
   "/shipping-tests": "#0891b2",
   "/personalizations": "#c026d3",
+  "/template-tests": "#f97316",
+  "/theme-tests": "#16a34a",
 };
 
 export function Sidebar() {
@@ -273,6 +275,8 @@ export function Sidebar() {
                   { label: "Checkout", href: "/checkout-tests" },
                   { label: "Offers", href: "/offer-tests" },
                   { label: "Discounts", href: "/discount-tests" },
+                  { label: "Templates", href: "/template-tests" },
+                  { label: "Themes", href: "/theme-tests" },
                   { label: "Personalizations", href: "/personalizations" },
                 ].map((item) => {
                   const active = isActive(item.href);
@@ -306,42 +310,6 @@ export function Sidebar() {
                           style={{ background: dot, opacity: active ? 1 : 0.6 }}
                         />
                       )}
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                {[
-                  { label: "Templates", href: "/template-tests", dot: "#64748b" },
-                  { label: "Themes", href: "/theme-tests", dot: "#71717a" },
-                ].map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all duration-100"
-                      style={
-                        active
-                          ? { color: "#F8FAFC", background: "#1E293B" }
-                          : { color: "#64748b" }
-                      }
-                      onMouseEnter={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.color = "#CBD5E1";
-                          e.currentTarget.style.background = "#162032";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.color = "#64748b";
-                          e.currentTarget.style.background = "";
-                        }
-                      }}
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ background: item.dot, opacity: active ? 1 : 0.6 }}
-                      />
                       {item.label}
                     </Link>
                   );
