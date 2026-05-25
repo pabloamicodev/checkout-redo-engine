@@ -21,6 +21,7 @@ import {
   ScrollText,
   Calculator,
   GraduationCap,
+  ShieldAlert,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
@@ -437,6 +438,7 @@ export function Sidebar() {
         <SidebarNavItem href="/integrations" label="Integrations" icon={Plug} active={isActive("/integrations")} collapsed={collapsed} />
         <SidebarNavItem href="/cogs" label="COGS & Profit" icon={Calculator} active={isActive("/cogs")} collapsed={collapsed} />
         <SidebarNavItem href="/audit-log" label="Audit log" icon={ScrollText} active={isActive("/audit-log")} collapsed={collapsed} />
+        <SidebarNavItem href="/error-log" label="Error log" icon={ShieldAlert} active={isActive("/error-log")} collapsed={collapsed} />
         <SidebarNavItem href="/billing" label="Billing" icon={CreditCard} active={isActive("/billing")} collapsed={collapsed} />
         <SidebarNavItem href="/settings" label="Settings" icon={Settings} active={isActive("/settings")} collapsed={collapsed} />
       </nav>
