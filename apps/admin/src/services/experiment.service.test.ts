@@ -144,8 +144,8 @@ describe("ExperimentService.get", () => {
 
 describe("ExperimentService.list", () => {
   beforeEach(() => {
-    mockTransaction.mockImplementation((fns) =>
-      Promise.all((fns as unknown as Array<Promise<unknown>>))
+    mockTransaction.mockImplementation((fns: unknown) =>
+      Promise.all((fns as Array<Promise<unknown>>))
     );
     mockFindMany.mockResolvedValue([] as never);
     mockCount.mockResolvedValue(0);

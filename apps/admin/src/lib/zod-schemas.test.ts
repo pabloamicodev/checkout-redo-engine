@@ -424,19 +424,19 @@ describe("RuntimeEventSchema", () => {
 
   it("rejects empty eventName", () => {
     const e = validEvent();
-    e.events[0] = { ...e.events[0], eventName: "" };
+    e.events[0] = { ...e.events[0]!, eventName: "" };
     expect(RuntimeEventSchema.safeParse(e).success).toBe(false);
   });
 
   it("rejects eventName longer than 100 chars", () => {
     const e = validEvent();
-    e.events[0] = { ...e.events[0], eventName: "e".repeat(101) };
+    e.events[0] = { ...e.events[0]!, eventName: "e".repeat(101) };
     expect(RuntimeEventSchema.safeParse(e).success).toBe(false);
   });
 
   it("rejects invalid occurredAt", () => {
     const e = validEvent();
-    e.events[0] = { ...e.events[0], occurredAt: "not-a-date" };
+    e.events[0] = { ...e.events[0]!, occurredAt: "not-a-date" };
     expect(RuntimeEventSchema.safeParse(e).success).toBe(false);
   });
 

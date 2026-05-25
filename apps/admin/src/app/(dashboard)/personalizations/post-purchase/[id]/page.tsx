@@ -45,7 +45,7 @@ export default async function PostPurchaseDetailPage({
     : [];
 
   // Preserve the order from offerIds
-  const offersById = Object.fromEntries(offers.map((o) => [o.id, o]));
+  const offersById = Object.fromEntries((offers as Array<{ id: string; name: string; type: string; status: string }>).map((o) => [o.id, o]));
 
   const now = new Date();
   const isScheduled = personalization.startsAt && personalization.startsAt > now;

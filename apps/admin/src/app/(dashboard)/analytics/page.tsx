@@ -84,8 +84,11 @@ async function getAnalyticsOverview(shopDomain: string) {
   // Build 30-day time series
   const days = buildDaySeries(30);
 
+  type RawRevRec = { attributedAt: Date; netRevenue: number; grossProfit: number | null };
+  type RawParRec = { firstSeenAt: Date };
+
   const revenueByDay: DailyPoint[] = days.map((day) => {
-    const dayRecords = rawRevenue.filter(
+    const dayRecords = (rawRevenue as RawRevRec[]).filter(
       (r) => r.attributedAt.toISOString().slice(0, 10) === day
     );
     return {
@@ -98,13 +101,13 @@ async function getAnalyticsOverview(shopDomain: string) {
   const participantsByDay: DailyPoint[] = days.map((day) => ({
     date: day,
     revenue: 0,
-    participants: rawParticipants.filter(
+    participants: (rawParticipants as RawParRec[]).filter(
       (p) => p.firstSeenAt.toISOString().slice(0, 10) === day
     ).length,
   }));
 
   const profitByDay: DailyProfitPoint[] = days.map((day) => {
-    const dayRecords = rawRevenue.filter(
+    const dayRecords = (rawRevenue as RawRevRec[]).filter(
       (r) => r.attributedAt.toISOString().slice(0, 10) === day
     );
     return {

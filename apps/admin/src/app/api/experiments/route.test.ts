@@ -63,7 +63,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.SHOPIFY_API_KEY = TEST_API_KEY;
   process.env.SHOPIFY_API_SECRET = TEST_API_SECRET;
-  process.env.NODE_ENV = "test";
+  // NODE_ENV is already "test" in vitest
   mockShopFindUnique.mockResolvedValue(SHOP as never);
 });
 

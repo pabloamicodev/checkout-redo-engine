@@ -67,12 +67,15 @@ async function getDashboardData(shopDomain: string) {
     d.setDate(d.getDate() - (6 - i));
     return d.toISOString().slice(0, 10);
   });
+  type RevRec7d = { attributedAt: Date; netRevenue: number };
+  type ParRec7d = { firstSeenAt: Date };
+
   const revenueSparkline = days7.map((day) =>
-    rawRevenue7d.filter((r) => r.attributedAt.toISOString().slice(0, 10) === day)
+    (rawRevenue7d as RevRec7d[]).filter((r) => r.attributedAt.toISOString().slice(0, 10) === day)
       .reduce((s, r) => s + r.netRevenue, 0)
   );
   const participantsSparkline = days7.map((day) =>
-    rawParticipants7d.filter((p) => p.firstSeenAt.toISOString().slice(0, 10) === day).length
+    (rawParticipants7d as ParRec7d[]).filter((p) => p.firstSeenAt.toISOString().slice(0, 10) === day).length
   );
 
   return {

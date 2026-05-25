@@ -247,7 +247,7 @@ export class ExperimentService {
     if (experiment.type === "DISCOUNT_TEST") {
       const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
       if (shop) {
-        const variants = experiment.variants.map((v) => ({
+        const variants = (experiment.variants as Array<{ key: string; isControl: boolean; discountConfig: unknown }>).map((v) => ({
           key: v.key,
           isControl: v.isControl,
           discountConfig: v.discountConfig as Record<string, unknown> | null,
