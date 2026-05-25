@@ -1,0 +1,17 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "MarginLab Order Discount"
+handle = "marginlab-order-discount"
+type = "function"
+uid = "b3f8a1c2-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+description = "Applies experiment variant discounts and offer rules to order totals. Reads cart attributes (_ml_exp_*) to look up the assigned variant, then applies the configured discount from the metafield."
+
+  [[extensions.targeting]]
+  target = "purchase.order-discount.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

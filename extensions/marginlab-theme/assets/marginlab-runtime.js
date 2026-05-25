@@ -291,14 +291,95 @@
   // ---------------------------------------------------------------------------
   function applyVariantModifications(exp, variant) {
     var modifications = variant.modifications || [];
-    if (!modifications.length) return;
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", function () {
+    if (modifications.length) {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          applyMods(modifications, exp, variant);
+        });
+      } else {
         applyMods(modifications, exp, variant);
+      }
+    }
+
+    // Apply price overrides for DISPLAY_ONLY price tests
+    if (exp.type === "PRICE_TEST" && variant.priceOverrides && variant.priceOverrides.length) {
+      var strategy = (exp.priceConfig && exp.priceConfig.enforcementStrategy) || "DISPLAY_ONLY";
+      if (strategy === "DISPLAY_ONLY") {
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", function () {
+            applyPriceOverrides(variant.priceOverrides);
+          });
+        } else {
+          applyPriceOverrides(variant.priceOverrides);
+        }
+      }
+    }
+  }
+
+  // Price override selectors — covers Dawn, Debut, Prestige, and most Shopify themes
+  var PRICE_SELECTORS = [
+    ".price__regular .price-item--regular",
+    ".price .price-item--regular",
+    "[data-product-price]",
+    ".product__price .money",
+    ".product-single__price .money",
+    ".price-item--regular",
+    ".product__price",
+    ".product-price .money",
+  ];
+  var COMPARE_PRICE_SELECTORS = [
+    ".price__sale .price-item--sale",
+    "[data-compare-price]",
+    ".product__price .price--compare .money",
+    ".price-item--sale",
+  ];
+
+  function applyPriceOverrides(overrides) {
+    var meta = window.ShopifyAnalytics && window.ShopifyAnalytics.meta;
+    var product = meta && meta.product;
+    if (!product) return;
+
+    // Find if any override matches the currently selected variant
+    var selectedVariantId = null;
+    try {
+      var form = document.querySelector("form[action='/cart/add']");
+      var hiddenInput = form && form.querySelector("input[name='id']");
+      if (hiddenInput) selectedVariantId = "gid://shopify/ProductVariant/" + hiddenInput.value;
+    } catch (e) {}
+
+    overrides.forEach(function (override) {
+      if (selectedVariantId && override.shopifyVariantId !== selectedVariantId) return;
+
+      var currency = window.Shopify && window.Shopify.currency && window.Shopify.currency.active || "USD";
+      var formattedPrice = formatMoney(parseFloat(override.price), currency);
+
+      PRICE_SELECTORS.forEach(function (sel) {
+        querySelectorAll(sel).forEach(function (el) {
+          el.textContent = formattedPrice;
+          el.setAttribute("data-ml-price-override", "1");
+        });
       });
-    } else {
-      applyMods(modifications, exp, variant);
+
+      if (override.compareAtPrice) {
+        var formattedCompare = formatMoney(parseFloat(override.compareAtPrice), currency);
+        COMPARE_PRICE_SELECTORS.forEach(function (sel) {
+          querySelectorAll(sel).forEach(function (el) {
+            el.textContent = formattedCompare;
+            el.setAttribute("data-ml-price-override", "1");
+          });
+        });
+      }
+    });
+  }
+
+  function formatMoney(amount, currencyCode) {
+    try {
+      return new Intl.NumberFormat(navigator.language || "en-US", {
+        style: "currency",
+        currency: currencyCode || "USD",
+      }).format(amount);
+    } catch (e) {
+      return "$" + amount.toFixed(2);
     }
   }
 
@@ -750,10 +831,11 @@
   function exposePublicAPI() {
     window.MarginLab = {
       getAssignment: function (experimentSlug) {
-        var assignments = Object.values(state.assignments);
-        // The config maps exp.slug → assignment, but state.assignments keys are IDs
-        // For now return the matching one
-        return state.assignments[experimentSlug] || null;
+        if (!state.config) return null;
+        var exp = state.config.experiments.find(function (e) {
+          return e.slug === experimentSlug || e.id === experimentSlug;
+        });
+        return exp ? (state.assignments[exp.id] || null) : null;
       },
       getActiveExperiments: function () {
         return Object.keys(state.assignments).map(function (expId) {
@@ -763,6 +845,7 @@
           };
         });
       },
+      getConfig: function () { return state.config; },
       track: function (eventName, metadata) {
         trackEvent(eventName, "CUSTOM", metadata || {});
       },

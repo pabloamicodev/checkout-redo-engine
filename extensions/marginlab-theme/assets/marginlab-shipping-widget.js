@@ -53,25 +53,27 @@
   // Config resolution
   // ---------------------------------------------------------------------------
   async function resolveShippingConfig() {
-    const assignments = window.MarginLab.getAssignments() || {};
+    const activeExperiments = window.MarginLab.getActiveExperiments() || [];
+    const runtimeConfig = window.MarginLab.getConfig ? window.MarginLab.getConfig() : null;
+    if (!runtimeConfig) return null;
 
-    // Check if any active assignment is a shipping test
-    for (const [experimentId, assignment] of Object.entries(assignments)) {
-      if (!assignment || !assignment.variantKey) continue;
+    for (const { experimentId, variant } of activeExperiments) {
+      if (!variant) continue;
 
-      const expConfig = assignment.config || {};
-      if (expConfig.type !== "SHIPPING_TEST") continue;
+      const exp = (runtimeConfig.experiments || []).find((e) => e.id === experimentId);
+      if (!exp || exp.type !== "SHIPPING_TEST") continue;
 
-      const variantCfg = (expConfig.shippingConfig || {}).variants?.[assignment.variantKey];
+      const shippingCfg = exp.shippingConfig || {};
+      const variantCfg = (shippingCfg.variants || {})[variant.key];
       if (!variantCfg) continue;
 
       return {
         threshold: variantCfg.freeShippingThreshold, // null = always free
         message: variantCfg.progressBarMessage || "Add {remaining} more for free shipping!",
-        enabled: expConfig.shippingConfig?.progressBarEnabled !== false,
+        enabled: shippingCfg.progressBarEnabled !== false,
         currency: window.Shopify?.currency?.active || "USD",
         experimentId,
-        variantKey: assignment.variantKey,
+        variantKey: variant.key,
       };
     }
     return null;

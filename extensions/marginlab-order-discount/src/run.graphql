@@ -1,0 +1,22 @@
+query RunInput {
+  cart {
+    attribute(key: "_ml_visitor_id") {
+      value
+    }
+    attributes {
+      key
+      value
+    }
+    cost {
+      subtotalAmount {
+        amount
+        currencyCode
+      }
+    }
+  }
+  discountNode {
+    metafield(namespace: "$app:marginlab", key: "order-discount-config") {
+      jsonValue
+    }
+  }
+}

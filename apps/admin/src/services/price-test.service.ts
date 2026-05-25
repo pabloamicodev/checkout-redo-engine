@@ -16,6 +16,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { ExperimentService } from "@/services/experiment.service";
+import { shopifyAdminGraphQL } from "@/lib/shopify-admin-graphql";
 
 const experimentService = new ExperimentService();
 
@@ -305,9 +306,6 @@ export class PriceTestService {
   }
 
   private async backupCurrentPrices(shopDomain: string, variantIds: string[]): Promise<PriceBackup[]> {
-    const token = process.env.SHOPIFY_ADMIN_TOKEN;
-    if (!token) throw new Error("SHOPIFY_ADMIN_TOKEN not set");
-
     const query = `
       query GetVariantPrices($ids: [ID!]!) {
         nodes(ids: $ids) {
@@ -320,14 +318,8 @@ export class PriceTestService {
       }
     `;
 
-    const res = await fetch(`https://${shopDomain}/admin/api/2025-04/graphql.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
-      body: JSON.stringify({ query, variables: { ids: variantIds } }),
-    });
-
-    const json = (await res.json()) as { data?: { nodes: Array<{ id: string; price: string; compareAtPrice: string | null }> } };
-    const nodes = json.data?.nodes ?? [];
+    const data = await shopifyAdminGraphQL(shopDomain, query, { ids: variantIds });
+    const nodes = (data.nodes as Array<{ id: string; price: string; compareAtPrice: string | null }> | undefined) ?? [];
 
     return nodes.map((n) => ({
       variantId: n.id,
@@ -341,9 +333,6 @@ export class PriceTestService {
     shopDomain: string,
     override: { shopifyVariantId: string; shopifyProductId: string; price: string; compareAtPrice?: string | null }
   ): Promise<void> {
-    const token = process.env.SHOPIFY_ADMIN_TOKEN;
-    if (!token) throw new Error("SHOPIFY_ADMIN_TOKEN not set");
-
     const mutation = `
       mutation UpdateVariantPrice($input: ProductVariantInput!) {
         productVariantUpdate(input: $input) {
@@ -353,23 +342,16 @@ export class PriceTestService {
       }
     `;
 
-    const res = await fetch(`https://${shopDomain}/admin/api/2025-04/graphql.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
-      body: JSON.stringify({
-        query: mutation,
-        variables: {
-          input: {
-            id: override.shopifyVariantId,
-            price: override.price,
-            compareAtPrice: override.compareAtPrice ?? null,
-          },
-        },
-      }),
+    const data = await shopifyAdminGraphQL(shopDomain, mutation, {
+      input: {
+        id: override.shopifyVariantId,
+        price: override.price,
+        compareAtPrice: override.compareAtPrice ?? null,
+      },
     });
 
-    const json = (await res.json()) as { data?: { productVariantUpdate?: { userErrors: { message: string }[] } } };
-    const errors = json.data?.productVariantUpdate?.userErrors ?? [];
+    const result = data.productVariantUpdate as { userErrors?: { message: string }[] } | undefined;
+    const errors = result?.userErrors ?? [];
     if (errors.length > 0) throw new Error(`Shopify price update failed: ${errors[0]?.message ?? "unknown"}`);
   }
 }

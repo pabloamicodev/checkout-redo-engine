@@ -14,8 +14,30 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       count: vi.fn(),
     },
+    shop: {
+      findUnique: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
+}));
+
+// ─── Redis mock ───────────────────────────────────────────────────────────────
+
+vi.mock("@/lib/redis", () => ({
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+  cacheDelPattern: vi.fn().mockResolvedValue(undefined),
+  cacheGet: vi.fn().mockResolvedValue(null),
+  cacheSet: vi.fn().mockResolvedValue(undefined),
+  CACHE_TTL: { RUNTIME_CONFIG: 60 },
+}));
+
+// ─── FunctionConfigService mock ───────────────────────────────────────────────
+
+vi.mock("@/services/function-config.service", () => ({
+  FunctionConfigService: vi.fn().mockImplementation(() => ({
+    registerDiscountExperiment: vi.fn().mockResolvedValue(undefined),
+    deregisterDiscountExperiment: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 import { prisma } from "@/lib/prisma";
@@ -28,6 +50,7 @@ const mockUpdate = vi.mocked(prisma.experiment.update);
 const mockDelete = vi.mocked(prisma.experiment.delete);
 const mockCount = vi.mocked(prisma.experiment.count);
 const mockTransaction = vi.mocked(prisma.$transaction);
+const mockShopFindUnique = vi.mocked(prisma.shop.findUnique);
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
@@ -84,6 +107,8 @@ beforeEach(() => {
 
   // generateUniqueSlug loops until findUnique returns null (slug not taken)
   mockFindUnique.mockResolvedValue(null as never);
+  // invalidateCache looks up shopDomain by shopId
+  mockShopFindUnique.mockResolvedValue({ shopDomain: "test-shop.myshopify.com" } as never);
 });
 
 // ─── get ──────────────────────────────────────────────────────────────────────
@@ -120,7 +145,7 @@ describe("ExperimentService.get", () => {
 describe("ExperimentService.list", () => {
   beforeEach(() => {
     mockTransaction.mockImplementation((fns) =>
-      Promise.all((fns as Array<Promise<unknown>>))
+      Promise.all((fns as unknown as Array<Promise<unknown>>))
     );
     mockFindMany.mockResolvedValue([] as never);
     mockCount.mockResolvedValue(0);
@@ -146,7 +171,7 @@ describe("ExperimentService.list", () => {
     mockTransaction.mockResolvedValueOnce([[], 0] as never);
     await service.list("shop-1");
 
-    const [[firstCall]] = mockTransaction.mock.calls as unknown as Array<Array<Array<unknown>>>;
+    const firstCall = (mockTransaction.mock.calls as unknown as Array<Array<Array<unknown>>>)[0]?.[0];
     // The transaction is called with prisma.findMany and count calls
     expect(firstCall).toBeDefined();
   });
@@ -213,9 +238,9 @@ describe("ExperimentService.create", () => {
   });
 
   it("invalidates cache after creation", async () => {
-    const { cacheDelPattern } = await import("@/lib/redis");
+    const { cacheDel } = await import("@/lib/redis");
     await service.create("shop-1", makeCreateInput());
-    expect(cacheDelPattern).toHaveBeenCalled();
+    expect(cacheDel).toHaveBeenCalled();
   });
 });
 
@@ -445,12 +470,12 @@ describe("ExperimentService.hardDelete", () => {
   });
 
   it("invalidates cache after deletion", async () => {
-    const { cacheDelPattern } = await import("@/lib/redis");
+    const { cacheDel } = await import("@/lib/redis");
     mockFindFirst.mockResolvedValueOnce(makeExperiment() as never);
     mockDelete.mockResolvedValueOnce(undefined as never);
 
     await service.hardDelete("shop-1", "exp-1");
-    expect(cacheDelPattern).toHaveBeenCalled();
+    expect(cacheDel).toHaveBeenCalled();
   });
 });
 
@@ -478,18 +503,18 @@ describe("experiment status state machine", () => {
 
 describe("cache invalidation", () => {
   it("invalidates cache after launch", async () => {
-    const { cacheDelPattern } = await import("@/lib/redis");
+    const { cacheDel } = await import("@/lib/redis");
     mockFindFirst.mockResolvedValueOnce(makeExperiment({ status: "DRAFT" }) as never);
     mockUpdate.mockResolvedValueOnce(makeExperiment({ status: "RUNNING" }) as never);
     await service.launch("shop-1", "exp-1");
-    expect(cacheDelPattern).toHaveBeenCalled();
+    expect(cacheDel).toHaveBeenCalledWith("runtime:config:test-shop.myshopify.com");
   });
 
   it("invalidates cache after pause", async () => {
-    const { cacheDelPattern } = await import("@/lib/redis");
+    const { cacheDel } = await import("@/lib/redis");
     mockFindFirst.mockResolvedValueOnce(makeExperiment({ status: "RUNNING" }) as never);
     mockUpdate.mockResolvedValueOnce(makeExperiment({ status: "PAUSED" }) as never);
     await service.pause("shop-1", "exp-1");
-    expect(cacheDelPattern).toHaveBeenCalled();
+    expect(cacheDel).toHaveBeenCalledWith("runtime:config:test-shop.myshopify.com");
   });
 });

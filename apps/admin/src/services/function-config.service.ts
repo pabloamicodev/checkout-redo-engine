@@ -14,39 +14,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-
-// ---------------------------------------------------------------------------
-// Shopify GraphQL helpers
-// ---------------------------------------------------------------------------
-
-async function shopifyGraphQL(
-  shopDomain: string,
-  query: string,
-  variables: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
-  if (!token) throw new Error("SHOPIFY_ADMIN_TOKEN is not set");
-
-  const res = await fetch(`https://${shopDomain}/admin/api/2025-04/graphql.json`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Access-Token": token,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Shopify API error: ${res.status} ${await res.text()}`);
-  }
-
-  const json = (await res.json()) as { data?: Record<string, unknown>; errors?: unknown[] };
-  if (json.errors?.length) {
-    throw new Error(`Shopify GraphQL errors: ${JSON.stringify(json.errors)}`);
-  }
-
-  return json.data ?? {};
-}
+import { shopifyAdminGraphQL as shopifyGraphQL } from "@/lib/shopify-admin-graphql";
 
 // ---------------------------------------------------------------------------
 // GQL mutations
@@ -315,6 +283,92 @@ export class FunctionConfigService {
     const current = await this.getDiscountConfig(shopDomain, discountGid, metafieldKey, defaultConfig);
 
     current.offer_rules = current.offer_rules.filter((r) => r.offer_id !== offerId);
+
+    await this.setDiscountConfig(shopDomain, discountGid, metafieldKey, current);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Discount experiment registration
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Registers all variant discount rules for a DISCOUNT_TEST experiment into the
+   * `marginlab-order-discount` Function metafield. Call this when the experiment
+   * is launched (status → RUNNING).
+   */
+  async registerDiscountExperiment(
+    shopDomain: string,
+    experiment: {
+      id: string;
+      variants: Array<{
+        key: string;
+        isControl: boolean;
+        discountConfig?: Record<string, unknown> | null;
+      }>;
+    }
+  ): Promise<void> {
+    const functionHandle = "marginlab-order-discount";
+    const metafieldKey = "order-discount-config";
+
+    const discountGid = await this.ensureDiscount(
+      shopDomain,
+      functionHandle,
+      "MarginLab – Discount Tests"
+    );
+
+    const defaultConfig: OrderDiscountConfig = { variant_discounts: [], offer_rules: [] };
+    const current = await this.getDiscountConfig(shopDomain, discountGid, metafieldKey, defaultConfig);
+
+    // Remove stale rules for this experiment, then re-add
+    current.variant_discounts = current.variant_discounts.filter(
+      (r) => r.experiment_id !== experiment.id
+    );
+
+    for (const variant of experiment.variants) {
+      if (variant.isControl) continue; // control = no discount
+
+      const cfg = variant.discountConfig;
+      if (!cfg || !cfg["value"]) continue;
+
+      const discountType =
+        (cfg["type"] as string | undefined) === "FIXED_AMOUNT" ? "FIXED_AMOUNT" : "PERCENTAGE";
+
+      current.variant_discounts.push({
+        experiment_id: experiment.id,
+        variant_key: variant.key,
+        discount_type: discountType,
+        value: cfg["value"] as number,
+        message: cfg["message"] as string | undefined,
+      });
+    }
+
+    await this.setDiscountConfig(shopDomain, discountGid, metafieldKey, current);
+  }
+
+  /**
+   * Removes all variant discount rules for a DISCOUNT_TEST experiment.
+   * Call this when the experiment is paused, completed, or archived.
+   */
+  async deregisterDiscountExperiment(shopDomain: string, experimentId: string): Promise<void> {
+    const functionHandle = "marginlab-order-discount";
+    const metafieldKey = "order-discount-config";
+
+    const shop = await prisma.shop.findUnique({
+      where: { shopDomain },
+      select: { settings: true },
+    });
+
+    const settings = (shop?.settings as Record<string, unknown>) ?? {};
+    const stored = (settings["functionDiscountIds"] as Record<string, string>) ?? {};
+    const discountGid = stored[functionHandle];
+    if (!discountGid) return;
+
+    const defaultConfig: OrderDiscountConfig = { variant_discounts: [], offer_rules: [] };
+    const current = await this.getDiscountConfig(shopDomain, discountGid, metafieldKey, defaultConfig);
+
+    current.variant_discounts = current.variant_discounts.filter(
+      (r) => r.experiment_id !== experimentId
+    );
 
     await this.setDiscountConfig(shopDomain, discountGid, metafieldKey, current);
   }

@@ -37,6 +37,8 @@ export interface RuntimeExperiment {
   priceConfig: unknown | null;
   contentConfig: unknown | null;
   splitUrlConfig: unknown | null;
+  shippingConfig: unknown | null;
+  discountConfig: unknown | null;
 }
 
 export interface RuntimeOffer {
@@ -171,6 +173,8 @@ export class RuntimeConfigService {
         priceConfig: exp.priceConfig,
         contentConfig: exp.contentConfig,
         splitUrlConfig: exp.splitUrlConfig,
+        shippingConfig: exp.shippingConfig ?? null,
+        discountConfig: exp.discountConfig ?? null,
       })),
       offers: shop.offers.map((offer: (typeof shop.offers)[number]) => ({
         id: offer.id,
