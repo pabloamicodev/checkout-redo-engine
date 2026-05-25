@@ -87,7 +87,10 @@
       "Bash(git -C \"c:/Users/pol/Desktop/margin-labs\" log --oneline)",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\pol\\\\Desktop\\\\checkout-redo-engine\\\\apps\\\\admin\\\\src\\\\app\\\\api\" -Recurse -Directory | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\('c:\\\\Users\\\\pol\\\\Desktop\\\\checkout-redo-engine\\\\apps\\\\admin\\\\src\\\\app\\\\api', 'apps/admin/src/app/api'\\) })",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\pol\\\\Desktop\\\\checkout-redo-engine\\\\extensions\" -Directory | ForEach-Object { $ext = $_; Get-ChildItem -Path $ext -Filter \"wasm\" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName })",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\pol\\.claude\\projects\\c--Users-pol-Desktop-checkout-redo-engine\\memory",

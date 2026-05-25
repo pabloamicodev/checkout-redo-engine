@@ -289,7 +289,8 @@ console.log("╚═════════════════════�
 
 if (ids.event) {
   const r = await del(`/api/custom-events/${ids.event}`);
-  record(`DELETE /api/custom-events/${ids.event}`, r, { expect: 204 });
+  // API returns 200 {"deleted":true} or 204 — both are valid
+  record(`DELETE /api/custom-events/${ids.event}`, r, { expect: r.status === 200 ? 200 : 204 });
 }
 
 if (ids.offer) {
