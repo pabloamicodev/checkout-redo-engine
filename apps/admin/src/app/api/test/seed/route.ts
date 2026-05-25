@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
     update: {},
     create: {
       shopDomain,
-      accessToken: "test_token",
-      installedAt: new Date(),
+      accessTokenEncrypted: "test_token_encrypted",
+      scopes: ["read_products", "write_products"],
       currencyCode: "USD",
       timezone: "America/New_York",
       settings: {},
