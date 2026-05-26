@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Plus,
   Play,
@@ -45,6 +46,7 @@ export function PersonalizationsClient({ initialItems, initialTotal, pageSize }:
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -75,16 +77,22 @@ export function PersonalizationsClient({ initialItems, initialTotal, pageSize }:
     if (res.ok) startTransition(() => { fetchPage(statusFilter, page); });
   }
 
-  async function doDelete(id: string) {
-    if (!confirm("Delete this personalization? This cannot be undone.")) return;
+  function doDelete(id: string, name: string) {
     setOpenMenuId(null);
-    const res = await fetch(`/api/personalizations/${id}`, { method: "DELETE" });
+    setConfirmDelete({ id, name });
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return;
+    const res = await fetch(`/api/personalizations/${confirmDelete.id}`, { method: "DELETE" });
+    setConfirmDelete(null);
     if (res.ok) startTransition(() => { fetchPage(statusFilter, page); });
   }
 
   const activeCount = items.filter((i) => i.status === "ACTIVE").length;
 
   return (
+    <>
     <div className="space-y-5">
       {/* Type header */}
       <div
@@ -274,7 +282,7 @@ export function PersonalizationsClient({ initialItems, initialTotal, pageSize }:
                                 )}
                                 {p.status !== "ACTIVE" && (
                                   <button
-                                    onClick={() => doDelete(p.id)}
+                                    onClick={() => doDelete(p.id, p.name)}
                                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-danger-600 hover:bg-danger-50"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -320,5 +328,16 @@ export function PersonalizationsClient({ initialItems, initialTotal, pageSize }:
         )}
       </div>
     </div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Delete personalization?"
+        description={`"${confirmDelete.name}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete permanently"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    )}
+    </>
   );
 }

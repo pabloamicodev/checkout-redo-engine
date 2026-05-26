@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Plus,
   Play,
@@ -42,6 +43,7 @@ export function PostPurchaseClient({ initialItems }: Props) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -72,16 +74,22 @@ export function PostPurchaseClient({ initialItems }: Props) {
     if (res.ok) startTransition(() => { void fetchPage(statusFilter, page); });
   }
 
-  async function doDelete(id: string) {
-    if (!confirm("Delete this post-purchase personalization? This cannot be undone.")) return;
+  function doDelete(id: string, name: string) {
     setOpenMenuId(null);
-    const res = await fetch(`/api/personalizations/post-purchase/${id}`, { method: "DELETE" });
+    setConfirmDelete({ id, name });
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return;
+    const res = await fetch(`/api/personalizations/post-purchase/${confirmDelete.id}`, { method: "DELETE" });
+    setConfirmDelete(null);
     if (res.ok) startTransition(() => { void fetchPage(statusFilter, page); });
   }
 
   const activeCount = items.filter((i) => i.status === "ACTIVE").length;
 
   return (
+    <>
     <div className="flex-1 overflow-auto bg-neutral-50">
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="space-y-5">
@@ -272,7 +280,7 @@ export function PostPurchaseClient({ initialItems }: Props) {
                                       )}
                                       {p.status !== "ACTIVE" && (
                                         <button
-                                          onClick={() => void doDelete(p.id)}
+                                          onClick={() => doDelete(p.id, p.name)}
                                           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                                         >
                                           <Trash2 className="w-3.5 h-3.5" />
@@ -320,5 +328,16 @@ export function PostPurchaseClient({ initialItems }: Props) {
         </div>
       </div>
     </div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Delete post-purchase personalization?"
+        description={`"${confirmDelete.name}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete permanently"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    )}
+    </>
   );
 }

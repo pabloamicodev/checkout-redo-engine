@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Check, Zap, Crown, Building2, AlertCircle, Loader2 } from "lucide-react";
@@ -107,6 +108,7 @@ export default function BillingPage() {
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -160,7 +162,7 @@ export default function BillingPage() {
   }
 
   async function cancel() {
-    if (!confirm("Downgrade to free plan? You'll lose access to premium features immediately.")) return;
+    setShowCancelConfirm(false);
     setCancelling(true);
     try {
       const res = await fetch("/api/billing/cancel", { method: "POST" });
@@ -318,7 +320,7 @@ export default function BillingPage() {
                     size="sm"
                     variant="ghost"
                     loading={cancelling}
-                    onClick={cancel}
+                    onClick={() => setShowCancelConfirm(true)}
                     className="w-full text-danger-600 hover:bg-danger-50"
                   >
                     Cancel Plan
@@ -331,5 +333,16 @@ export default function BillingPage() {
         </div>
       </div>
     </div>
+
+    {showCancelConfirm && (
+      <ConfirmDialog
+        title="Downgrade to free plan?"
+        description="You'll lose access to all premium features immediately. This cannot be undone."
+        confirmLabel="Downgrade"
+        variant="warning"
+        onConfirm={cancel}
+        onCancel={() => setShowCancelConfirm(false)}
+      />
+    )}
   );
 }

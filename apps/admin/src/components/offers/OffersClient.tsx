@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import {
   Plus,
@@ -55,6 +56,7 @@ export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -93,18 +95,20 @@ export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
     }
   }
 
-  async function doDelete(offerId: string) {
-    if (!confirm("Delete this offer? This cannot be undone.")) return;
+  function doDelete(offerId: string, offerName: string) {
     setOpenMenuId(null);
-    const res = await fetch(`/api/offers/${offerId}`, { method: "DELETE" });
-    if (res.ok) {
-      startTransition(() => {
-        fetchPage(statusFilter, page);
-      });
-    }
+    setConfirmDelete({ id: offerId, name: offerName });
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return;
+    const res = await fetch(`/api/offers/${confirmDelete.id}`, { method: "DELETE" });
+    setConfirmDelete(null);
+    if (res.ok) startTransition(() => { fetchPage(statusFilter, page); });
   }
 
   return (
+    <>
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between">
@@ -233,7 +237,7 @@ export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
                               ) : null}
                               {offer.status !== "ACTIVE" ? (
                                 <button
-                                  onClick={() => doDelete(offer.id)}
+                                  onClick={() => doDelete(offer.id, offer.name)}
                                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-danger-600 hover:bg-danger-50"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -282,5 +286,16 @@ export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
         )}
       </div>
     </div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Delete offer?"
+        description={`"${confirmDelete.name}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete permanently"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    )}
+    </>
   );
 }

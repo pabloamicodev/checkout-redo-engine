@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "experiments" | "privacy" | "danger">("general");
+  const [confirmAction, setConfirmAction] = useState<"reset-analytics" | "pause-experiments" | null>(null);
 
   useEffect(() => {
     fetch("/api/settings/general")
@@ -97,6 +99,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <>
     <div className="flex-1 overflow-auto bg-neutral-50">
       <div className="mx-auto px-8 py-8 space-y-6">
         <div className="flex items-start justify-between">
@@ -371,13 +374,7 @@ export default function SettingsPage() {
                 <Button
                   size="sm"
                   variant="danger"
-                  onClick={() => {
-                    if (confirm("Delete ALL analytics data? This cannot be undone.")) {
-                      fetch("/api/settings/reset-analytics", { method: "POST" })
-                        .then(() => alert("Analytics data deleted."))
-                        .catch(console.error);
-                    }
-                  }}
+                  onClick={() => setConfirmAction("reset-analytics")}
                 >
                   Reset
                 </Button>
@@ -393,13 +390,7 @@ export default function SettingsPage() {
                 <Button
                   size="sm"
                   variant="danger"
-                  onClick={() => {
-                    if (confirm("Pause all running experiments?")) {
-                      fetch("/api/settings/pause-all-experiments", { method: "POST" })
-                        .then(() => alert("All experiments paused."))
-                        .catch(console.error);
-                    }
-                  }}
+                  onClick={() => setConfirmAction("pause-experiments")}
                 >
                   Pause All
                 </Button>
@@ -410,5 +401,33 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+
+    {confirmAction === "reset-analytics" && (
+      <ConfirmDialog
+        title="Delete all analytics data?"
+        description="All events, assignments, and daily metrics will be permanently deleted. This cannot be undone."
+        confirmLabel="Delete all data"
+        onConfirm={() => {
+          setConfirmAction(null);
+          fetch("/api/settings/reset-analytics", { method: "POST" }).catch(console.error);
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
+    )}
+
+    {confirmAction === "pause-experiments" && (
+      <ConfirmDialog
+        title="Pause all running experiments?"
+        description="All currently running experiments will be paused immediately. They can be re-launched individually."
+        confirmLabel="Pause all"
+        variant="warning"
+        onConfirm={() => {
+          setConfirmAction(null);
+          fetch("/api/settings/pause-all-experiments", { method: "POST" }).catch(console.error);
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
+    )}
+    </>
   );
 }

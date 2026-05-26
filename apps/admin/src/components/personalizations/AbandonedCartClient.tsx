@@ -21,6 +21,7 @@ import { type WizardStep } from "@/components/experiments/WizardStepNav";
 import { FormSection, FormField } from "@/components/forms/FormSection";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -386,6 +387,7 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   // ── Field helpers ──────────────────────────────────────────────────────────
 
@@ -521,6 +523,13 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
+
+  async function executeDelete() {
+    if (!confirmDelete) return;
+    const target = confirmDelete;
+    setConfirmDelete(null);
+    await doAction(target.id, "delete");
+  }
 
   async function doAction(id: string, action: "activate" | "pause" | "delete") {
     setActionError(null);
@@ -820,6 +829,7 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
+    <>
     <div className="flex-1 overflow-auto bg-neutral-50">
       <div className="mx-auto px-8 py-8">
 
@@ -958,11 +968,7 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
                           ) : null}
                           {item.status === "DRAFT" ? (
                             <button
-                              onClick={() => {
-                                if (confirm(`Delete "${item.name}"? This cannot be undone.`)) {
-                                  doAction(item.id, "delete");
-                                }
-                              }}
+                              onClick={() => setConfirmDelete({ id: item.id, name: item.name })}
                               title="Delete"
                               className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             >
@@ -1069,6 +1075,17 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
         </div>
       )}
     </div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Delete recovery?"
+        description={`"${confirmDelete.name}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete permanently"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    )}
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Card } from "@/components/ui/Card";
 import {
   Plus,
@@ -38,6 +39,7 @@ export default function CustomEventsPage() {
   // Snippet expand state
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<CustomEvent | null>(null);
 
   const showStatus = (msg: StatusMsg) => {
     setStatusMsg(msg);
@@ -102,12 +104,18 @@ export default function CustomEventsPage() {
     }
   };
 
-  const handleDelete = async (event: CustomEvent) => {
-    if (!confirm(`Delete "${event.displayName}"? This cannot be undone.`)) return;
-    const res = await fetch(`/api/custom-events/${event.id}`, { method: "DELETE" });
+  const handleDelete = (event: CustomEvent) => {
+    setConfirmDelete(event);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
+    const target = confirmDelete;
+    setConfirmDelete(null);
+    const res = await fetch(`/api/custom-events/${target.id}`, { method: "DELETE" });
     if (res.ok) {
-      showStatus({ type: "success", text: `"${event.displayName}" deleted` });
-      setEvents((prev) => prev.filter((e) => e.id !== event.id));
+      showStatus({ type: "success", text: `"${target.displayName}" deleted` });
+      setEvents((prev) => prev.filter((e) => e.id !== target.id));
     }
   };
 
@@ -340,5 +348,15 @@ window.MarginLab?.onReady(function(ml) {
         </div>
       </div>
     </div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Delete custom event?"
+        description={`"${confirmDelete.displayName}" will be permanently deleted. Any tracking calls for this event will stop working.`}
+        confirmLabel="Delete permanently"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    )}
   );
 }
