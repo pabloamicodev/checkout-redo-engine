@@ -204,6 +204,20 @@ describe("OfferService.create", () => {
 
     expect(mockCreate).toHaveBeenCalled();
   });
+
+  it("does not call prisma.create when validateDiscountRules throws", async () => {
+    await expect(
+      svc.create(SHOP, {
+        name: "Bad offer",
+        type: "PERCENTAGE_DISCOUNT",
+        discountRules: { percentage: 150 }, // invalid: > 100
+        triggerRules: [],
+        displaySettings: {},
+      })
+    ).rejects.toThrow();
+
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe("OfferService — validateDiscountRules", () => {

@@ -257,14 +257,22 @@ describe("AnalyticsService.getExperimentAnalytics", () => {
     expect(ctrl.visitorsNeeded).toBeGreaterThan(0);
   });
 
-  it("handles zero-visitor variants without throwing", async () => {
+  it("returns 0 (not NaN/Infinity) for all metrics when visitors === 0", async () => {
     mockExperimentFindFirst.mockResolvedValueOnce(makeExperiment() as never);
     mockDailyMetricFindMany.mockResolvedValueOnce([
       makeDailyMetric(CTRL_VAR_ID, { visitors: 0, orders: 0 }),
       makeDailyMetric(TEST_VAR_ID, { visitors: 0, orders: 0 }),
     ] as never);
 
-    await expect(service.getExperimentAnalytics(SHOP_ID, EXP_ID)).resolves.not.toThrow();
+    const result = await service.getExperimentAnalytics(SHOP_ID, EXP_ID);
+    for (const v of result!.variants) {
+      expect(v.conversionRate).toBe(0);
+      expect(v.revenuePerVisitor).toBe(0);
+      expect(v.profitPerVisitor).toBe(0);
+      expect(v.aov).toBe(0);
+      expect(Number.isFinite(v.conversionRate)).toBe(true);
+      expect(Number.isFinite(v.revenuePerVisitor)).toBe(true);
+    }
   });
 
   it("caches result after first fetch", async () => {

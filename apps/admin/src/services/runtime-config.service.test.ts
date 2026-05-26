@@ -289,6 +289,39 @@ describe("RuntimeConfigService.build", () => {
     expect(result!.personalizations[0]!.startsAt).toBe(startsAt.toISOString());
     expect(result!.personalizations[0]!.endsAt).toBe(endsAt.toISOString());
   });
+
+  it("returns antiFlicker defaults when shop.settings is null", async () => {
+    // Prisma may return null for a JSON column with no value; service must not throw
+    mockShopFindUnique.mockResolvedValueOnce(makeShop({ settings: null }) as never);
+    const result = await service.build(SHOP_DOMAIN);
+    expect(result).not.toBeNull();
+    expect(result!.settings.antiFlickerEnabled).toBe(true);
+    expect(result!.settings.antiFlickerTimeout).toBe(300);
+    expect(result!.settings.debugModeEnabled).toBe(false);
+  });
+
+  it("ignores unknown keys in shop.settings without error", async () => {
+    const settings = {
+      antiFlickerEnabled: true,
+      antiFlickerTimeout: 400,
+      unknownKey: "surprise",
+      anotherUnknown: 42,
+    };
+    mockShopFindUnique.mockResolvedValueOnce(makeShop({ settings }) as never);
+    const result = await service.build(SHOP_DOMAIN);
+    // Known settings are read correctly; unknown keys are not exposed in output
+    expect(result!.settings.antiFlickerTimeout).toBe(400);
+    expect(JSON.stringify(result!.settings)).not.toContain("unknownKey");
+  });
+
+  it("antiFlickerTimeout stored as string passes through as-is (no runtime coercion)", async () => {
+    // If the DB has a string value, the service does not coerce — documents current behavior
+    const settings = { antiFlickerTimeout: "500" };
+    mockShopFindUnique.mockResolvedValueOnce(makeShop({ settings }) as never);
+    const result = await service.build(SHOP_DOMAIN);
+    // The value is truthy so ?? fallback is not used; it comes through as the string "500"
+    expect(result!.settings.antiFlickerTimeout).toBe("500" as unknown as number);
+  });
 });
 
 // ─── RuntimeConfigService.invalidate ─────────────────────────────────────────

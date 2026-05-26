@@ -198,6 +198,27 @@ describe("OrderAttributionService.processOrder — attribution lookup", () => {
       })
     );
   });
+
+  it("falls back to checkout token when cart token assignment has no experimentId", async () => {
+    // Cart token matches a record that has no experiment linked (experimentId: null)
+    mockAssignmentFindFirst.mockResolvedValueOnce(
+      makeAssignment({ experimentId: null, variantId: null, cartToken: "cart-abc" }) as never
+    );
+    // Checkout token lookup then finds the real experiment
+    mockAssignmentFindFirst.mockResolvedValueOnce(
+      makeAssignment({ checkoutToken: "checkout-xyz", cartToken: null }) as never
+    );
+    mockAssignmentFindMany.mockResolvedValueOnce([] as never);
+
+    await service.processOrder(SHOP_ID, makeOrder());
+
+    expect(mockAssignmentFindFirst).toHaveBeenCalledTimes(2);
+    expect(mockAttributionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ experimentId: "exp-1", variantId: "var-1" }),
+      })
+    );
+  });
 });
 
 // ─── Revenue calculations ─────────────────────────────────────────────────────

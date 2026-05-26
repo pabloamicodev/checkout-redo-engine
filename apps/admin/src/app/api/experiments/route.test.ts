@@ -172,4 +172,48 @@ describe("POST /api/experiments", () => {
     await POST(req);
     expect(mockCreate).toHaveBeenCalledWith("shop-1", expect.any(Object), "12345");
   });
+
+  it("returns 400 for malformed JSON body", async () => {
+    const req = new NextRequest("http://localhost/api/experiments", {
+      method: "POST",
+      body: "{ invalid json !!!",
+      headers: { "content-type": "application/json", ...authHeaders() },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 500 when service throws an unexpected error", async () => {
+    mockCreate.mockRejectedValueOnce(new Error("Database connection reset"));
+    const req = new NextRequest("http://localhost/api/experiments", {
+      method: "POST",
+      body: JSON.stringify(validBody),
+      headers: { "content-type": "application/json", ...authHeaders() },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+  });
+
+  it("500 response body does not leak internal error details", async () => {
+    mockCreate.mockRejectedValueOnce(new Error("DB_PASS=topsecret internal error"));
+    const req = new NextRequest("http://localhost/api/experiments", {
+      method: "POST",
+      body: JSON.stringify(validBody),
+      headers: { "content-type": "application/json", ...authHeaders() },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(JSON.stringify(body)).not.toContain("topsecret");
+  });
+
+  it("returns 400 for empty body", async () => {
+    const req = new NextRequest("http://localhost/api/experiments", {
+      method: "POST",
+      body: "",
+      headers: { "content-type": "application/json", ...authHeaders() },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
 });

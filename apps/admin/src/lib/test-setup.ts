@@ -48,3 +48,29 @@ vi.mock("@/lib/rate-limit", () => ({
     runtime_events: { windowMs: 60000, max: 200 },
   },
 }));
+
+// ── Failure scenario helpers ──────────────────────────────────────────────────
+//
+// Global mocks above always succeed. For failure scenarios, override per-test
+// using mockRejectedValueOnce / mockResolvedValueOnce. Common recipes:
+//
+// Redis failure:
+//   import { cacheGet } from "@/lib/redis";
+//   vi.mocked(cacheGet).mockRejectedValueOnce(new Error("Redis ECONNREFUSED"));
+//
+// Rate limit exceeded:
+//   import { checkRateLimit } from "@/lib/rate-limit";
+//   vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, limit: 100, remaining: 0, resetAt: Date.now() + 60000 });
+//
+// Billing limit hit:
+//   import { BillingService } from "@/services/billing.service";
+//   vi.mocked(BillingService).mockImplementationOnce(() => ({
+//     checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 10, max: 10 }),
+//     getShopPlan: vi.fn().mockResolvedValue({ plan: "free", isActive: true }),
+//   }));
+//
+// Audit log failure (fire-and-forget — should never block a request):
+//   import { AuditLogService } from "@/services/audit-log.service";
+//   vi.mocked(AuditLogService).mockImplementationOnce(() => ({
+//     log: vi.fn().mockRejectedValue(new Error("Audit DB down")),
+//   }));

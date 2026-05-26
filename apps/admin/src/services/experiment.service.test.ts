@@ -184,6 +184,18 @@ describe("ExperimentService.list", () => {
     const calls = mockTransaction.mock.calls;
     expect(calls.length).toBeGreaterThan(0);
   });
+
+  it("executes findMany AND count inside a single $transaction call", async () => {
+    mockFindMany.mockResolvedValueOnce([] as never);
+    mockCount.mockResolvedValueOnce(0);
+
+    await service.list("shop-1");
+
+    // Both queries must be issued inside the transaction (not as separate top-level calls)
+    expect(mockTransaction).toHaveBeenCalledOnce();
+    expect(mockFindMany).toHaveBeenCalledOnce();
+    expect(mockCount).toHaveBeenCalledOnce();
+  });
 });
 
 // ─── create ───────────────────────────────────────────────────────────────────

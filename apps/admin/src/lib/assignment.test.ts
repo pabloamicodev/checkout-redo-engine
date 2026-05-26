@@ -35,11 +35,16 @@ describe("hashToBucket", () => {
     }
   });
 
-  it("different experiments produce different buckets for same visitor", () => {
-    const b1 = hashToBucket("visitor-1:exp-1");
-    const b2 = hashToBucket("visitor-1:exp-2");
-    // Not strictly guaranteed but highly likely for distinct experiments
-    expect(b1 !== b2 || true).toBe(true); // Always passes; ensures no throw
+  it("different experiments produce different buckets for the vast majority of visitors", () => {
+    let differences = 0;
+    for (let i = 0; i < 100; i++) {
+      const b1 = hashToBucket(`visitor-${i}:exp-1`);
+      const b2 = hashToBucket(`visitor-${i}:exp-2`);
+      if (b1 !== b2) differences++;
+    }
+    // A well-distributed hash produces different buckets across different experiment
+    // keys for >90% of visitors — ensures experiment isolation, not just no-throw
+    expect(differences).toBeGreaterThan(90);
   });
 });
 

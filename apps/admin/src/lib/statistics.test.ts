@@ -164,4 +164,27 @@ describe("bayesianProbabilityToBeatControl", () => {
     expect(p).toBeGreaterThan(0.3);
     expect(p).toBeLessThan(0.7);
   });
+
+  it("returns a finite value in [0,1] with n=1 visitor (boundary — insufficient data)", () => {
+    const oneVisitor: VariantStats = { visitors: 1, conversions: 0, totalRevenue: 0, totalProfit: 0 };
+    const p = bayesianProbabilityToBeatControl(oneVisitor, oneVisitor);
+    expect(Number.isFinite(p)).toBe(true);
+    expect(p).toBeGreaterThanOrEqual(0);
+    expect(p).toBeLessThanOrEqual(1);
+  });
+
+  it("returns a finite value in [0,1] when one variant has zero conversions", () => {
+    const noConversions: VariantStats = { visitors: 10000, conversions: 0, totalRevenue: 0, totalProfit: 0 };
+    const p = bayesianProbabilityToBeatControl(controlLarge, noConversions);
+    expect(Number.isFinite(p)).toBe(true);
+    expect(p).toBeGreaterThanOrEqual(0);
+    expect(p).toBeLessThanOrEqual(1);
+  });
+
+  it("returns near-1 probability for extreme winner (99% vs 1% conversion rate)", () => {
+    const lowConversion: VariantStats = { visitors: 10000, conversions: 100, totalRevenue: 1000, totalProfit: 500 };
+    const highConversion: VariantStats = { visitors: 10000, conversions: 9900, totalRevenue: 99000, totalProfit: 49500 };
+    const p = bayesianProbabilityToBeatControl(lowConversion, highConversion);
+    expect(p).toBeGreaterThan(0.95);
+  });
 });

@@ -691,3 +691,92 @@ describe("PriceOverrideSchema", () => {
     ).toBe(false);
   });
 });
+
+// ─── Security edge cases ──────────────────────────────────────────────────────
+
+describe("Schema security — injection and boundary payloads", () => {
+  // Zod validates shape and type, NOT XSS content. Sanitization is the rendering
+  // layer's job. These tests document the contract: what the schema accepts vs.
+  // what it blocks, so engineers know where to add escaping.
+
+  it("CreateExperimentSchema accepts XSS in name (rendering must escape)", () => {
+    const result = CreateExperimentSchema.safeParse(
+      validExperiment({ name: '<script>alert("xss")</script>' })
+    );
+    // Schema accepts it — the string is valid shape. The rendering layer MUST escape.
+    expect(result.success).toBe(true);
+  });
+
+  it("CreateExperimentSchema accepts whitespace-only name (schema gap: no .trim())", () => {
+    // The schema uses z.string().min(1) without .trim(), so "   " passes min-length.
+    // Callers must sanitize before saving; consider adding .trim() to the schema.
+    expect(CreateExperimentSchema.safeParse(validExperiment({ name: "   " })).success).toBe(true);
+  });
+
+  it("CreateExperimentSchema accepts newline-only name (same schema gap as whitespace)", () => {
+    expect(CreateExperimentSchema.safeParse(validExperiment({ name: "\n\n" })).success).toBe(true);
+  });
+
+  it("CreateVariantSchema rejects SQL injection as key — regex blocks non-alphanum chars", () => {
+    const result = CreateVariantSchema.safeParse(validVariant({ key: "'; DROP TABLE variants;--" }));
+    // key pattern [a-z0-9-_] blocks quotes, semicolons, spaces
+    expect(result.success).toBe(false);
+  });
+
+  it("CreateVariantSchema rejects key with null byte", () => {
+    expect(CreateVariantSchema.safeParse(validVariant({ key: "control\x00" })).success).toBe(false);
+  });
+
+  it("CreateVariantSchema rejects key with unicode letters (only ASCII allowed)", () => {
+    expect(CreateVariantSchema.safeParse(validVariant({ key: "variänt" })).success).toBe(false);
+  });
+
+  it("ShopSettingsSchema accepts non-email string for notifyEmail (schema gap: no .email())", () => {
+    // notifyEmail is z.string() without .email() validation — any string passes.
+    // Consider adding .email().optional() to catch invalid addresses at schema level.
+    expect(ShopSettingsSchema.safeParse({ notifyEmail: "not-an-email" }).success).toBe(true);
+  });
+
+  it("ShopSettingsSchema accepts malformed notifyEmail (same schema gap)", () => {
+    expect(
+      ShopSettingsSchema.safeParse({ notifyEmail: "definitely-not-an-email" }).success
+    ).toBe(true);
+  });
+
+  it("TargetingRulesSchema rejects a plain string (must be array)", () => {
+    expect(TargetingRulesSchema.safeParse("rules").success).toBe(false);
+  });
+
+  it("TargetingRulesSchema rejects null", () => {
+    expect(TargetingRulesSchema.safeParse(null).success).toBe(false);
+  });
+
+  it("CreateExperimentSchema rejects name longer than 200 chars with XSS padding", () => {
+    const xss = '<img src=x onerror=alert(1)>';
+    const padded = xss + "a".repeat(200 - xss.length + 1);
+    expect(CreateExperimentSchema.safeParse(validExperiment({ name: padded })).success).toBe(false);
+  });
+
+  it("AssignmentRequestSchema accepts non-myshopify.com domain (schema gap: no domain constraint)", () => {
+    // shopDomain is z.string() with no regex constraint — domain validation happens
+    // in withRuntimeAuth middleware, not at the schema layer.
+    const result = AssignmentRequestSchema.safeParse({
+      visitorId: "vis-1",
+      shopDomain: "attacker.com",
+      experiments: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("RuntimeEventSchema rejects non-myshopify.com domain (schema validates this)", () => {
+    const result = RuntimeEventSchema.safeParse({
+      visitorId: "vis-1",
+      sessionId: "sess-1",
+      shopDomain: "evil.io",
+      eventType: "page_view",
+    });
+    // RuntimeEventSchema has a .endsWith(".myshopify.com") constraint — unlike
+    // AssignmentRequestSchema which defers domain validation to the middleware.
+    expect(result.success).toBe(false);
+  });
+});

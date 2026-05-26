@@ -143,7 +143,8 @@ export class PriceTestService {
     const exp = await this.get(shopId, id);
     if (exp.status === "RUNNING") return exp;
     if (exp.status === "COMPLETED" || exp.status === "ARCHIVED") {
-      throw new Error(`Cannot activate a ${exp.status.toLowerCase()} test`);
+      const label = exp.status === "ARCHIVED" ? "an archived" : "a completed";
+      throw new Error(`Cannot activate ${label} test`);
     }
     return experimentService.launch(shopId, id);
   }

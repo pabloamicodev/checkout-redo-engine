@@ -246,4 +246,70 @@ describe("POST /api/experiments/[id]/archive", () => {
     const res = await archivePOST(req, routeParams("gone"));
     expect(res.status).toBe(404);
   });
+
+  it("returns 422 for invalid status transition on archive", async () => {
+    mockArchive.mockRejectedValueOnce(new Error("Cannot update: invalid status transition"));
+    const req = new NextRequest("http://localhost/api/experiments/exp-1/archive", {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const res = await archivePOST(req, routeParams());
+    expect(res.status).toBe(422);
+  });
+});
+
+// ─── Unexpected errors → 500 ──────────────────────────────────────────────────
+
+describe("lifecycle routes — unexpected service errors return 500", () => {
+  it("launch returns 500 on database failure", async () => {
+    mockLaunch.mockRejectedValueOnce(new Error("Database connection reset"));
+    const req = new NextRequest("http://localhost/api/experiments/exp-1/launch", {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const res = await launchPOST(req, routeParams());
+    expect(res.status).toBe(500);
+  });
+
+  it("pause returns 500 on database failure", async () => {
+    mockPause.mockRejectedValueOnce(new Error("Database connection reset"));
+    const req = new NextRequest("http://localhost/api/experiments/exp-1/pause", {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const res = await pausePOST(req, routeParams());
+    expect(res.status).toBe(500);
+  });
+
+  it("complete returns 500 on database failure", async () => {
+    mockComplete.mockRejectedValueOnce(new Error("Database connection reset"));
+    const req = new NextRequest("http://localhost/api/experiments/exp-1/complete", {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const res = await completePOST(req, routeParams());
+    expect(res.status).toBe(500);
+  });
+
+  it("archive returns 500 on database failure", async () => {
+    mockArchive.mockRejectedValueOnce(new Error("Database connection reset"));
+    const req = new NextRequest("http://localhost/api/experiments/exp-1/archive", {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const res = await archivePOST(req, routeParams());
+    expect(res.status).toBe(500);
+  });
+
+  it("500 error body does not leak internal details", async () => {
+    mockLaunch.mockRejectedValueOnce(new Error("DB_PASS=supersecret connection failed"));
+    const req = new NextRequest("http://localhost/api/experiments/exp-1/launch", {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const res = await launchPOST(req, routeParams());
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(JSON.stringify(body)).not.toContain("supersecret");
+  });
 });

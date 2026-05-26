@@ -140,6 +140,41 @@ describe("EventIngestionService.ingest — basic", () => {
     // 250 events → 3 chunks (100, 100, 50)
     expect(mockEventCreateMany).toHaveBeenCalledTimes(3);
   });
+
+  it("exactly 100 events is a single chunk (boundary)", async () => {
+    const events = Array.from({ length: 100 }, () => makeEvent());
+    const batch = makeBatch(events);
+    await service.ingest(SHOP_ID, batch as never);
+    expect(mockEventCreateMany).toHaveBeenCalledTimes(1);
+    const call = mockEventCreateMany.mock.calls[0]![0]! as { data: unknown[] };
+    expect(call.data).toHaveLength(100);
+  });
+
+  it("101 events spills into a second chunk", async () => {
+    const events = Array.from({ length: 101 }, () => makeEvent());
+    const batch = makeBatch(events);
+    await service.ingest(SHOP_ID, batch as never);
+    expect(mockEventCreateMany).toHaveBeenCalledTimes(2);
+    const first = mockEventCreateMany.mock.calls[0]![0]! as { data: unknown[] };
+    const second = mockEventCreateMany.mock.calls[1]![0]! as { data: unknown[] };
+    expect(first.data).toHaveLength(100);
+    expect(second.data).toHaveLength(1);
+  });
+
+  it("empty event batch does not call createMany", async () => {
+    const batch = makeBatch([]);
+    await service.ingest(SHOP_ID, batch as never);
+    expect(mockEventCreateMany).not.toHaveBeenCalled();
+  });
+
+  it("partial failure on second chunk still rejects with the error", async () => {
+    mockEventCreateMany
+      .mockResolvedValueOnce({ count: 100 } as never)
+      .mockRejectedValueOnce(new Error("DB timeout"));
+    const events = Array.from({ length: 150 }, () => makeEvent());
+    const batch = makeBatch(events);
+    await expect(service.ingest(SHOP_ID, batch as never)).rejects.toThrow("DB timeout");
+  });
 });
 
 // ─── Custom event validation ──────────────────────────────────────────────────

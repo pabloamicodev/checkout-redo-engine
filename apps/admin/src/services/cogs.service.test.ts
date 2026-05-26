@@ -348,6 +348,30 @@ describe("CogsService.importCsv", () => {
     const result = await svc.importCsv(SHOP, csv);
     expect(result.imported).toBe(1);
   });
+
+  it("normalizes headers with leading/trailing whitespace", async () => {
+    // Parser trims each header → " variant_id " becomes "variant_id"
+    const csv = " variant_id , cost \n111,9.99";
+    const result = await svc.importCsv(SHOP, csv);
+    expect(result.imported).toBe(1);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("accepts UPPERCASE header names (normalized to lowercase)", async () => {
+    // Parser lowercases headers → "VARIANT_ID" becomes "variant_id"
+    const csv = `VARIANT_ID,COST\n111,9.99`;
+    const result = await svc.importCsv(SHOP, csv);
+    expect(result.imported).toBe(1);
+  });
+
+  it("extra comma in header row creates empty-string column but still parses required columns", async () => {
+    // Extra comma → empty-string column key; required headers still present
+    const csv = `variant_id,,cost\n111,,9.99`;
+    const result = await svc.importCsv(SHOP, csv);
+    // variant_id and cost are present, so import should succeed
+    expect(result.imported).toBe(1);
+    expect(result.errors).toHaveLength(0);
+  });
 });
 
 describe("CogsService.delete", () => {

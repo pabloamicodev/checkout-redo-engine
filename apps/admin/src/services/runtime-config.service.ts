@@ -143,7 +143,7 @@ export class RuntimeConfigService {
 
     if (!shop) return null;
 
-    const shopSettings = shop.settings as Record<string, unknown>;
+    const shopSettings = (shop.settings ?? {}) as Record<string, unknown>;
 
     const config: RuntimeConfig = {
       shopDomain,

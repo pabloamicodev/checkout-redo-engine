@@ -194,4 +194,23 @@ describe("evaluateTargetingRules", () => {
       expect(evaluateTargetingRules(rule, {})).toBe(true);
     });
   });
+
+  describe("contradictory rules on same field", () => {
+    it("cart_value >= 100 AND cart_value <= 50 never matches any value", () => {
+      const rule: TargetingGroup[] = [
+        {
+          operator: "AND",
+          conditions: [
+            { type: "cart_value_gte", operator: "gte", value: 100 },
+            { type: "cart_value_lte", operator: "lte", value: 50 },
+          ],
+        },
+      ];
+      // Impossible to satisfy both constraints simultaneously
+      expect(evaluateTargetingRules(rule, { cartValue: 75 })).toBe(false);
+      expect(evaluateTargetingRules(rule, { cartValue: 100 })).toBe(false);
+      expect(evaluateTargetingRules(rule, { cartValue: 50 })).toBe(false);
+      expect(evaluateTargetingRules(rule, { cartValue: 0 })).toBe(false);
+    });
+  });
 });

@@ -13,8 +13,11 @@ export default defineConfig({
       exclude: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/lib/test-setup.ts"],
       reporter: ["text", "lcov", "html"],
       thresholds: {
-        lines: 30,
-        functions: 45,
+        // Current actual: lines ~40%, functions ~72%.
+        // lines: 40 is a regression guard — raise toward 60% as service-layer
+        // branch coverage improves (error paths, billing guards, cache miss branches).
+        lines: 39,
+        functions: 70,
       },
     },
   },

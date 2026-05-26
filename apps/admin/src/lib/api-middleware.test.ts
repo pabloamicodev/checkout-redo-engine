@@ -350,6 +350,111 @@ describe("withRuntimeAuth", () => {
   });
 });
 
+// ─── getShopFromRequest — JWT structural edge cases ───────────────────────────
+
+describe("getShopFromRequest — JWT structural edge cases", () => {
+  it("rejects JWT with future nbf (token not yet valid)", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: `Bearer ${makeJwt({ nbf: now + 3600 })}` },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result).toBeNull();
+  });
+
+  it("rejects token with non-base64url characters", async () => {
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: "Bearer !!!.!!!.!!!" },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result).toBeNull();
+  });
+
+  it("rejects empty Authorization header value", async () => {
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: "" },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result).toBeNull();
+  });
+
+  it("rejects JWT with only one segment (no dots)", async () => {
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: "Bearer onlyone" },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result).toBeNull();
+  });
+
+  it("rejects JWT where payload is valid base64 but not JSON", async () => {
+    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const notJson = Buffer.from("this-is-not-json").toString("base64url");
+    const sig = createHmac("sha256", TEST_API_SECRET).update(`${header}.${notJson}`).digest("base64url");
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: `Bearer ${header}.${notJson}.${sig}` },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result).toBeNull();
+  });
+
+  it("rejects JWT missing the exp claim", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    // Manually build a JWT with no exp field
+    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const payload = Buffer.from(JSON.stringify({
+      iss: "https://test-shop.myshopify.com/admin",
+      dest: "https://test-shop.myshopify.com",
+      aud: TEST_API_KEY,
+      sub: "12345",
+      nbf: now - 10,
+      iat: now,
+      jti: "test-jti",
+      // exp intentionally omitted
+    })).toString("base64url");
+    const sig = createHmac("sha256", TEST_API_SECRET).update(`${header}.${payload}`).digest("base64url");
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: `Bearer ${header}.${payload}.${sig}` },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result).toBeNull();
+  });
+});
+
+// ─── getShopFromRequest — actorId from JWT sub claim ─────────────────────────
+
+describe("getShopFromRequest — actorId from JWT sub claim", () => {
+  const SHOP = { id: "shop-1", shopDomain: "test-shop.myshopify.com" };
+
+  it("non-numeric sub passes through as-is (actorId = the string)", async () => {
+    mockShopFindUnique.mockResolvedValueOnce(SHOP as never);
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: `Bearer ${makeJwt({ sub: "abc" })}` },
+    });
+    const result = await getShopFromRequest(req);
+    // Auth succeeds; actorId is the raw string value from sub
+    expect(result).not.toBeNull();
+    expect(result?.actorId).toBe("abc");
+  });
+
+  it("float sub passes through as-is (actorId = the float string)", async () => {
+    mockShopFindUnique.mockResolvedValueOnce(SHOP as never);
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: `Bearer ${makeJwt({ sub: "123.5" })}` },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result?.actorId).toBe("123.5");
+  });
+
+  it('sub === "0" maps to actorId undefined (surface-level token)', async () => {
+    mockShopFindUnique.mockResolvedValueOnce(SHOP as never);
+    const req = makeRequest("http://localhost/api/test", {
+      headers: { authorization: `Bearer ${makeJwt({ sub: "0" })}` },
+    });
+    const result = await getShopFromRequest(req);
+    expect(result?.actorId).toBeUndefined();
+  });
+});
+
 // ─── Multi-tenant isolation ───────────────────────────────────────────────────
 
 describe("multi-tenant isolation", () => {
