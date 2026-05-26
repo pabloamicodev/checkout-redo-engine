@@ -181,7 +181,7 @@ export default function GetInspiredPage({
                   }}
                 >
                   <h3 className="text-sm font-semibold text-white leading-snug mb-1">{tpl.title}</h3>
-                  <p className="text-xs text-white/60 leading-relaxed line-clamp-2">{tpl.desc}</p>
+                  <p className="text-xs text-white/60 leading-relaxed line-clamp-2 min-h-10">{tpl.desc}</p>
                   <span className="text-xs text-white/50 mt-2 inline-flex items-center gap-0.5 group-hover:text-white/80 transition-colors">
                     Get started →
                   </span>
