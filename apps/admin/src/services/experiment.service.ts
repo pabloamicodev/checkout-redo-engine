@@ -278,7 +278,7 @@ export class ExperimentService {
             .registerShippingExperiment(shop.shopDomain, {
               id,
               shippingConfig,
-              variants: experiment.variants.map((v) => ({ key: v.key, isControl: v.isControl })),
+              variants: (experiment.variants as Array<{ key: string; isControl: boolean }>).map((v) => ({ key: v.key, isControl: v.isControl })),
             })
             .catch((err) => console.error("[ExperimentService] Shipping FunctionConfig register failed:", err));
         }
