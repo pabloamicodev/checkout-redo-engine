@@ -1,0 +1,19 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "MarginLab Delivery Customization"
+handle = "marginlab-delivery-customization"
+type = "function"
+# uid is auto-assigned by Shopify on first `shopify app dev` or `shopify app deploy`.
+# The placeholder below will be replaced automatically — do not hardcode a real UID here.
+uid = "c4f3d2e1-b0a9-8765-4321-fedcba987654"
+description = "Controls which shipping methods are shown per A/B test variant. Reads cart attributes (_ml_exp_*) to resolve the assigned variant, then applies hide/rename operations from the metafield config."
+
+  [[extensions.targeting]]
+  target = "purchase.delivery-customization.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

@@ -9,22 +9,22 @@ application_url = "https://checkout-redo-engine.vercel.app"
 embedded = true
 
 [build]
-automatically_update_urls_on_ploy = true
+automatically_update_urls_on_deploy = true
 
 [webhooks]
 api_version = "2026-04"
 
   [[webhooks.subscriptions]]
   topics = [ "orders/create", "orders/updated", "orders/paid", "orders/cancelled" ]
-  uri = "/api/webhooks/orders"
+  uri = "/api/webhooks/shopify"
 
   [[webhooks.subscriptions]]
-  topics = [ "app/uninstalled" ]
-  uri = "/api/webhooks/app"
+  topics = [ "app/uninstalled", "app_subscriptions/update" ]
+  uri = "/api/webhooks/shopify"
 
   [[webhooks.subscriptions]]
   topics = [ "products/update", "variants/in_stock", "variants/out_of_stock" ]
-  uri = "/api/webhooks/products"
+  uri = "/api/webhooks/shopify"
 
   [[webhooks.subscriptions]]
   # Auto-pause running theme tests when a merchant manually publishes a theme
@@ -40,7 +40,7 @@ api_version = "2026-04"
 # Scopes required by MarginLab — see SCOPES.md for full audit.
 # Removed: write_themes (unused — theme tests use Theme App Extensions, not direct theme writes)
 # Removed: write_script_tags / read_script_tags (unused — no legacy script injection)
-scopes = "read_products,write_products,read_orders,read_customers,read_discounts,write_discounts,read_price_rules,write_price_rules,read_metaobjects,write_metaobjects,read_themes"
+scopes = "read_products,write_products,read_orders,read_customers,read_discounts,write_discounts,read_price_rules,write_price_rules,read_metaobjects,write_metaobjects,read_themes,read_delivery_customizations,write_delivery_customizations"
 
 [auth]
 redirect_urls = [

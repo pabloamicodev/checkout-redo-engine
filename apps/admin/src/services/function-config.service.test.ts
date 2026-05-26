@@ -383,14 +383,7 @@ describe("FunctionConfigService.registerOffer", () => {
     expect(mockGraphQL).not.toHaveBeenCalled();
   });
 
-  it("applies min_cart_value from triggerRules for FREE_SHIPPING", async () => {
-    mockShopFindUnique.mockResolvedValue(
-      makeShopSettings({ "marginlab-shipping-discount": DISCOUNT_GID }) as never
-    );
-    mockGraphQL
-      .mockResolvedValueOnce({ discountNode: null })
-      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } });
-
+  it("is a no-op for FREE_SHIPPING (no function extension exists yet)", async () => {
     await svc.registerOffer(SHOP, {
       id: "offer-fs",
       type: "FREE_SHIPPING",
@@ -398,13 +391,223 @@ describe("FunctionConfigService.registerOffer", () => {
       triggerRules: [{ type: "min_cart_value", minValue: 50 }],
     });
 
-    const body = parseSetBody(1);
-    expect(body.offer_rules[0]).toMatchObject({
-      offer_id: "offer-fs",
-      discount_type: "FREE",
-      value: 100,
-      minimum_cart_value: 50,
+    expect(mockGraphQL).not.toHaveBeenCalled();
+  });
+});
+
+// ─── registerShippingExperiment ───────────────────────────────────────────────
+
+const CUSTOMIZATION_GID = "gid://shopify/DeliveryCustomization/456";
+
+function makeShopWithDelivery(deliveryIds: Record<string, string> = {}) {
+  return { settings: { functionDeliveryCustomizationIds: deliveryIds } };
+}
+
+function parseShippingSetBody(callIndex: number): { shipping_rules: Record<string, unknown>[] } {
+  const args = mockGraphQL.mock.calls[callIndex]! as [string, string, { metafields: Array<{ value: string }> }];
+  return JSON.parse(args[2]!.metafields[0]!.value) as ReturnType<typeof parseShippingSetBody>;
+}
+
+describe("FunctionConfigService.registerShippingExperiment", () => {
+  let svc: FunctionConfigService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    svc = new FunctionConfigService();
+
+    mockShopFindUnique.mockResolvedValue(
+      makeShopWithDelivery({ "marginlab-delivery-customization": CUSTOMIZATION_GID }) as never
+    );
+  });
+
+  it("pushes hide operation for a non-control variant", async () => {
+    mockGraphQL
+      .mockResolvedValueOnce({ deliveryCustomization: null }) // getShippingConfig
+      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } }); // setShippingConfig
+
+    await svc.registerShippingExperiment(SHOP, {
+      id: "ship-1",
+      shippingConfig: {
+        useDeliveryCustomization: true,
+        variants: {
+          variant_b: {
+            methodOperations: [{ type: "hide", titleContains: "Express" }],
+          },
+        },
+      },
+      variants: [
+        { key: "control", isControl: true },
+        { key: "variant_b", isControl: false },
+      ],
     });
+
+    const body = parseShippingSetBody(1);
+    expect(body.shipping_rules).toHaveLength(1);
+    expect(body.shipping_rules[0]).toMatchObject({
+      experiment_id: "ship-1",
+      variant_key: "variant_b",
+      operations: [{ type: "hide", title_contains: "Express" }],
+    });
+  });
+
+  it("pushes rename operation for a non-control variant", async () => {
+    mockGraphQL
+      .mockResolvedValueOnce({ deliveryCustomization: null })
+      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } });
+
+    await svc.registerShippingExperiment(SHOP, {
+      id: "ship-2",
+      shippingConfig: {
+        useDeliveryCustomization: true,
+        variants: {
+          variant_b: {
+            methodOperations: [{ type: "rename", titleFrom: "Standard", titleTo: "Free Shipping" }],
+          },
+        },
+      },
+      variants: [
+        { key: "control", isControl: true },
+        { key: "variant_b", isControl: false },
+      ],
+    });
+
+    const body = parseShippingSetBody(1);
+    expect(body.shipping_rules[0]).toMatchObject({
+      operations: [{ type: "rename", title_from: "Standard", title_to: "Free Shipping" }],
+    });
+  });
+
+  it("replaces stale rules for the same experiment on re-register", async () => {
+    const existing = {
+      shipping_rules: [
+        { experiment_id: "ship-1", variant_key: "old_b", operations: [{ type: "hide", title_contains: "Next Day" }] },
+        { experiment_id: "ship-99", variant_key: "c", operations: [] },
+      ],
+    };
+    mockGraphQL
+      .mockResolvedValueOnce({ deliveryCustomization: { metafield: { value: JSON.stringify(existing) } } })
+      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } });
+
+    await svc.registerShippingExperiment(SHOP, {
+      id: "ship-1",
+      shippingConfig: {
+        useDeliveryCustomization: true,
+        variants: {
+          variant_b: {
+            methodOperations: [{ type: "hide", titleContains: "Express" }],
+          },
+        },
+      },
+      variants: [
+        { key: "control", isControl: true },
+        { key: "variant_b", isControl: false },
+      ],
+    });
+
+    const body = parseShippingSetBody(1);
+    // ship-99 preserved, ship-1 replaced
+    expect(body.shipping_rules).toHaveLength(2);
+    expect(body.shipping_rules.find((r) => r["experiment_id"] === "ship-1")).toMatchObject({
+      variant_key: "variant_b",
+      operations: [{ type: "hide", title_contains: "Express" }],
+    });
+    expect(body.shipping_rules.find((r) => r["experiment_id"] === "ship-99")).toBeDefined();
+  });
+
+  it("skips control variants", async () => {
+    mockGraphQL
+      .mockResolvedValueOnce({ deliveryCustomization: null })
+      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } });
+
+    await svc.registerShippingExperiment(SHOP, {
+      id: "ship-3",
+      shippingConfig: { useDeliveryCustomization: true, variants: {} },
+      variants: [{ key: "control", isControl: true }],
+    });
+
+    const body = parseShippingSetBody(1);
+    expect(body.shipping_rules).toHaveLength(0);
+  });
+
+  it("creates the delivery customization node when none is stored", async () => {
+    mockShopFindUnique.mockResolvedValue(makeShopWithDelivery() as never);
+    mockShopUpdate.mockResolvedValue({} as never);
+
+    mockGraphQL
+      .mockResolvedValueOnce({
+        deliveryCustomizationCreate: {
+          deliveryCustomization: { id: CUSTOMIZATION_GID },
+          userErrors: [],
+        },
+      }) // ensureDeliveryCustomization
+      .mockResolvedValueOnce({ deliveryCustomization: null }) // getShippingConfig
+      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } }); // setShippingConfig
+
+    await svc.registerShippingExperiment(SHOP, {
+      id: "ship-4",
+      shippingConfig: {
+        useDeliveryCustomization: true,
+        variants: {
+          variant_b: { methodOperations: [{ type: "hide", titleContains: "Express" }] },
+        },
+      },
+      variants: [
+        { key: "control", isControl: true },
+        { key: "variant_b", isControl: false },
+      ],
+    });
+
+    expect(mockShopUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          settings: expect.objectContaining({
+            functionDeliveryCustomizationIds: { "marginlab-delivery-customization": CUSTOMIZATION_GID },
+          }),
+        }),
+      })
+    );
+    const body = parseShippingSetBody(2);
+    expect(body.shipping_rules).toHaveLength(1);
+  });
+});
+
+// ─── deregisterShippingExperiment ─────────────────────────────────────────────
+
+describe("FunctionConfigService.deregisterShippingExperiment", () => {
+  let svc: FunctionConfigService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    svc = new FunctionConfigService();
+  });
+
+  it("removes rules for the experiment and keeps others", async () => {
+    mockShopFindUnique.mockResolvedValue(
+      makeShopWithDelivery({ "marginlab-delivery-customization": CUSTOMIZATION_GID }) as never
+    );
+    const existing = {
+      shipping_rules: [
+        { experiment_id: "ship-1", variant_key: "b", operations: [{ type: "hide", title_contains: "Express" }] },
+        { experiment_id: "ship-2", variant_key: "c", operations: [{ type: "rename", title_from: "Standard", title_to: "Free" }] },
+      ],
+    };
+    mockGraphQL
+      .mockResolvedValueOnce({ deliveryCustomization: { metafield: { value: JSON.stringify(existing) } } })
+      .mockResolvedValueOnce({ metafieldsSet: { metafields: [], userErrors: [] } });
+
+    await svc.deregisterShippingExperiment(SHOP, "ship-1");
+
+    const body = parseShippingSetBody(1);
+    expect(body.shipping_rules).toHaveLength(1);
+    expect(body.shipping_rules[0]!["experiment_id"]).toBe("ship-2");
+  });
+
+  it("no-ops when no delivery customization GID is stored for the shop", async () => {
+    mockShopFindUnique.mockResolvedValue(makeShopWithDelivery() as never);
+
+    await svc.deregisterShippingExperiment(SHOP, "ship-1");
+
+    expect(mockGraphQL).not.toHaveBeenCalled();
   });
 });
 
@@ -414,7 +617,7 @@ describe("FunctionConfigService.deregisterOffer", () => {
   let svc: FunctionConfigService;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     svc = new FunctionConfigService();
   });
 

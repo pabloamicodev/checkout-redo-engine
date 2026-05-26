@@ -13,12 +13,13 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") ?? "1", 10);
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
 
-    const [{ items, total }, coverage] = await Promise.all([
+    const [{ items, total }, coverage, lastSync] = await Promise.all([
       service.list(shopId, { search, page, limit }),
       service.getCoverage(shopId),
+      service.getLastSyncStatus(shopId),
     ]);
 
-    return NextResponse.json({ items, total, page, limit, coverage });
+    return NextResponse.json({ items, total, page, limit, coverage, lastSync });
   });
 }
 

@@ -18,10 +18,16 @@ import {
 import { formatCurrency, debounce, formatNumber } from "@/lib/utils";
 import type { CogsListItem, CogsCoverage } from "@/services/cogs.service";
 
+interface LastSync {
+  cogsSyncAt: string | null;
+  cogsSyncResult: { synced: number; skipped: number; errors: number } | null;
+}
+
 interface Props {
   initialItems: CogsListItem[];
   initialTotal: number;
   initialCoverage: CogsCoverage;
+  initialLastSync?: LastSync;
   currencyCode: string;
 }
 
@@ -33,11 +39,13 @@ export function CogsClient({
   initialItems,
   initialTotal,
   initialCoverage,
+  initialLastSync,
   currencyCode,
 }: Props) {
   const [items, setItems] = useState(initialItems);
   const [total, setTotal] = useState(initialTotal);
   const [coverage, setCoverage] = useState(initialCoverage);
+  const [lastSync, setLastSync] = useState<LastSync | undefined>(initialLastSync);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -81,10 +89,12 @@ export function CogsClient({
         items: CogsListItem[];
         total: number;
         coverage: CogsCoverage;
+        lastSync?: LastSync;
       };
       setItems(data.items);
       setTotal(data.total);
       setCoverage(data.coverage);
+      if (data.lastSync !== undefined) setLastSync(data.lastSync);
     } finally {
       setLoading(false);
     }
@@ -218,6 +228,10 @@ export function CogsClient({
           type: data.errors > 0 ? "warning" : "success",
           text: `Synced ${data.synced} variants (${data.skipped} skipped, ${data.errors} errors)`,
         });
+        setLastSync({
+          cogsSyncAt: new Date().toISOString(),
+          cogsSyncResult: { synced: data.synced, skipped: data.skipped, errors: data.errors },
+        });
         fetchPage(1, search);
       } else {
         showStatus({ type: "error", text: "Sync failed. Check Shopify scopes." });
@@ -313,6 +327,18 @@ export function CogsClient({
               {coverage.ordersWithCogs} of {coverage.ordersLast30Days} attributed orders had COGS data ·{" "}
               {formatNumber(coverage.totalProductCosts)} variants configured
             </p>
+            {lastSync?.cogsSyncAt && (
+              <p className="text-xs text-neutral-400 mt-1 flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 shrink-0" />
+                Last Shopify sync:{" "}
+                <span className={lastSync.cogsSyncResult?.errors ? "text-warning-600" : "text-neutral-500"}>
+                  {new Date(lastSync.cogsSyncAt).toLocaleString()} —{" "}
+                  {lastSync.cogsSyncResult
+                    ? `${lastSync.cogsSyncResult.synced} synced, ${lastSync.cogsSyncResult.skipped} skipped${lastSync.cogsSyncResult.errors ? `, ${lastSync.cogsSyncResult.errors} errors` : ""}`
+                    : "complete"}
+                </span>
+              </p>
+            )}
           </div>
           <span
             className={`text-2xl font-bold tabular-nums ${

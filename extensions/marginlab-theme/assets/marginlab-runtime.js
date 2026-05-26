@@ -317,6 +317,49 @@
         }
       }
     }
+
+    // Template Test — redirect to ?view={templateHandle} for the assigned variant.
+    // Control keeps the default template (no redirect).
+    // Loop guard: skip if ?view already matches so we don't redirect infinitely.
+    if (exp.type === "TEMPLATE_TEST" && !variant.isControl) {
+      var variantSettings = variant.settings || {};
+      var templateHandle = variantSettings.templateHandle || variantSettings.template_handle;
+      if (templateHandle) {
+        var currentView = getQueryParam("view");
+        if (currentView !== templateHandle && getQueryParam("ml_redirected") !== "1") {
+          var sep = window.location.search ? "&" : "?";
+          window.location.replace(
+            window.location.pathname +
+            window.location.search +
+            sep + "view=" + encodeURIComponent(templateHandle) +
+            "&ml_redirected=1"
+          );
+        }
+      }
+    }
+
+    // Theme Test — in QA / preview mode, redirect to Shopify's theme preview URL.
+    // Production-grade theme switching for visitors requires server-side proxying
+    // (Shopify does not support serving different themes to different users via JS alone).
+    // The ?preview_theme_id= parameter only works when the user is logged in as
+    // a store admin, so this is intentionally scoped to QA / preview sessions.
+    if (exp.type === "THEME_TEST" && !variant.isControl) {
+      var themeSettings = variant.settings || {};
+      var themeId = themeSettings.themeId || themeSettings.theme_id;
+      if (themeId) {
+        var isPreviewSession = getQueryParam(PREVIEW_PARAM) !== "" || exp.status === "QA" || exp.status === "PREVIEW";
+        var alreadyPreviewingTheme = getQueryParam("preview_theme_id") === String(themeId);
+        if (isPreviewSession && !alreadyPreviewingTheme && getQueryParam("_ml_theme_preview") !== "1") {
+          var themeUrl = window.location.pathname + window.location.search;
+          var themeConnector = themeUrl.includes("?") ? "&" : "?";
+          window.location.replace(
+            themeUrl + themeConnector +
+            "preview_theme_id=" + encodeURIComponent(themeId) +
+            "&_ml_theme_preview=1"
+          );
+        }
+      }
+    }
   }
 
   // Price override selectors — covers Dawn, Debut, Prestige, and most Shopify themes
@@ -1370,10 +1413,122 @@
   }
 
   /**
+   * Detect whether the current page is a Shopify post-purchase / thank-you page.
+   * Shopify's order status URL is /orders/{token}/authenticate or contains /thank_you.
+   */
+  function isPostPurchasePage() {
+    var path = window.location.pathname;
+    return (
+      path.indexOf("/thank_you") !== -1 ||
+      path.indexOf("/orders/") !== -1 ||
+      path.indexOf("/checkouts/") !== -1 && getQueryParam("order_status") !== ""
+    );
+  }
+
+  /**
+   * Apply a POST_PURCHASE modification — renders a coupon/upsell banner on the
+   * order-confirmation / thank-you page.
+   */
+  function applyPostPurchaseModification(mod, personalizationId) {
+    if (!mod) return;
+
+    var headline = mod.headline || mod.message || "";
+    var subtext = mod.subtext || "";
+    var ctaLabel = mod.ctaLabel || "Shop again";
+    var ctaUrl = mod.ctaUrl || "/";
+    var couponCode = mod.couponCode || "";
+
+    // Track impression
+    trackEvent("personalization_view", "PAGE_VIEW", { personalizationId: personalizationId, type: "post_purchase" });
+
+    // Mark shown this session
+    try {
+      var shown = JSON.parse(sessionStorage.getItem(ACR_SHOWN_KEY) || "[]");
+      shown.push(personalizationId);
+      sessionStorage.setItem(ACR_SHOWN_KEY, JSON.stringify(shown));
+    } catch (e) {}
+
+    if (document.getElementById("ml-pp-banner")) return;
+
+    var banner = document.createElement("div");
+    banner.id = "ml-pp-banner";
+    banner.setAttribute("data-ml-pp", "1");
+    banner.style.cssText = [
+      "margin: 24px auto",
+      "max-width: 640px",
+      "background: #f0fdf4",
+      "border: 1px solid #86efac",
+      "border-radius: 12px",
+      "padding: 20px 24px",
+      "font-family: sans-serif",
+      "display: flex",
+      "align-items: center",
+      "gap: 16px",
+      "flex-wrap: wrap",
+    ].join(";");
+
+    var textWrap = document.createElement("div");
+    textWrap.style.flex = "1";
+    textWrap.innerHTML =
+      "<strong style='display:block;font-size:15px;color:#166534'>" + escapeHtml(headline) + "</strong>" +
+      (subtext ? "<span style='font-size:13px;color:#4ade80'>" + escapeHtml(subtext) + "</span>" : "");
+
+    if (couponCode) {
+      var codeBlock = document.createElement("div");
+      codeBlock.style.cssText =
+        "background:#dcfce7;border:1px dashed #4ade80;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:14px;color:#166534;cursor:pointer;user-select:all";
+      codeBlock.textContent = couponCode;
+      codeBlock.title = "Click to copy";
+      codeBlock.addEventListener("click", function () {
+        navigator.clipboard && navigator.clipboard.writeText(couponCode).catch(function () {});
+        codeBlock.textContent = "Copied!";
+        setTimeout(function () { codeBlock.textContent = couponCode; }, 2000);
+      });
+      textWrap.appendChild(codeBlock);
+    }
+
+    var cta = document.createElement("a");
+    cta.href = ctaUrl;
+    cta.textContent = ctaLabel;
+    cta.style.cssText =
+      "background:#16a34a;color:#fff;padding:8px 18px;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;white-space:nowrap;flex-shrink:0";
+    cta.addEventListener("click", function () {
+      trackEvent("personalization_click", "CLICK", { personalizationId: personalizationId, type: "post_purchase" });
+    });
+
+    var closeBtn = document.createElement("button");
+    closeBtn.textContent = "×";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.style.cssText =
+      "background:none;border:none;color:#166534;font-size:20px;cursor:pointer;opacity:0.6;padding:0 4px;align-self:flex-start";
+    closeBtn.addEventListener("click", function () {
+      banner.remove();
+    });
+
+    banner.appendChild(textWrap);
+    banner.appendChild(cta);
+    banner.appendChild(closeBtn);
+
+    // Try to insert after the thank-you heading or prepend to main content
+    var target =
+      document.querySelector(".os-step__inner") ||
+      document.querySelector(".step__sections") ||
+      document.querySelector("main") ||
+      document.querySelector(".content-box") ||
+      document.body;
+
+    if (target && target !== document.body) {
+      target.insertBefore(banner, target.firstChild);
+    } else {
+      document.body.appendChild(banner);
+    }
+  }
+
+  /**
    * Main personalization runner — called after config is loaded.
    *
    * Priority: lower number = evaluated first. First matching personalization wins
-   * for each modification type (announcement_bar).
+   * for each modification type.
    */
   function runPersonalizations(config) {
     if (!config || !config.personalizations || !config.personalizations.length) return;
@@ -1382,14 +1537,6 @@
     var cartItemCount = getCartItemCount();
     var cartValue = getCartValue();
     var context = { cartItemCount: cartItemCount, cartValue: cartValue };
-
-    // ACR personalizations already sorted by priority (asc) from server
-    var acrPersonalizations = config.personalizations.filter(function (p) {
-      return p.type === "ABANDONED_CART";
-    });
-
-    // Track which modification types have already been applied (one per type)
-    var appliedTypes = {};
 
     // Deduplicate: don't show same personalization twice in one session
     var shownThisSession = [];
@@ -1400,27 +1547,53 @@
     // Check schedule validity
     var now = Date.now();
 
+    // Track which modification types have already been applied (one per type)
+    var appliedTypes = {};
+
+    // ── Abandoned Cart personalizations ───────────────────────────────────────
+    var acrPersonalizations = config.personalizations.filter(function (p) {
+      return p.type === "ABANDONED_CART";
+    });
+
     for (var i = 0; i < acrPersonalizations.length; i++) {
       var p = acrPersonalizations[i];
-
-      // Skip if already shown this session
       if (shownThisSession.indexOf(p.id) !== -1) continue;
-
-      // Skip if outside schedule window
       if (p.startsAt && new Date(p.startsAt).getTime() > now) continue;
       if (p.endsAt && new Date(p.endsAt).getTime() < now) continue;
-
-      // Evaluate targeting rules
       if (!evaluatePersonalizationRules(p.targetingRules, context)) continue;
 
-      // Apply modifications (first winner per type)
       var mods = p.modifications || [];
       for (var j = 0; j < mods.length; j++) {
         var mod = mods[j];
         var modType = mod.type || "unknown";
-        if (appliedTypes[modType]) continue; // already applied this type
+        if (appliedTypes[modType]) continue;
         applyAbandonedCartModification(mod, p.id);
         appliedTypes[modType] = true;
+      }
+    }
+
+    // ── Post-Purchase personalizations ────────────────────────────────────────
+    // Only fire on the order confirmation / thank-you page.
+    if (isPostPurchasePage()) {
+      var ppPersonalizations = config.personalizations.filter(function (p) {
+        return p.type === "POST_PURCHASE";
+      });
+
+      for (var pi = 0; pi < ppPersonalizations.length; pi++) {
+        var pp = ppPersonalizations[pi];
+        if (shownThisSession.indexOf(pp.id) !== -1) continue;
+        if (pp.startsAt && new Date(pp.startsAt).getTime() > now) continue;
+        if (pp.endsAt && new Date(pp.endsAt).getTime() < now) continue;
+
+        var ppMods = pp.modifications || [];
+        for (var pj = 0; pj < ppMods.length; pj++) {
+          var ppMod = ppMods[pj];
+          var ppModType = ppMod.type || "post_purchase_banner";
+          if (appliedTypes["pp_" + ppModType]) continue;
+          applyPostPurchaseModification(ppMod, pp.id);
+          appliedTypes["pp_" + ppModType] = true;
+          break; // one banner per personalization
+        }
       }
     }
   }

@@ -294,7 +294,36 @@ export class CogsService {
       }
     }
 
+    // Persist sync status to shop settings so the UI can show "last synced at".
+    // Read-then-merge to avoid overwriting other settings keys in the JSON blob.
+    try {
+      const current = await prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+      const merged = {
+        ...((current?.settings ?? {}) as Record<string, unknown>),
+        cogsSyncAt: new Date().toISOString(),
+        cogsSyncResult: { synced, skipped, errors },
+      };
+      await prisma.shop.update({ where: { id: shopId }, data: { settings: merged } });
+    } catch {
+      // Non-fatal: sync status display is best-effort
+    }
+
     return { synced, skipped, errors };
+  }
+
+  async getLastSyncStatus(shopId: string): Promise<{
+    cogsSyncAt: string | null;
+    cogsSyncResult: { synced: number; skipped: number; errors: number } | null;
+  }> {
+    const shop = await prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { settings: true },
+    });
+    const s = (shop?.settings ?? {}) as Record<string, unknown>;
+    return {
+      cogsSyncAt: (s.cogsSyncAt as string) ?? null,
+      cogsSyncResult: (s.cogsSyncResult as { synced: number; skipped: number; errors: number }) ?? null,
+    };
   }
 
   // Parse and import a CSV file.

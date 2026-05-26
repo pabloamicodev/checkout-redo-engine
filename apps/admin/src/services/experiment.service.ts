@@ -243,10 +243,10 @@ export class ExperimentService {
 
     await this.invalidateCache(shopId);
 
-    // Register discount rules in Shopify Function metafield for discount tests
-    if (experiment.type === "DISCOUNT_TEST") {
-      const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
-      if (shop) {
+    // Sync Shopify Function metafield for Function-backed experiment types
+    const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
+    if (shop) {
+      if (experiment.type === "DISCOUNT_TEST") {
         const variants = (experiment.variants as Array<{ key: string; isControl: boolean; discountConfig: unknown }>).map((v) => ({
           key: v.key,
           isControl: v.isControl,
@@ -255,6 +255,33 @@ export class ExperimentService {
         this.functionConfig
           .registerDiscountExperiment(shop.shopDomain, { id, variants })
           .catch((err) => console.error("[ExperimentService] FunctionConfig register failed:", err));
+      }
+
+      if (experiment.type === "PRICE_TEST") {
+        const priceConfig = experiment.priceConfig as Record<string, unknown> | null;
+        if (priceConfig?.["enforcementStrategy"] === "SHOPIFY_FUNCTION") {
+          const variants = (experiment.variants as Array<{ key: string; isControl: boolean; priceOverrides: unknown }>).map((v) => ({
+            key: v.key,
+            isControl: v.isControl,
+            priceOverrides: (v.priceOverrides ?? []) as Array<{ shopifyVariantId: string; price: string; compareAtPrice?: string | null }>,
+          }));
+          this.functionConfig
+            .registerPriceExperiment(shop.shopDomain, { id, variants })
+            .catch((err) => console.error("[ExperimentService] Price FunctionConfig register failed:", err));
+        }
+      }
+
+      if (experiment.type === "SHIPPING_TEST") {
+        const shippingConfig = experiment.shippingConfig as Record<string, unknown> | null;
+        if (shippingConfig?.["useDeliveryCustomization"] === true) {
+          this.functionConfig
+            .registerShippingExperiment(shop.shopDomain, {
+              id,
+              shippingConfig,
+              variants: experiment.variants.map((v) => ({ key: v.key, isControl: v.isControl })),
+            })
+            .catch((err) => console.error("[ExperimentService] Shipping FunctionConfig register failed:", err));
+        }
       }
     }
 
@@ -284,14 +311,7 @@ export class ExperimentService {
 
     await this.invalidateCache(shopId);
 
-    if (experiment.type === "DISCOUNT_TEST") {
-      const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
-      if (shop) {
-        this.functionConfig
-          .deregisterDiscountExperiment(shop.shopDomain, id)
-          .catch((err) => console.error("[ExperimentService] FunctionConfig deregister failed:", err));
-      }
-    }
+    await this.deregisterFunctionConfig(shopId, experiment, id);
 
     return updated;
   }
@@ -319,14 +339,7 @@ export class ExperimentService {
 
     await this.invalidateCache(shopId);
 
-    if (experiment.type === "DISCOUNT_TEST") {
-      const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
-      if (shop) {
-        this.functionConfig
-          .deregisterDiscountExperiment(shop.shopDomain, id)
-          .catch((err) => console.error("[ExperimentService] FunctionConfig deregister failed:", err));
-      }
-    }
+    await this.deregisterFunctionConfig(shopId, experiment, id);
 
     return updated;
   }
@@ -350,14 +363,7 @@ export class ExperimentService {
 
     await this.invalidateCache(shopId);
 
-    if (experiment.type === "DISCOUNT_TEST") {
-      const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
-      if (shop) {
-        this.functionConfig
-          .deregisterDiscountExperiment(shop.shopDomain, id)
-          .catch((err) => console.error("[ExperimentService] FunctionConfig deregister failed:", err));
-      }
-    }
+    await this.deregisterFunctionConfig(shopId, experiment, id);
 
     return updated;
   }
@@ -459,6 +465,39 @@ export class ExperimentService {
     }
 
     return slug;
+  }
+
+  private async deregisterFunctionConfig(
+    shopId: string,
+    experiment: { type: string; priceConfig: unknown; shippingConfig: unknown },
+    id: string
+  ): Promise<void> {
+    const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
+    if (!shop) return;
+
+    if (experiment.type === "DISCOUNT_TEST") {
+      this.functionConfig
+        .deregisterDiscountExperiment(shop.shopDomain, id)
+        .catch((err) => console.error("[ExperimentService] FunctionConfig deregister failed:", err));
+    }
+
+    if (experiment.type === "PRICE_TEST") {
+      const priceConfig = experiment.priceConfig as Record<string, unknown> | null;
+      if (priceConfig?.["enforcementStrategy"] === "SHOPIFY_FUNCTION") {
+        this.functionConfig
+          .deregisterPriceExperiment(shop.shopDomain, id)
+          .catch((err) => console.error("[ExperimentService] Price FunctionConfig deregister failed:", err));
+      }
+    }
+
+    if (experiment.type === "SHIPPING_TEST") {
+      const shippingConfig = experiment.shippingConfig as Record<string, unknown> | null;
+      if (shippingConfig?.["useDeliveryCustomization"] === true) {
+        this.functionConfig
+          .deregisterShippingExperiment(shop.shopDomain, id)
+          .catch((err) => console.error("[ExperimentService] Shipping FunctionConfig deregister failed:", err));
+      }
+    }
   }
 
   private async invalidateCache(shopId: string): Promise<void> {

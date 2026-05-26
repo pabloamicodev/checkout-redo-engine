@@ -1,0 +1,19 @@
+query RunInput {
+  cart {
+    attributes {
+      key
+      value
+    }
+    deliveryGroups {
+      deliveryOptions {
+        handle
+        title
+      }
+    }
+  }
+  deliveryCustomization {
+    metafield(namespace: "$app:marginlab", key: "shipping-customization-config") {
+      jsonValue
+    }
+  }
+}

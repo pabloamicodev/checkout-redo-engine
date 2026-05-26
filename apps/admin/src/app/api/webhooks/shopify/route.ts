@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateWebhook } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
+import { cacheDel } from "@/lib/redis";
 import { OrderAttributionService } from "@/services/order-attribution.service";
 import { BillingService } from "@/services/billing.service";
 import { ThemeTestService } from "@/services/theme-test.service";
@@ -67,11 +68,20 @@ async function processWebhook(
     switch (topic) {
       case "orders/create":
       case "orders/updated":
+      case "orders/paid":
+      case "orders/cancelled":
         await orderAttributionService.processOrder(shopId, payload);
         break;
 
       case "refunds/create":
         await orderAttributionService.processRefund(shopId, payload);
+        break;
+
+      case "products/update":
+      case "variants/in_stock":
+      case "variants/out_of_stock":
+        // Invalidate the runtime config cache so storefronts pick up product changes
+        await cacheDel(`runtime:config:${shopDomain}`);
         break;
 
       case "app/uninstalled":

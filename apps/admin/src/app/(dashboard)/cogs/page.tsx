@@ -16,9 +16,10 @@ async function getData(shopDomain: string) {
   });
   if (!shop) return null;
 
-  const [{ items, total }, coverage] = await Promise.all([
+  const [{ items, total }, coverage, lastSync] = await Promise.all([
     cogsService.list(shop.id, { page: 1, limit: 50 }),
     cogsService.getCoverage(shop.id),
+    cogsService.getLastSyncStatus(shop.id),
   ]);
 
   const settings = (shop.settings ?? {}) as Record<string, unknown>;
@@ -30,6 +31,7 @@ async function getData(shopDomain: string) {
     items,
     total,
     coverage,
+    lastSync,
   };
 }
 
@@ -74,6 +76,7 @@ export default async function CogsPage() {
           initialItems={data.items}
           initialTotal={data.total}
           initialCoverage={data.coverage}
+          initialLastSync={data.lastSync}
           currencyCode={data.currencyCode}
         />
         </div>
