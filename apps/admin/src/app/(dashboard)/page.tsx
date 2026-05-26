@@ -116,7 +116,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-1 overflow-auto" style={{ background: "#F8FAFC" }}>
-      <div className="max-w-5xl mx-auto px-8 py-8 space-y-8 animate-fade-in">
+      <div className="mx-auto px-8 py-8 space-y-8 animate-fade-in">
 
         {/* Header */}
         <div className="flex items-start justify-between">
