@@ -118,12 +118,56 @@ describe("RuntimeConfigService.get", () => {
     await service.get(SHOP_DOMAIN);
     expect(mockCacheSet).toHaveBeenCalledOnce();
   });
+
+  it("returns fresh config even if cacheSet fails", async () => {
+    const shop = makeShop();
+    mockShopFindUnique.mockResolvedValueOnce(shop as never);
+    mockCacheSet.mockRejectedValueOnce(new Error("redis down"));
+
+    const result = await service.get(SHOP_DOMAIN);
+
+    expect(result).not.toBeNull();
+    expect(result!.shopDomain).toBe(SHOP_DOMAIN);
+    expect(mockCacheSet).toHaveBeenCalledOnce();
+  });
 });
 
 // ─── RuntimeConfigService.build ──────────────────────────────────────────────
 
 describe("RuntimeConfigService.build", () => {
   const service = new RuntimeConfigService();
+
+  it("queries Prisma with strict runtime filters and ordering", async () => {
+    mockShopFindUnique.mockResolvedValueOnce(makeShop() as never);
+
+    await service.build(SHOP_DOMAIN);
+
+    expect(mockShopFindUnique).toHaveBeenCalledWith({
+      where: { shopDomain: SHOP_DOMAIN },
+      include: {
+        experiments: {
+          where: {
+            status: { in: ["RUNNING", "PREVIEW", "QA"] },
+          },
+          include: {
+            variants: {
+              orderBy: { isControl: "desc" },
+            },
+          },
+        },
+        offers: {
+          where: { status: "ACTIVE" },
+        },
+        checkoutBlocks: {
+          where: { status: "ACTIVE" },
+        },
+        personalizations: {
+          where: { status: "ACTIVE" },
+          orderBy: { priority: "asc" },
+        },
+      },
+    });
+  });
 
   it("returns null when shop is not found", async () => {
     mockShopFindUnique.mockResolvedValueOnce(null);
@@ -211,6 +255,18 @@ describe("RuntimeConfigService.build", () => {
     mockShopFindUnique.mockResolvedValueOnce(makeShop() as never);
     const result = await service.build(SHOP_DOMAIN);
     expect(result!.killSwitches.globalDisabled).toBe(false);
+  });
+
+  it("uses default kill switch values when settings omit keys", async () => {
+    mockShopFindUnique.mockResolvedValueOnce(makeShop({ settings: {} }) as never);
+    const result = await service.build(SHOP_DOMAIN);
+
+    expect(result!.killSwitches.globalDisabled).toBe(false);
+    expect(result!.killSwitches.contentModificationsDisabled).toBe(false);
+    expect(result!.killSwitches.priceDisplayDisabled).toBe(false);
+    expect(result!.killSwitches.offerWidgetsDisabled).toBe(false);
+    expect(result!.killSwitches.splitUrlRedirectsDisabled).toBe(false);
+    expect(result!.killSwitches.debugOverlayDisabled).toBe(true);
   });
 
   it("reads kill switches from shop settings", async () => {

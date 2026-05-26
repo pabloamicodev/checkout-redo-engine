@@ -354,8 +354,8 @@ describe("applyPriceOverrides (DOM)", () => {
         targetingRules: [],
         priceConfig: { enforcementStrategy: "DISPLAY_ONLY" },
         variants: [
-          { id: "v-ctrl", key: "control", isControl: true, allocationPercent: 50, modifications: [], priceOverrides: [] },
-          { id: "v-test", key: "variant-a", isControl: false, allocationPercent: 50, modifications: [], priceOverrides: OVERRIDES_V111 },
+          { id: "v-ctrl", key: "control", isControl: true, allocationPercent: 0, modifications: [], priceOverrides: [] },
+          { id: "v-test", key: "variant-a", isControl: false, allocationPercent: 100, modifications: [], priceOverrides: OVERRIDES_V111 },
         ],
       }],
     });
@@ -363,11 +363,62 @@ describe("applyPriceOverrides (DOM)", () => {
     await loadRuntime();
     await vi.runAllTimersAsync();
 
-    // Either control (no price change) or variant-a (price changed)
     const priceEl = document.querySelector(".price-item--regular");
-    const priceText = priceEl.textContent;
-    // If assigned to variant-a, price should be the test price; if control, original
-    expect(["$30.00", "$24.99"].some((p) => priceText.includes(p.replace("$", "")))).toBe(true);
+    expect(priceEl.getAttribute("data-ml-price-override")).toBe("1");
+    expect(priceEl.textContent).toContain("24.99");
+  });
+
+  it("applies compareAtPrice when provided", async () => {
+    document.body.innerHTML = `
+      <form action="/cart/add">
+        <input type="hidden" name="id" value="111" />
+      </form>
+      <div class="price">
+        <span class="price-item--regular">$30.00</span>
+        <span class="price-item--sale">$35.00</span>
+      </div>
+    `;
+
+    setupShopifyGlobals();
+    mockFetch({
+      experiments: [{
+        id: "exp-compare",
+        slug: "compare-test",
+        type: "PRICE_TEST",
+        status: "RUNNING",
+        trafficAllocation: 100,
+        assignmentStrategy: "visitor",
+        targetingRules: [],
+        priceConfig: { enforcementStrategy: "DISPLAY_ONLY" },
+        variants: [
+          { id: "v-ctrl", key: "control", isControl: true, allocationPercent: 0, modifications: [], priceOverrides: [] },
+          {
+            id: "v-test",
+            key: "variant-a",
+            isControl: false,
+            allocationPercent: 100,
+            modifications: [],
+            priceOverrides: [{
+              shopifyVariantId: "gid://shopify/ProductVariant/111",
+              shopifyProductId: "gid://shopify/Product/999",
+              price: "24.99",
+              compareAtPrice: "39.99",
+            }],
+          },
+        ],
+      }],
+    });
+
+    await loadRuntime();
+    await vi.runAllTimersAsync();
+
+    const regular = document.querySelector(".price-item--regular");
+    const compare = document.querySelector(".price-item--sale");
+
+    expect(regular.getAttribute("data-ml-price-override")).toBe("1");
+    expect(compare.getAttribute("data-ml-price-override")).toBe("1");
+    expect(regular.textContent).toContain("24.99");
+    expect(compare.textContent).toContain("39.99");
   });
 
   it("does not apply price when selected variant has no matching override", async () => {
@@ -434,6 +485,7 @@ describe("applyPriceOverrides (DOM)", () => {
 
 describe("watchVariantChanges", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     document.body.innerHTML = "";
     delete window.Shopify;
@@ -487,8 +539,8 @@ describe("watchVariantChanges", () => {
     hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
 
     const priceEl = document.querySelector(".price-item--regular");
-    // Either the test price for variant 222 was applied, or restore/skip happened
-    // Key assertion: no stale variant-111 price ($24.99) is shown for variant-222
+    expect(priceEl.getAttribute("data-ml-price-override")).toBe("1");
+    expect(priceEl.textContent).toContain("19.99");
     expect(priceEl.textContent).not.toContain("24.99");
   });
 
@@ -587,5 +639,60 @@ describe("watchVariantChanges", () => {
 
     expect(priceEl.getAttribute("data-ml-price-override")).toBeNull();
     expect(priceEl.textContent).toBe("$30.00");
+  });
+
+  it("re-applies override after theme re-render wipes price node (MutationObserver path)", async () => {
+    vi.useFakeTimers();
+
+    document.body.innerHTML = `
+      <form action="/cart/add">
+        <input type="hidden" name="id" value="111" />
+      </form>
+      <div class="price">
+        <span class="price-item--regular">$30.00</span>
+      </div>
+    `;
+
+    setupShopifyGlobals();
+    mockFetch({
+      experiments: [{
+        id: "exp-observer",
+        slug: "observer-test",
+        type: "PRICE_TEST",
+        status: "RUNNING",
+        trafficAllocation: 100,
+        assignmentStrategy: "visitor",
+        targetingRules: [],
+        priceConfig: { enforcementStrategy: "DISPLAY_ONLY" },
+        variants: [
+          { id: "v-ctrl", key: "control", isControl: true, allocationPercent: 0, modifications: [], priceOverrides: [] },
+          {
+            id: "v-test", key: "variant-a", isControl: false, allocationPercent: 100,
+            modifications: [],
+            priceOverrides: [
+              { shopifyVariantId: "gid://shopify/ProductVariant/111", shopifyProductId: "gid://shopify/Product/999", price: "24.99" },
+            ],
+          },
+        ],
+      }],
+    });
+
+    await loadRuntime();
+    await vi.runAllTimersAsync();
+
+    const priceContainer = document.querySelector(".price");
+    const priceElBefore = document.querySelector(".price-item--regular");
+    expect(priceElBefore.getAttribute("data-ml-price-override")).toBe("1");
+
+    // Simulate theme section re-render that wipes runtime attributes
+    priceContainer.innerHTML = `<span class="price-item--regular">$31.00</span>`;
+
+    // Observer path waits 50ms before re-applying overrides
+    await vi.advanceTimersByTimeAsync(60);
+
+    const priceElAfter = document.querySelector(".price-item--regular");
+    expect(priceElAfter.getAttribute("data-ml-price-override")).toBe("1");
+    expect(priceElAfter.textContent).toContain("24.99");
+    expect(priceElAfter.textContent).not.toContain("31.00");
   });
 });

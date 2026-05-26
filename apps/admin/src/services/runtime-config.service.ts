@@ -109,7 +109,11 @@ export class RuntimeConfigService {
 
     const fresh = await this.build(shopDomain);
     if (fresh) {
-      await cacheSet(cacheKey, fresh, CACHE_TTL.RUNTIME_CONFIG);
+      try {
+        await cacheSet(cacheKey, fresh, CACHE_TTL.RUNTIME_CONFIG);
+      } catch {
+        // Cache write failures should not block runtime config delivery.
+      }
     }
     return fresh;
   }
