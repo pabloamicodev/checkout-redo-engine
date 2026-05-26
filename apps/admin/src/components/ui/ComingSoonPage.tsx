@@ -13,7 +13,7 @@ interface ComingSoonPageProps {
 export function ComingSoonPage({ accentHex, typeLabel, typeDescription, features, backHref, backLabel }: ComingSoonPageProps) {
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="max-w-2xl mx-auto px-8 py-12 space-y-8">
+      <div className=" mx-auto px-8 py-12 space-y-8">
 
         {/* Back link */}
         <Link

@@ -191,7 +191,7 @@ export default function BillingPage() {
   return (
     <>
     <div className="flex-1 overflow-auto bg-neutral-50">
-      <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
+      <div className="m mx-auto px-8 py-8 space-y-6">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900 tracking-tight">Billing & Plans</h1>
           <p className="text-sm text-neutral-400 mt-0.5">Manage your MarginLab subscription</p>
