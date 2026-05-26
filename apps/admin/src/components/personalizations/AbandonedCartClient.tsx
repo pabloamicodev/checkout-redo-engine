@@ -16,6 +16,15 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
+import { WizardLayout } from "@/components/layout/WizardLayout";
+import { type WizardStep as WizardStepDef } from "@/components/experiments/WizardStepNav";
+import {
+  WizardInput,
+  WizardTextarea,
+  WizardField,
+  WizardNumberInput,
+  WizardCheckCard,
+} from "@/components/experiments/WizardControls";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,8 +57,30 @@ const STATUS_HEX: Record<string, string> = {
   SCHEDULED: "#6366f1",
 };
 
-const WIZARD_STEPS = ["Message", "Targeting", "Schedule", "Review"] as const;
-type WizardStep = 0 | 1 | 2 | 3;
+const ACCENT = "#6366f1";
+
+type WizardStepIndex = 0 | 1 | 2 | 3;
+
+const WIZARD_STEP_DEFS: WizardStepDef[] = [
+  { label: "Message",   sublabel: "Banner text & CTA" },
+  { label: "Targeting", sublabel: "Trigger conditions" },
+  { label: "Schedule",  sublabel: "Timing & priority" },
+  { label: "Review",    sublabel: "Confirm & create" },
+];
+
+const STEP_TITLES = [
+  "Craft your message",
+  "Set targeting rules",
+  "Configure schedule",
+  "Review & create",
+];
+
+const STEP_DESCS = [
+  "Write the banner copy that will re-engage visitors who left items in their cart.",
+  "Define when the banner appears — inactivity window, cart value threshold, and visitor type.",
+  "Optionally set a start/end date and priority for this recovery campaign.",
+  "Review all settings before creating the recovery. It will be saved as a Draft.",
+];
 
 interface WizardForm {
   name: string;
@@ -85,7 +116,7 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
   const router = useRouter();
   const [items, setItems] = useState<AcrItem[]>(initialItems);
   const [showWizard, setShowWizard] = useState(initialShowWizard);
-  const [wizardStep, setWizardStep] = useState<WizardStep>(0);
+  const [wizardStep, setWizardStep] = useState<WizardStepIndex>(0);
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -100,7 +131,7 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
 
   // ── Step validation ────────────────────────────────────────────────────────
 
-  function validateStep(step: WizardStep): string | null {
+  function validateStep(step: WizardStepIndex): string | null {
     if (step === 0) {
       if (!form.name.trim()) return "Name is required";
       if (form.name.length > 200) return "Name must be 200 characters or fewer";
@@ -133,12 +164,12 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
     const err = validateStep(wizardStep);
     if (err) { setFormError(err); return; }
     setFormError(null);
-    setWizardStep((s) => (s + 1) as WizardStep);
+    setWizardStep((s) => (s + 1) as WizardStepIndex);
   }
 
   function handleBack() {
     setFormError(null);
-    setWizardStep((s) => (s - 1) as WizardStep);
+    setWizardStep((s) => (s - 1) as WizardStepIndex);
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -390,99 +421,92 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
         </div>
       </div>
 
-      {/* ── Wizard modal ─────────────────────────────────────────────────────── */}
+      {/* ── Full-screen creation wizard ──────────────────────────────────────── */}
       {showWizard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowWizard(false)}
-          />
-
-          {/* Panel */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-neutral-100">
-              <div>
-                <h2 className="text-base font-semibold text-neutral-900">
-                  Create abandoned cart recovery
+        <div className="fixed inset-0 z-50">
+          <WizardLayout
+            title="Abandoned Cart Recovery"
+            subtitle="Re-engage cart abandoners"
+            icon={<ShoppingCart className="w-4 h-4" />}
+            accentHex={ACCENT}
+            steps={WIZARD_STEP_DEFS}
+            currentStep={wizardStep}
+            onStepClick={(i) => {
+              if (i < wizardStep) {
+                setFormError(null);
+                setWizardStep(i as WizardStepIndex);
+              }
+            }}
+            onCancel={() => setShowWizard(false)}
+            stickyActions={
+              <div className="flex items-center justify-between w-full">
+                <div>
+                  {wizardStep > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleBack}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Back
+                    </button>
+                  )}
+                </div>
+                <div>
+                  {wizardStep < 3 ? (
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
+                      style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #4f46e5 100%)` }}
+                    >
+                      Continue
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={isPending}
+                      className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-60"
+                      style={{ background: "#4f46e5" }}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {isPending ? "Creating…" : "Create recovery"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            }
+          >
+            <div className="max-w-xl mx-auto px-8 py-8">
+              {/* Step heading */}
+              <div className="mb-7">
+                <h2 className="text-lg font-semibold text-neutral-900">
+                  {STEP_TITLES[wizardStep]}
                 </h2>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  Step {wizardStep + 1} of {WIZARD_STEPS.length} — {WIZARD_STEPS[wizardStep]}
+                <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
+                  {STEP_DESCS[wizardStep]}
                 </p>
               </div>
-              <button
-                onClick={() => setShowWizard(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Step progress */}
-            <div className="flex px-6 pt-4 gap-1.5">
-              {WIZARD_STEPS.map((step, i) => (
-                <div
-                  key={step}
-                  className={`flex-1 h-1 rounded-full transition-colors ${
-                    i <= wizardStep ? "bg-brand-600" : "bg-neutral-100"
-                  }`}
-                />
-              ))}
-            </div>
+              {/* Step content */}
+              <div className="space-y-5">
+                {wizardStep === 0 && <Step1 form={form} setField={setField} accentColor={ACCENT} />}
+                {wizardStep === 1 && <Step2 form={form} setField={setField} accentColor={ACCENT} />}
+                {wizardStep === 2 && <Step3 form={form} setField={setField} accentColor={ACCENT} />}
+                {wizardStep === 3 && <StepReview form={form} />}
+              </div>
 
-            {/* Form body */}
-            <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
-              {wizardStep === 0 && <Step1 form={form} setField={setField} />}
-              {wizardStep === 1 && <Step2 form={form} setField={setField} />}
-              {wizardStep === 2 && <Step3 form={form} setField={setField} />}
-              {wizardStep === 3 && <StepReview form={form} />}
-
+              {/* Inline error */}
               {formError && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                <div className="mt-5 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                   <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                  <p className="text-xs text-red-700">{formError}</p>
+                  <p className="text-sm text-red-700">{formError}</p>
                 </div>
               )}
             </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-100 bg-neutral-50/50">
-              <div>
-                {wizardStep > 0 && (
-                  <button
-                    onClick={handleBack}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    Back
-                  </button>
-                )}
-              </div>
-              <div>
-                {wizardStep < 3 ? (
-                  <button
-                    onClick={handleNext}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors"
-                    style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
-                  >
-                    Next
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleCreate}
-                    disabled={isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-60"
-                    style={{ background: "#4f46e5" }}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    {isPending ? "Creating…" : "Create recovery"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          </WizardLayout>
         </div>
       )}
     </div>
@@ -494,252 +518,152 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
 interface StepProps {
   form: WizardForm;
   setField: <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => void;
+  accentColor: string;
 }
 
-function FieldLabel({ label, hint }: { label: string; hint?: string }) {
-  return (
-    <div className="mb-1.5">
-      <label className="block text-xs font-medium text-neutral-700">{label}</label>
-      {hint && <p className="text-[11px] text-neutral-400 mt-0.5">{hint}</p>}
-    </div>
-  );
-}
-
-function Input({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  min,
-  max,
-  step,
-}: {
-  value: string | number;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      min={min}
-      max={max}
-      step={step}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-    />
-  );
-}
-
-function Textarea({
-  value,
-  onChange,
-  placeholder,
-  rows = 3,
-  maxLength,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  rows?: number;
-  maxLength?: number;
-}) {
-  return (
-    <div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={rows}
-        maxLength={maxLength}
-        className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
-      />
-      {maxLength && (
-        <p className="text-[11px] text-neutral-400 text-right mt-0.5">
-          {value.length}/{maxLength}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Step1({ form, setField }: StepProps) {
+function Step1({ form, setField, accentColor }: StepProps) {
   return (
     <>
-      <div>
-        <FieldLabel label="Recovery name" hint="Internal label, not shown to visitors" />
-        <Input
-          value={form.name}
-          onChange={(v) => setField("name", v)}
-          placeholder="e.g. Spring sale cart recovery"
-        />
-      </div>
+      <WizardInput
+        label="Recovery name"
+        value={form.name}
+        onChange={(v) => setField("name", v)}
+        placeholder="e.g. Spring sale cart recovery"
+        hint="Internal label, not shown to visitors"
+        required
+        maxLength={200}
+        accentColor={accentColor}
+        autoFocus
+      />
 
-      <div>
-        <FieldLabel
-          label="Banner message"
-          hint="The main text shown in the recovery banner (max 500 chars)"
-        />
-        <Textarea
-          value={form.message}
-          onChange={(v) => setField("message", v)}
-          placeholder="You left something behind! Complete your purchase before it's gone."
-          rows={3}
-          maxLength={500}
-        />
-      </div>
+      <WizardTextarea
+        label="Banner message"
+        value={form.message}
+        onChange={(v) => setField("message", v)}
+        placeholder="You left something behind! Complete your purchase before it's gone."
+        hint="The main text shown in the recovery banner"
+        required
+        rows={3}
+        maxLength={500}
+        accentColor={accentColor}
+        templateText="You left something behind! Complete your purchase before it's gone."
+      />
 
-      <div>
-        <FieldLabel label="Subtext" hint="Optional supporting text beneath the message (max 300 chars)" />
-        <Textarea
-          value={form.subtext}
-          onChange={(v) => setField("subtext", v)}
-          placeholder="Free shipping on all orders over $50"
-          rows={2}
-          maxLength={300}
-        />
-      </div>
+      <WizardTextarea
+        label="Subtext"
+        value={form.subtext}
+        onChange={(v) => setField("subtext", v)}
+        placeholder="Free shipping on all orders over $50"
+        hint="Optional supporting text beneath the message"
+        rows={2}
+        maxLength={300}
+        accentColor={accentColor}
+      />
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <FieldLabel label="CTA button label" />
-          <Input
-            value={form.ctaLabel}
-            onChange={(v) => setField("ctaLabel", v)}
-            placeholder="Complete your order"
-          />
-        </div>
-        <div>
-          <FieldLabel label="CTA button URL" />
-          <Input
-            value={form.ctaUrl}
-            onChange={(v) => setField("ctaUrl", v)}
-            placeholder="/cart"
-          />
-        </div>
+      <div className="grid grid-cols-2 gap-4">
+        <WizardInput
+          label="CTA button label"
+          value={form.ctaLabel}
+          onChange={(v) => setField("ctaLabel", v)}
+          placeholder="Complete your order"
+          maxLength={100}
+          accentColor={accentColor}
+        />
+        <WizardInput
+          label="CTA button URL"
+          value={form.ctaUrl}
+          onChange={(v) => setField("ctaUrl", v)}
+          placeholder="/cart"
+          accentColor={accentColor}
+        />
       </div>
     </>
   );
 }
 
-function Step2({ form, setField }: StepProps) {
+function Step2({ form, setField, accentColor }: StepProps) {
   return (
     <>
-      <div className="bg-brand-50 border border-brand-200 rounded-lg px-4 py-3">
-        <p className="text-xs text-brand-700">
-          These rules determine <strong>when</strong> the banner is shown. A visitor must match all
-          active rules before the banner appears.
-        </p>
+      <div
+        className="rounded-xl px-4 py-3 text-sm"
+        style={{ background: `${accentColor}0d`, color: accentColor }}
+      >
+        These rules determine <strong>when</strong> the banner is shown. A visitor must match all
+        active rules before the banner appears.
       </div>
 
-      <div>
-        <FieldLabel
-          label="Inactivity window (minutes)"
-          hint="Show banner after this many minutes of no activity (5–1440)"
-        />
-        <Input
-          type="number"
-          value={form.inactivityMinutes}
-          onChange={(v) => setField("inactivityMinutes", parseInt(v, 10) || 30)}
-          min={5}
-          max={1440}
-        />
-        <p className="text-[11px] text-neutral-400 mt-1">
-          Recommended: 15–30 minutes for most stores
-        </p>
-      </div>
+      <WizardNumberInput
+        label="Inactivity window"
+        value={form.inactivityMinutes}
+        onChange={(v) => setField("inactivityMinutes", v)}
+        min={5}
+        max={1440}
+        unit="min"
+        hint="Show banner after this many minutes of no activity (5–1440). Recommended: 15–30 min."
+        accentColor={accentColor}
+      />
 
-      <div>
-        <FieldLabel
-          label="Minimum cart value"
-          hint="Only trigger if cart total ≥ this amount (0 = any cart value)"
-        />
+      <WizardField label="Minimum cart value" hint="Only trigger if cart total ≥ this amount (0 = any cart value)">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">$</span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">$</span>
           <input
             type="number"
             value={form.minCartValue}
             min={0}
             step={0.01}
             onChange={(e) => setField("minCartValue", parseFloat(e.target.value) || 0)}
-            className="w-full pl-7 pr-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full rounded-xl border border-neutral-200 bg-white py-3 pl-8 pr-4 text-sm text-neutral-800 outline-none transition-all focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/10"
           />
         </div>
-      </div>
+      </WizardField>
 
-      <div>
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5">
-            <input
-              type="checkbox"
-              checked={form.returningOnly}
-              onChange={(e) => setField("returningOnly", e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-4 h-4 rounded border-2 border-neutral-300 peer-checked:bg-brand-600 peer-checked:border-brand-600 flex items-center justify-center transition-colors">
-              {form.returningOnly && <Check className="w-2.5 h-2.5 text-white" />}
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-700">Returning visitors only</p>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              Only show to visitors who have been to your store before. Recommended — avoids
-              showing recovery banners to first-time visitors still exploring.
-            </p>
-          </div>
-        </label>
-      </div>
+      <WizardCheckCard
+        checked={form.returningOnly}
+        onChange={(v) => setField("returningOnly", v)}
+        label="Returning visitors only"
+        description="Only show to visitors who have been to your store before. Recommended — avoids showing recovery banners to first-time visitors still exploring."
+        accentColor={accentColor}
+      />
     </>
   );
 }
 
-function Step3({ form, setField }: StepProps) {
+function Step3({ form, setField, accentColor }: StepProps) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <FieldLabel label="Start date" hint="Leave blank to start immediately on activation" />
-          <Input
+      <div className="grid grid-cols-2 gap-4">
+        <WizardField label="Start date" hint="Leave blank to start immediately on activation">
+          <input
             type="datetime-local"
             value={form.startsAt}
-            onChange={(v) => setField("startsAt", v)}
+            onChange={(e) => setField("startsAt", e.target.value)}
+            className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800 outline-none transition-all focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/10"
           />
-        </div>
-        <div>
-          <FieldLabel label="End date" hint="Leave blank for no expiry" />
-          <Input
+        </WizardField>
+        <WizardField label="End date" hint="Leave blank for no expiry">
+          <input
             type="datetime-local"
             value={form.endsAt}
-            onChange={(v) => setField("endsAt", v)}
+            onChange={(e) => setField("endsAt", e.target.value)}
+            className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-800 outline-none transition-all focus:border-indigo-500 focus:ring-[3px] focus:ring-indigo-500/10"
           />
-        </div>
+        </WizardField>
       </div>
 
-      <div>
-        <FieldLabel
-          label="Priority"
-          hint="Lower number = evaluated first when multiple recoveries are configured (0–9999)"
-        />
-        <Input
-          type="number"
-          value={form.priority}
-          onChange={(v) => setField("priority", parseInt(v, 10) || 100)}
-          min={0}
-          max={9999}
-        />
-      </div>
+      <WizardNumberInput
+        label="Priority"
+        value={form.priority}
+        onChange={(v) => setField("priority", v)}
+        min={0}
+        max={9999}
+        hint="Lower number = evaluated first when multiple recoveries are configured (0–9999)"
+        accentColor={accentColor}
+      />
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-        <p className="text-xs text-amber-700">
-          <strong>Note:</strong> Only one abandoned cart recovery can be{" "}
-          <strong>Active</strong> at a time. You will need to activate this recovery manually
-          after creation, and pause any currently active one first.
-        </p>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+        <strong>Note:</strong> Only one abandoned cart recovery can be <strong>Active</strong> at a
+        time. You will need to activate this recovery manually after creation, and pause any
+        currently active one first.
       </div>
     </>
   );
@@ -748,7 +672,7 @@ function Step3({ form, setField }: StepProps) {
 function StepReview({ form }: { form: WizardForm }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs text-neutral-500">
+      <p className="text-sm text-neutral-500">
         Review your settings before creating the recovery campaign.
       </p>
 
@@ -775,8 +699,8 @@ function StepReview({ form }: { form: WizardForm }) {
       />
       <ReviewRow label="Priority" value={String(form.priority)} />
 
-      <div className="mt-4 bg-neutral-50 border border-neutral-200 rounded-lg px-4 py-3">
-        <p className="text-xs text-neutral-500">
+      <div className="mt-4 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3">
+        <p className="text-sm text-neutral-500">
           The recovery will be created as a <strong>Draft</strong>. Activate it when you are ready
           to start showing the banner to visitors.
           {form.startsAt &&

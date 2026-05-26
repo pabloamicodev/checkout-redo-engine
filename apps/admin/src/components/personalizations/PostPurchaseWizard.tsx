@@ -3,12 +3,12 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
-import { Plus, X, ChevronRight } from "lucide-react";
+import { Plus, X, ChevronRight, ArrowLeft, Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { FormSection, FormField } from "@/components/forms/FormSection";
-import { StickyFormActions } from "@/components/forms/StickyFormActions";
-import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardStepNav";
+import { WizardLayout } from "@/components/layout/WizardLayout";
+import { type WizardStep } from "@/components/experiments/WizardStepNav";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1125,94 +1125,85 @@ export function PostPurchaseWizard({ availableOffers }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full overflow-hidden bg-neutral-50">
-      {/* LEFT SIDEBAR */}
-      <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-neutral-100 flex-col">
-        <div
-          className="px-4 pt-5 pb-4 border-b border-neutral-50"
-          style={{ background: `${ACCENT}0a` }}
-        >
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
-            style={{ background: `${ACCENT}18` }}
-          >
-            <span className="text-base" style={{ color: ACCENT }}>◎</span>
-          </div>
-          <p className="text-xs font-bold text-neutral-800">Post-Purchase</p>
-          <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
-            Show targeted offers on the post-purchase page to specific visitor segments after they complete checkout.
-          </p>
-        </div>
-        <div className="flex-1 p-3 overflow-auto">
-          <WizardStepNav
-            orientation="vertical"
-            steps={wizardSteps}
-            currentStep={step}
-            accentHex={FUCHSIA}
-            onStepClick={(i) => { if (i < step) setStep(i as StepIndex); }}
+    <WizardLayout
+      title="Post-Purchase"
+      subtitle="Target post-checkout visitors with specific offers"
+      icon={<span className="text-base leading-none">◎</span>}
+      accentHex={FUCHSIA}
+      steps={wizardSteps}
+      currentStep={step}
+      onStepClick={(i) => { if (i < step) setStep(i as StepIndex); }}
+      onCancel={() => router.back()}
+      previewPanel={
+        step < 4 ? (
+          <PersonalizationPreviewPanel
+            step={step}
+            name={name}
+            description={description}
+            priority={priority}
+            rules={rules}
+            selectedOfferIds={selectedOfferIds}
+            startsAt={startsAt}
+            endsAt={endsAt}
+            availableOffers={availableOffers}
           />
-        </div>
-        <div className="p-3 border-t border-neutral-50">
-          <p className="text-[10px] text-neutral-400 leading-relaxed">
-            Requires the Shopify post-purchase checkout extension.
-          </p>
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Step header */}
-        <div className="px-6 pt-5 pb-4 border-b border-neutral-100 bg-white shrink-0">
-          <p
-            className="text-[10px] font-semibold uppercase tracking-widest mb-0.5"
-            style={{ color: FUCHSIA }}
+        ) : undefined
+      }
+      previewLabel="Live Preview"
+      stickyActions={
+        <div className="flex items-center justify-between w-full">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors"
           >
-            Step {step + 1} of {STEP_LABELS.length}
-          </p>
-          <h1 className="text-[15px] font-bold text-neutral-900">{STEP_TITLES[step]}</h1>
-          <p className="text-xs text-neutral-500 mt-0.5">{STEP_DESCS[step]}</p>
+            {step === 0 ? "Cancel" : <><ArrowLeft className="w-3.5 h-3.5" /> Back</>}
+          </button>
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!canAdvanceStep[step]}
+              title={blockingIssueForStep[step]}
+              className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-colors"
+              style={{ background: `linear-gradient(135deg, ${FUCHSIA} 0%, #a21caf 100%)` }}
+            >
+              Continue
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={saving || !canAdvanceStep[4]}
+              title={blockingIssueForStep[4]}
+              className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60 transition-colors"
+              style={{ background: FUCHSIA }}
+            >
+              <Check className="w-3.5 h-3.5" />
+              {saving ? "Saving…" : "Create Post-Purchase Personalization"}
+            </button>
+          )}
         </div>
-
-        {/* Two-column content */}
-        <div className="flex-1 overflow-auto">
-          <div className="flex gap-6 p-6">
-            <div className="flex-1 min-w-0 space-y-5">
-              {stepContent[step]}
-            </div>
-
-            {step < 4 && (
-              <aside className="w-72 xl:w-80 shrink-0 self-start sticky top-6">
-                <PersonalizationPreviewPanel
-                  step={step}
-                  name={name}
-                  description={description}
-                  priority={priority}
-                  rules={rules}
-                  selectedOfferIds={selectedOfferIds}
-                  startsAt={startsAt}
-                  endsAt={endsAt}
-                  availableOffers={availableOffers}
-                />
-              </aside>
-            )}
-          </div>
-        </div>
-
-        {/* Sticky actions */}
-        <StickyFormActions
-          step={step}
-          totalSteps={5}
-          onBack={handleBack}
-          onNext={handleNext}
-          canContinue={canAdvanceStep[step] ?? true}
-          blockingIssue={blockingIssueForStep[step]}
-          isLastStep={step === 4}
-          isSubmitting={saving}
-          submitLabel="Create Post-Purchase Personalization"
-          accentHex={ACCENT}
-        />
+      }
+    >
+      {/* Step header — sticky */}
+      <div className="sticky top-0 z-10 px-6 pt-5 pb-4 border-b border-neutral-100 bg-white">
+        <p
+          className="text-[10px] font-semibold uppercase tracking-widest mb-0.5"
+          style={{ color: FUCHSIA }}
+        >
+          Step {step + 1} of {STEP_LABELS.length}
+        </p>
+        <h1 className="text-[15px] font-bold text-neutral-900">{STEP_TITLES[step]}</h1>
+        <p className="text-xs text-neutral-500 mt-0.5">{STEP_DESCS[step]}</p>
       </div>
-    </div>
+
+      {/* Step content */}
+      <div className="p-6 space-y-5">
+        {stepContent[step]}
+      </div>
+    </WizardLayout>
   );
 }
 

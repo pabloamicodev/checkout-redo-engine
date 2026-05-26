@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Check, ChevronRight, ArrowLeft, Layers } from "lucide-react";
+import { WizardLayout } from "@/components/layout/WizardLayout";
+import { type WizardStep } from "@/components/experiments/WizardStepNav";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,6 +42,20 @@ interface WizardState {
 }
 
 const STEPS = ["Type", "Content", "Targeting", "Review"] as const;
+
+const STEP_TITLES = [
+  "Choose a block type",
+  "Configure the content",
+  "Set targeting rules",
+  "Review & create",
+];
+
+const STEP_DESCS = [
+  "Select the type of content block to add to your checkout flow.",
+  "Fill in the content that will appear in this block.",
+  "Choose the checkout position and optional audience filters.",
+  "Review your settings and create the block as a Draft.",
+];
 
 // ---------------------------------------------------------------------------
 // Block type catalog
@@ -860,77 +875,72 @@ export function CheckoutBlockWizard() {
     <StepReview key="review" state={state} />,
   ];
 
+  const wizardSteps: WizardStep[] = STEPS.map((label, i) => ({
+    label,
+    status: i < step ? "complete" : i === step ? "active" : "pending",
+  }));
+
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Step indicator */}
-      <nav className="flex items-center gap-0 mb-8">
-        {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center">
-            <button
-              onClick={() => i < step && setStep(i)}
-              disabled={i >= step}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                i === step
-                  ? "text-brand-700 font-semibold"
-                  : i < step
-                  ? "text-neutral-500 hover:text-neutral-700 cursor-pointer"
-                  : "text-neutral-300 cursor-not-allowed"
-              }`}
-            >
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  i < step
-                    ? "bg-brand-600 text-white"
-                    : i === step
-                    ? "bg-brand-100 text-brand-700 ring-2 ring-brand-500"
-                    : "bg-neutral-100 text-neutral-400"
-                }`}
-              >
-                {i < step ? <Check className="w-3 h-3" /> : i + 1}
-              </span>
-              {label}
-            </button>
-            {i < STEPS.length - 1 && (
-              <ChevronRight className="w-4 h-4 text-neutral-300 mx-1" />
-            )}
-          </div>
-        ))}
-      </nav>
-
-      {/* Step card */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-        <h2 className="text-base font-semibold text-neutral-900 mb-5">
-          {STEPS[step]}
-        </h2>
-
-        {stepContent[step]}
-
-        {error && (
-          <p className="mt-4 text-sm text-danger-600 bg-danger-50 rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100">
-          <Button
-            variant="ghost"
-            onClick={() => (step === 0 ? router.back() : setStep(step - 1))}
+    <WizardLayout
+      title="Checkout Block"
+      subtitle="Add trust elements and content to your checkout"
+      icon={<Layers className="w-4 h-4" />}
+      accentHex="#6366f1"
+      steps={wizardSteps}
+      currentStep={step}
+      onStepClick={(i) => { if (i < step) setStep(i); }}
+      onCancel={() => router.back()}
+      stickyActions={
+        <div className="flex items-center justify-between w-full">
+          <button
+            type="button"
+            onClick={() => step === 0 ? router.back() : setStep(step - 1)}
             disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors disabled:opacity-50"
           >
-            {step === 0 ? "Cancel" : "Back"}
-          </Button>
-
+            {step === 0 ? "Cancel" : <><ArrowLeft className="w-3.5 h-3.5" /> Back</>}
+          </button>
           {step < STEPS.length - 1 ? (
-            <Button onClick={() => setStep(step + 1)} disabled={!canAdvance()}>
+            <button
+              type="button"
+              onClick={() => setStep(step + 1)}
+              disabled={!canAdvance()}
+              className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-colors"
+              style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+            >
               Continue
-            </Button>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           ) : (
-            <Button onClick={handleSubmit} disabled={saving || !canAdvance()}>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={saving || !canAdvance()}
+              className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60 transition-colors"
+              style={{ background: "#4f46e5" }}
+            >
+              <Check className="w-3.5 h-3.5" />
               {saving ? "Saving…" : "Create Block"}
-            </Button>
+            </button>
           )}
         </div>
+      }
+    >
+      {/* Step header — sticky */}
+      <div className="sticky top-0 z-10 px-8 pt-6 pb-4 border-b border-neutral-100 bg-white">
+        <h1 className="text-[15px] font-bold text-neutral-900">{STEP_TITLES[step]}</h1>
+        <p className="text-xs text-neutral-500 mt-0.5">{STEP_DESCS[step]}</p>
       </div>
-    </div>
+
+      {/* Step content */}
+      <div className="px-8 py-6 space-y-5 max-w-xl">
+        {stepContent[step]}
+        {error && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+      </div>
+    </WizardLayout>
   );
 }
