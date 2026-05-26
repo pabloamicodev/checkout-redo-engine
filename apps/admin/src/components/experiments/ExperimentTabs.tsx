@@ -2169,7 +2169,7 @@ function ContentModificationsTab({ experiment }: { experiment: ExperimentData })
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Inline guard: broken selectors */}
       {brokenCount > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -2309,7 +2309,7 @@ function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
   });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Guard: duplicate URLs */}
       {duplicateEntries.length > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -2429,7 +2429,7 @@ function CheckoutBlockConfigTab({ experiment }: { experiment: ExperimentData }) 
   const isInactivePlacement = placement ? INACTIVE_PLACEMENTS.has(placement.toLowerCase()) : false;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Guard: extension not installed */}
       {extensionInstalled === false && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -2567,7 +2567,7 @@ function DiscountConfigTab({ experiment }: { experiment: ExperimentData }) {
   const stackingConflict = stacking === "ALLOW_ALL" || stacking === "allow_all";
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Guard: function not deployed */}
       {functionDeployed === false && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -2667,7 +2667,7 @@ function ShippingConfigTab({ experiment }: { experiment: ExperimentData }) {
   const functionDeployed = cfg?.functionDeployed as boolean | undefined;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Guard: delivery customization function not active */}
       {functionDeployed === false && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -2761,7 +2761,7 @@ function PriceMatrixTab({ experiment }: { experiment: ExperimentData }) {
 
   if (productList.length === 0) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6  mx-auto">
         <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center">
           <DollarSign className="w-8 h-8 mx-auto mb-3 text-neutral-300" />
           <p className="text-sm font-medium text-neutral-500 mb-1">No price overrides yet</p>
@@ -2907,7 +2907,7 @@ function OfferConfigTab({ experiment }: { experiment: ExperimentData }) {
   });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Guard: archived offer while test active */}
       {archivedVariants.length > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -3047,7 +3047,7 @@ function PersonalizationConfigTab({ experiment }: { experiment: ExperimentData }
   const hasPriorityConflict = new Set(priorityValues).size < priorityValues.length;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Guard: archived offer */}
       {archivedOfferVariants.length > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
@@ -3162,7 +3162,7 @@ function PersonalizationConfigTab({ experiment }: { experiment: ExperimentData }
 function GenericConfigTab({ experiment }: { experiment: ExperimentData }) {
   const cfg = experiment.settings;
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6  mx-auto">
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-100 flex items-center gap-2">
           <Settings2 className="w-4 h-4 text-neutral-400" />
@@ -3202,7 +3202,7 @@ function TargetingTab({ experiment }: { experiment: ExperimentData }) {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Assignment + traffic */}
       <div className="bg-white rounded-xl border border-neutral-200 p-5">
         <div className="flex items-center gap-2 mb-4">
@@ -3292,7 +3292,7 @@ function TargetingTab({ experiment }: { experiment: ExperimentData }) {
 // ─────────────────────────────────────────────
 function PreviewTab({ experiment }: { experiment: ExperimentData }) {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6  mx-auto">
       <div className="bg-white rounded-xl border border-neutral-200 py-24 text-center">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-neutral-100">
           <Eye className="w-6 h-6 text-neutral-400" />
@@ -3336,7 +3336,7 @@ const METRICS_CONFIG = [
 
 function AnalyticsConfigTab({ experiment }: { experiment: ExperimentData }) {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6  mx-auto">
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-100">
           <h2 className="text-sm font-semibold text-neutral-900">Metrics to track</h2>
@@ -3377,7 +3377,7 @@ function QAHealthTab({ experiment }: { experiment: ExperimentData }) {
   const checks = buildQAChecks(experiment);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-100 flex items-center gap-2">
           <Activity className="w-4 h-4 text-neutral-400" />

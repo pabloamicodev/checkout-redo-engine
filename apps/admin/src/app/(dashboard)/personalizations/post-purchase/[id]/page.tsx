@@ -117,7 +117,7 @@ export default async function PostPurchaseDetailPage({
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
+      <div className=" mx-auto px-6 py-6 space-y-5">
 
         {/* Targeting Rules */}
         <div className="bg-white rounded-xl border border-neutral-100 overflow-hidden">

@@ -108,7 +108,7 @@ export default async function PersonalizationDetailPage({
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
+      <div className=" mx-auto px-6 py-6 space-y-5">
 
         {/* Edit Panel */}
         <PersonalizationEditPanel
