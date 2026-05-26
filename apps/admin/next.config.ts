@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const sentryOrg = process.env.SENTRY_ORG?.trim();
@@ -13,6 +14,7 @@ const canUploadSentryArtifacts =
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client"],
+  outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
   // Shopify App Bridge requires these headers
   async headers() {
     return [
