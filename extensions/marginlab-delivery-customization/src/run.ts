@@ -30,11 +30,6 @@
 // (Generated types would normally come from ../generated/api after shopify app build)
 // ---------------------------------------------------------------------------
 
-interface CartAttribute {
-  key: string;
-  value: string;
-}
-
 interface DeliveryOption {
   handle: string;
   title: string;
@@ -46,7 +41,7 @@ interface DeliveryGroup {
 
 interface RunInput {
   cart: {
-    attributes: CartAttribute[];
+    attribute: { value: string } | null;
     deliveryGroups: DeliveryGroup[];
   };
   deliveryCustomization: {
@@ -86,8 +81,6 @@ interface ShippingCustomizationConfig {
 // Constants
 // ---------------------------------------------------------------------------
 
-const EXP_ATTR_PREFIX = "_ml_exp_";
-
 const EMPTY_RESULT: FunctionRunResult = { operations: [] };
 
 // ---------------------------------------------------------------------------
@@ -109,7 +102,16 @@ export function run(input: RunInput): FunctionRunResult {
 
   if (!config.shipping_rules?.length) return EMPTY_RESULT;
 
-  const cartAttributes = input.cart.attributes ?? [];
+  // Parse consolidated experiment assignments from JSON attribute
+  let assignments: Record<string, string> = {};
+  const rawAssignments = input.cart.attribute?.value;
+  if (rawAssignments) {
+    try {
+      assignments = JSON.parse(rawAssignments) as Record<string, string>;
+    } catch {
+      return EMPTY_RESULT;
+    }
+  }
 
   // Flatten delivery options across all groups into a single list
   const allOptions: DeliveryOption[] = (input.cart.deliveryGroups ?? [])
@@ -122,10 +124,9 @@ export function run(input: RunInput): FunctionRunResult {
   for (const rule of config.shipping_rules) {
     if (!rule.experiment_id || !rule.variant_key || !rule.operations?.length) continue;
 
-    // Resolve variant assignment from cart attribute
-    const attrKey = EXP_ATTR_PREFIX + rule.experiment_id.slice(0, 8);
-    const assigned = cartAttributes.find((a) => a.key === attrKey);
-    if (!assigned || assigned.value !== rule.variant_key) continue;
+    // Resolve variant assignment from consolidated JSON attribute
+    const shortId = rule.experiment_id.slice(0, 8);
+    if (assignments[shortId] !== rule.variant_key) continue;
 
     // Apply each method operation for this variant
     for (const op of rule.operations) {

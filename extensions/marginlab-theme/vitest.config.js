@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    include: ["../../tests/marginlab-theme/**/*.test.{js,ts}"],
   },
 });

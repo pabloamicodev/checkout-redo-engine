@@ -1,7 +1,6 @@
 query RunInput {
   cart {
-    attributes {
-      key
+    attribute(key: "_ml_experiments") {
       value
     }
     deliveryGroups {

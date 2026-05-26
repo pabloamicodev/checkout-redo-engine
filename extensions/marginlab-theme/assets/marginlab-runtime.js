@@ -841,9 +841,15 @@
 
     // Also write to cart attributes via Shopify AJAX API
     var attributes = { "_ml_visitor_id": state.visitorId };
+    var experimentsMap = {};
     assignmentList.forEach(function (a) {
-      attributes["_ml_exp_" + a.experimentId.slice(0, 8)] = a.variantKey;
+      var shortId = a.experimentId.slice(0, 8);
+      attributes["_ml_exp_" + shortId] = a.variantKey;
+      experimentsMap[shortId] = a.variantKey;
     });
+    // Consolidated JSON attribute for delivery customization function
+    // (Cart.attributes plural is unavailable in that function API)
+    attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
 
     fetch("/cart/update.js", {
       method: "POST",

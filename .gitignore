@@ -8,6 +8,7 @@ node_modules
 
 # Test coverage directory
 coverage
+extensions/*/coverage
 
 # Ignore Apple macOS Desktop Services Store
 .DS_Store
