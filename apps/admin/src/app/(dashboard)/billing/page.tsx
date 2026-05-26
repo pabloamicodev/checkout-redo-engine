@@ -189,6 +189,7 @@ export default function BillingPage() {
   const currentPlanKey = data?.currentPlan?.key ?? "free";
 
   return (
+    <>
     <div className="flex-1 overflow-auto bg-neutral-50">
       <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
         <div>
@@ -344,5 +345,7 @@ export default function BillingPage() {
         onCancel={() => setShowCancelConfirm(false)}
       />
     )}
+    </>
+    
   );
 }

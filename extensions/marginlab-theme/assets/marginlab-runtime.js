@@ -305,12 +305,15 @@
     if (exp.type === "PRICE_TEST" && variant.priceOverrides && variant.priceOverrides.length) {
       var strategy = (exp.priceConfig && exp.priceConfig.enforcementStrategy) || "DISPLAY_ONLY";
       if (strategy === "DISPLAY_ONLY") {
+        var priceOverrides = variant.priceOverrides;
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", function () {
-            applyPriceOverrides(variant.priceOverrides);
+            applyPriceOverrides(priceOverrides);
+            watchVariantChanges(priceOverrides);
           });
         } else {
-          applyPriceOverrides(variant.priceOverrides);
+          applyPriceOverrides(priceOverrides);
+          watchVariantChanges(priceOverrides);
         }
       }
     }
@@ -334,42 +337,106 @@
     ".price-item--sale",
   ];
 
-  function applyPriceOverrides(overrides) {
-    var meta = window.ShopifyAnalytics && window.ShopifyAnalytics.meta;
-    var product = meta && meta.product;
-    if (!product) return;
+  // Original price texts captured before the first override — one value per
+  // selector, taken from the first matching element on the page.  Null until
+  // the first call to captureOriginalPriceTexts().
+  var savedPriceTexts = null;
+  // True while our test price is currently shown on screen.
+  var overrideApplied = false;
 
-    // Find if any override matches the currently selected variant
-    var selectedVariantId = null;
+  function captureOriginalPriceTexts() {
+    if (savedPriceTexts) return;
+    savedPriceTexts = {};
+    PRICE_SELECTORS.concat(COMPARE_PRICE_SELECTORS).forEach(function (sel) {
+      var els = querySelectorAll(sel);
+      if (els.length) savedPriceTexts[sel] = els[0].textContent;
+    });
+  }
+
+  // Read the numeric Shopify variant ID from the add-to-cart form.
+  // Handles hidden inputs (Dawn), <select name="id"> (classic), and radio
+  // buttons (some premium themes).
+  function getSelectedNumericVariantId() {
     try {
       var form = document.querySelector("form[action='/cart/add']");
-      var hiddenInput = form && form.querySelector("input[name='id']");
-      if (hiddenInput) selectedVariantId = "gid://shopify/ProductVariant/" + hiddenInput.value;
+      if (!form) return null;
+      var hidden = form.querySelector("input[type='hidden'][name='id']");
+      if (hidden && hidden.value) return hidden.value;
+      var sel = form.querySelector("select[name='id']");
+      if (sel && sel.value) return sel.value;
+      var radio = form.querySelector("input[type='radio'][name='id']:checked");
+      if (radio && radio.value) return radio.value;
     } catch (e) {}
+    return null;
+  }
 
-    overrides.forEach(function (override) {
-      if (selectedVariantId && override.shopifyVariantId !== selectedVariantId) return;
+  // Apply DISPLAY_ONLY price overrides for the currently selected variant.
+  // Always restores saved originals first so switching away from a test
+  // variant shows the real Shopify price rather than stale test prices.
+  function applyPriceOverrides(overrides) {
+    captureOriginalPriceTexts();
 
-      var currency = window.Shopify && window.Shopify.currency && window.Shopify.currency.active || "USD";
-      var formattedPrice = formatMoney(parseFloat(override.price), currency);
+    var numericId = getSelectedNumericVariantId();
+    var gid = numericId ? "gid://shopify/ProductVariant/" + numericId : null;
 
+    // Find the override for the current variant.
+    // If there is only one override and the variant ID is unknown, apply it.
+    var match = null;
+    if (overrides.length === 1 && !gid) {
+      match = overrides[0];
+    } else if (gid) {
+      for (var i = 0; i < overrides.length; i++) {
+        if (overrides[i].shopifyVariantId === gid) { match = overrides[i]; break; }
+      }
+    }
+
+    // Restore originals before (re-)applying so switching variants never
+    // leaves stale test prices on screen.
+    if (savedPriceTexts) {
       PRICE_SELECTORS.forEach(function (sel) {
+        if (savedPriceTexts[sel] !== undefined) {
+          querySelectorAll(sel).forEach(function (el) {
+            el.removeAttribute("data-ml-price-override");
+            el.textContent = savedPriceTexts[sel];
+          });
+        }
+      });
+      COMPARE_PRICE_SELECTORS.forEach(function (sel) {
+        if (savedPriceTexts[sel] !== undefined) {
+          querySelectorAll(sel).forEach(function (el) {
+            el.removeAttribute("data-ml-price-override");
+            el.textContent = savedPriceTexts[sel];
+          });
+        }
+      });
+    }
+
+    if (!match) {
+      overrideApplied = false;
+      return;
+    }
+
+    var currency = (window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || "USD";
+    var formattedPrice = formatMoney(parseFloat(match.price), currency);
+
+    PRICE_SELECTORS.forEach(function (sel) {
+      querySelectorAll(sel).forEach(function (el) {
+        el.setAttribute("data-ml-price-override", "1");
+        el.textContent = formattedPrice;
+      });
+    });
+
+    if (match.compareAtPrice) {
+      var formattedCompare = formatMoney(parseFloat(match.compareAtPrice), currency);
+      COMPARE_PRICE_SELECTORS.forEach(function (sel) {
         querySelectorAll(sel).forEach(function (el) {
-          el.textContent = formattedPrice;
           el.setAttribute("data-ml-price-override", "1");
+          el.textContent = formattedCompare;
         });
       });
+    }
 
-      if (override.compareAtPrice) {
-        var formattedCompare = formatMoney(parseFloat(override.compareAtPrice), currency);
-        COMPARE_PRICE_SELECTORS.forEach(function (sel) {
-          querySelectorAll(sel).forEach(function (el) {
-            el.textContent = formattedCompare;
-            el.setAttribute("data-ml-price-override", "1");
-          });
-        });
-      }
-    });
+    overrideApplied = true;
   }
 
   function formatMoney(amount, currencyCode) {
@@ -380,6 +447,92 @@
       }).format(amount);
     } catch (e) {
       return "$" + amount.toFixed(2);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Variant-change listener — re-applies DISPLAY_ONLY price overrides whenever
+  // the shopper selects a different product variant.
+  //
+  // Three signals are handled:
+  //  1. Native change events on <select name="id"> / <input type="radio" name="id">
+  //     (classic Debut/Narrative themes)
+  //  2. Custom variant events emitted by premium themes
+  //     (variant:changed — Prestige/Turbo, variantChange — older themes)
+  //  3. MutationObserver on the price container — catches Dawn and other
+  //     section-rendering themes that replace DOM nodes on variant switch,
+  //     which silently wipes our data-ml-price-override attributes.
+  // ---------------------------------------------------------------------------
+  var priceWatchActive = false;
+
+  function watchVariantChanges(overrides) {
+    if (priceWatchActive) return;
+    priceWatchActive = true;
+
+    // Guards the MutationObserver against reacting to our own DOM writes.
+    // Set true before any applyPriceOverrides call, false immediately after.
+    var pending = false;
+
+    // Wraps applyPriceOverrides so the MutationObserver is suppressed while
+    // we are intentionally mutating the DOM.
+    function applyAndBlock() {
+      pending = true;
+      applyPriceOverrides(overrides);
+      pending = false;
+    }
+
+    // 1. Classic / most themes — native change event on the variant selector
+    document.addEventListener("change", function (e) {
+      var t = e.target;
+      if (t && t.name === "id" &&
+          (t.tagName === "SELECT" ||
+           (t.tagName === "INPUT" && (t.type === "radio" || t.type === "hidden")))) {
+        applyAndBlock();
+      }
+    });
+
+    // 2. Custom variant-change events fired by premium themes
+    ["variant:changed", "variantChange", "variant-changed"].forEach(function (name) {
+      document.addEventListener(name, applyAndBlock);
+    });
+
+    // 3. Dawn / section-rendering themes: the entire price block gets swapped
+    //    for fresh server-rendered HTML on variant change, destroying our
+    //    overrides.  Watch for DOM mutations inside the price container and
+    //    re-apply only when our override attribute was present and then wiped
+    //    (i.e. the theme re-rendered, not us restoring the original price).
+    var priceContainer =
+      document.querySelector(".price") ||
+      document.querySelector("[data-product-price]") ||
+      document.querySelector(".product__price");
+
+    if (priceContainer && typeof MutationObserver !== "undefined") {
+      var observer = new MutationObserver(function () {
+        if (pending) return;
+        // Only react when we currently have an active override on screen.
+        // If no override is applied (e.g. control variant / no-match variant),
+        // DOM changes are irrelevant and must not trigger a re-apply loop.
+        if (!overrideApplied) return;
+
+        var overridePresent = PRICE_SELECTORS.some(function (sel) {
+          return querySelectorAll(sel).some(function (el) {
+            return el.getAttribute("data-ml-price-override") === "1";
+          });
+        });
+
+        if (overridePresent) return; // still showing our price — nothing to do
+
+        // Override was wiped by a theme re-render — recapture originals from
+        // the fresh HTML, then re-apply.
+        pending = true;
+        savedPriceTexts = null;
+        setTimeout(function () {
+          applyPriceOverrides(overrides);
+          pending = false;
+        }, 50);
+      });
+
+      observer.observe(priceContainer, { childList: true, subtree: true });
     }
   }
 

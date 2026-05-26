@@ -138,6 +138,7 @@ window.MarginLab?.onReady(function(ml) {
   };
 
   return (
+    <>
     <div className="flex-1 overflow-auto bg-neutral-50">
       <div className="mx-auto px-8 py-8 space-y-6">
         <div>
@@ -349,14 +350,15 @@ window.MarginLab?.onReady(function(ml) {
       </div>
     </div>
 
-    {confirmDelete && (
-      <ConfirmDialog
-        title="Delete custom event?"
-        description={`"${confirmDelete.displayName}" will be permanently deleted. Any tracking calls for this event will stop working.`}
-        confirmLabel="Delete permanently"
-        onConfirm={executeDelete}
-        onCancel={() => setConfirmDelete(null)}
-      />
-    )}
+{confirmDelete && (
+  <ConfirmDialog
+    title="Delete custom event?"
+    description={`"${confirmDelete.displayName}" will be permanently deleted. Any tracking calls for this event will stop working.`}
+    confirmLabel="Delete permanently"
+    onConfirm={executeDelete}
+    onCancel={() => setConfirmDelete(null)}
+  />
+)}
+    </>
   );
 }
