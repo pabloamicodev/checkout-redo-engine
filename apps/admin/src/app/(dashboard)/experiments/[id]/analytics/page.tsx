@@ -4,8 +4,8 @@ import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsService } from "@/services/analytics.service";
 import { ExperimentAnalyticsDashboard } from "@/components/charts/ExperimentAnalyticsDashboard";
+import { getSessionShop } from "@/lib/session-shop";
 
-const DEMO_SHOP = process.env.DEMO_SHOP_DOMAIN ?? "demo.myshopify.com";
 const analyticsService = new AnalyticsService();
 
 async function getData(shopDomain: string, experimentId: string) {
@@ -42,7 +42,8 @@ export default async function ExperimentAnalyticsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const data = await getData(DEMO_SHOP, id);
+  const shopDomain = await getSessionShop();
+  const data = await getData(shopDomain, id);
 
   if (!data) return notFound();
 

@@ -18,6 +18,12 @@ const SHOPIFY_SHOP_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/;
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // Propagate or generate a request ID for log correlation
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestWithId = new Request(request, {
+    headers: new Headers({ ...Object.fromEntries(request.headers), "x-request-id": requestId }),
+  });
+
   // Skip middleware for API routes, static files, and _next internals
   if (
     pathname.startsWith("/api/") ||
@@ -29,9 +35,13 @@ export function middleware(request: NextRequest) {
 
   const sessionShop = request.cookies.get("shopify_session_shop")?.value;
 
+  void requestWithId; // available for future use; requestId flows via x-request-id header
+
   // Already authenticated via cookie → allow through
   if (sessionShop && SHOPIFY_SHOP_REGEX.test(sessionShop)) {
-    return NextResponse.next();
+    const res = NextResponse.next();
+    res.headers.set("x-request-id", requestId);
+    return res;
   }
 
   // No session — check if Shopify provided a shop param

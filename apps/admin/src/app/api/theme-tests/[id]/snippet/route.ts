@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getShopId } from "@/lib/api-shop";
 import { getShopifyRestFetch } from "@/lib/shopify-admin-rest";
 import { generateThemeAbSnippet, type ThemeAbVariant } from "@/lib/theme-ab-snippet";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types for Shopify theme asset response
@@ -129,10 +130,9 @@ export async function GET(
     if (foundJs.length > 0) jsAssets = foundJs;
 
   } catch (apiErr) {
-    console.warn(
-      "[snippet] Could not fetch theme assets from Shopify API — using default filenames:",
-      apiErr instanceof Error ? apiErr.message : apiErr
-    );
+    logger.warn("[snippet] Could not fetch theme assets from Shopify API — using default filenames", {
+      error: apiErr instanceof Error ? apiErr.message : String(apiErr),
+    });
     // Fall through: generateThemeAbSnippet uses DEFAULT_CSS_ASSETS / DEFAULT_JS_ASSETS
   }
 
