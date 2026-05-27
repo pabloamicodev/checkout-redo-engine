@@ -46,8 +46,21 @@ export function middleware(request: NextRequest) {
 
   // No session — check if Shopify provided a shop param
   const shopParam = searchParams.get("shop")?.toLowerCase().trim();
+  const isEmbedded = searchParams.get("embedded") === "1";
+  const hostParam = searchParams.get("host")?.trim();
 
   if (shopParam && SHOPIFY_SHOP_REGEX.test(shopParam)) {
+    // Embedded load with valid Shopify context but no session cookie.
+    // Some browsers/users block third-party cookies in iframes, which can
+    // prevent `shopify_session_shop` from being sent and cause an OAuth loop.
+    // In that case, allow the request and let App Bridge-authenticated API calls
+    // establish authorization instead of forcing /api/auth repeatedly.
+    if (isEmbedded && hostParam) {
+      const res = NextResponse.next();
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
     // Must break OUT of the Shopify iframe to do OAuth.
     // A server-side 302 redirect inside the iframe causes Shopify to redirect
     // the user to the app settings page instead.
