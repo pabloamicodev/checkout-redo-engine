@@ -51,6 +51,13 @@ async function exportCsv(
   const startDate = searchParams.get("startDate") ? new Date(searchParams.get("startDate")!) : undefined;
   const endDate = searchParams.get("endDate") ? new Date(searchParams.get("endDate")!) : undefined;
 
+  if (startDate && isNaN(startDate.getTime())) {
+    return NextResponse.json({ error: "Invalid startDate" }, { status: 400 });
+  }
+  if (endDate && isNaN(endDate.getTime())) {
+    return NextResponse.json({ error: "Invalid endDate" }, { status: 400 });
+  }
+
   const lines: string[] = [];
   const filename =
     type === "experiment" && experimentId
@@ -134,8 +141,14 @@ async function exportCsv(
       "Lift", "P-Value", "Significant",
     ]));
 
-    for (const exp of experiments) {
-      const analytics = await analyticsService.getExperimentAnalytics(shop.id, exp.id);
+    // Batch-fetch all experiment analytics in parallel to avoid N+1 sequential queries
+    const analyticsResults = await Promise.all(
+      experiments.map((exp) => analyticsService.getExperimentAnalytics(shop.id, exp.id))
+    );
+
+    for (let i = 0; i < experiments.length; i++) {
+      const exp = experiments[i]!;
+      const analytics = analyticsResults[i];
       if (!analytics) continue;
 
       for (const v of analytics.variants) {

@@ -11,6 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
+  // GUARD: never reachable in production regardless of token config
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not available" }, { status: 404 });
+  }
+
   const testToken = process.env.TEST_AUTH_TOKEN;
   if (!testToken) {
     return NextResponse.json(

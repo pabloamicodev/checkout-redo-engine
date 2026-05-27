@@ -160,6 +160,14 @@ export async function withShopAuth(
   handler: ApiHandler
 ): Promise<NextResponse> {
   try {
+    // Body size guard for admin POST/PUT/PATCH routes (512 KB)
+    if (["POST", "PUT", "PATCH"].includes(request.method)) {
+      const cl = Number(request.headers.get("content-length") ?? "0");
+      if (cl > 512 * 1024) {
+        return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+      }
+    }
+
     const shop = await getShopFromRequest(request);
 
     if (!shop) {
@@ -167,6 +175,16 @@ export async function withShopAuth(
         { error: "Unauthorized: shop not found" },
         { status: 401 }
       );
+    }
+
+    // Admin API rate limit — 300 req/min per shop
+    const rl = await checkRateLimit(`admin:${shop.shopId}`, RATE_LIMITS.admin_api);
+    if (!rl.allowed) {
+      const res = NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+      res.headers.set("X-RateLimit-Limit", String(rl.limit));
+      res.headers.set("X-RateLimit-Remaining", "0");
+      res.headers.set("Retry-After", String(Math.ceil((rl.resetAt - Date.now()) / 1000)));
+      return res;
     }
 
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();

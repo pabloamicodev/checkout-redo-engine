@@ -37,6 +37,7 @@ const REQUIRED_WEBHOOKS = [
   { topic: "refunds/create", path: "/api/webhooks/shopify" },
   { topic: "checkouts/update", path: "/api/webhooks/shopify" },
   { topic: "products/update", path: "/api/webhooks/shopify" },
+  { topic: "themes/publish", path: "/api/webhooks/shopify" },
   { topic: "app/uninstalled", path: "/api/webhooks/shopify" },
   { topic: "app_subscriptions/update", path: "/api/webhooks/shopify" },
   { topic: "customers/data_request", path: "/api/webhooks/shopify" },

@@ -76,9 +76,22 @@ async function processWebhook(
       case "orders/create":
       case "orders/updated":
       case "orders/paid":
-      case "orders/cancelled":
+      case "orders/cancelled": {
+        // Idempotency guard for orders/create — Shopify may retry on timeout/5xx.
+        // orders/updated and orders/paid are designed to be re-processed (they update, not insert).
+        if (topic === "orders/create") {
+          const shopifyOrderId = String((payload as Record<string, unknown>).id ?? "");
+          if (shopifyOrderId) {
+            const existing = await prisma.orderAttribution.findFirst({
+              where: { shopId, shopifyOrderId },
+              select: { id: true },
+            });
+            if (existing) break;
+          }
+        }
         await orderAttributionService.processOrder(shopId, payload);
         break;
+      }
 
       case "refunds/create":
         await orderAttributionService.processRefund(shopId, payload);
@@ -218,18 +231,20 @@ async function processWebhook(
         const redactCustomer = (payload as Record<string, unknown>).customer as Record<string, unknown> | undefined;
         const customerIdToRedact = String(redactCustomer?.id ?? "");
         if (customerIdToRedact) {
-          // Nullify customerId on order attributions (keep aggregate metrics, remove PII)
-          await prisma.orderAttribution.updateMany({
-            where: { shopId, customerId: customerIdToRedact },
-            data: { customerId: null, visitorId: null, sessionId: null, cartToken: null, checkoutToken: null },
-          });
-          // Delete raw events linked to the same visitor IDs
-          // (visitor IDs are already anonymised UUIDs but Shopify may still request deletion)
+          // Collect visitorIds BEFORE nullifying — updateMany wipes them, so findMany after returns 0 rows
           const affectedOrders = await prisma.orderAttribution.findMany({
             where: { shopId, customerId: customerIdToRedact },
             select: { visitorId: true },
           });
           const visitorIds = affectedOrders.map((o: (typeof affectedOrders)[number]) => o.visitorId).filter(Boolean) as string[];
+
+          // Nullify PII fields on order attributions (keep aggregate metrics)
+          await prisma.orderAttribution.updateMany({
+            where: { shopId, customerId: customerIdToRedact },
+            data: { customerId: null, visitorId: null, sessionId: null, cartToken: null, checkoutToken: null },
+          });
+
+          // Delete raw events and assignments linked to those visitors
           if (visitorIds.length > 0) {
             await prisma.event.deleteMany({ where: { shopId, visitorId: { in: visitorIds } } });
             await prisma.experimentAssignment.deleteMany({ where: { shopId, visitorId: { in: visitorIds } } });

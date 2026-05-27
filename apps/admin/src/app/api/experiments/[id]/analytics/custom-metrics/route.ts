@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsService } from "@/services/analytics.service";
+import { withShopAuth } from "@/lib/api-middleware";
 
-const DEMO_SHOP = process.env.DEMO_SHOP_DOMAIN ?? "demo.myshopify.com";
 const analyticsService = new AnalyticsService();
 
 /**
@@ -20,47 +20,50 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const shop = await prisma.shop.findUnique({
-    where: { shopDomain: DEMO_SHOP },
-    select: { id: true },
-  });
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const eventName = searchParams.get("eventName");
 
-  const { id } = await params;
-  const { searchParams } = new URL(request.url);
-  const eventName = searchParams.get("eventName");
+    if (!eventName?.trim()) {
+      return NextResponse.json({ error: "eventName query param is required" }, { status: 400 });
+    }
 
-  if (!eventName?.trim()) {
-    return NextResponse.json({ error: "eventName query param is required" }, { status: 400 });
-  }
+    // GUARD: only allow registered custom events for this shop
+    const registered = await prisma.customEvent.findUnique({
+      where: { shopId_name: { shopId, name: eventName } },
+      select: { name: true, displayName: true, description: true },
+    });
+    if (!registered) {
+      return NextResponse.json(
+        { error: `Custom event "${eventName}" is not registered for this shop. Register it at /custom-events first.` },
+        { status: 404 }
+      );
+    }
 
-  // GUARD: only allow registered custom events for this shop
-  const registered = await prisma.customEvent.findUnique({
-    where: { shopId_name: { shopId: shop.id, name: eventName } },
-    select: { name: true, displayName: true, description: true },
-  });
-  if (!registered) {
-    return NextResponse.json(
-      { error: `Custom event "${eventName}" is not registered for this shop. Register it at /custom-events first.` },
-      { status: 404 }
+    const startDate = searchParams.get("startDate") ? new Date(searchParams.get("startDate")!) : undefined;
+    const endDate = searchParams.get("endDate") ? new Date(searchParams.get("endDate")!) : undefined;
+
+    if (startDate && isNaN(startDate.getTime())) {
+      return NextResponse.json({ error: "Invalid startDate" }, { status: 400 });
+    }
+    if (endDate && isNaN(endDate.getTime())) {
+      return NextResponse.json({ error: "Invalid endDate" }, { status: 400 });
+    }
+
+    const result = await analyticsService.getCustomEventMetrics(
+      shopId,
+      id,
+      eventName,
+      startDate && endDate ? { start: startDate, end: endDate } : undefined
     );
-  }
 
-  const startDate = searchParams.get("startDate") ? new Date(searchParams.get("startDate")!) : undefined;
-  const endDate = searchParams.get("endDate") ? new Date(searchParams.get("endDate")!) : undefined;
+    if (!result) return NextResponse.json({ error: "Experiment not found" }, { status: 404 });
 
-  const result = await analyticsService.getCustomEventMetrics(
-    shop.id,
-    id,
-    eventName,
-    startDate && endDate ? { start: startDate, end: endDate } : undefined
-  );
-
-  if (!result) return NextResponse.json({ error: "Experiment not found" }, { status: 404 });
-
-  return NextResponse.json({
-    ...result,
-    eventDisplayName: registered.displayName,
-    eventDescription: registered.description,
+    return NextResponse.json({
+      ...result,
+      eventDisplayName: registered.displayName,
+      eventDescription: registered.description,
+    });
   });
 }

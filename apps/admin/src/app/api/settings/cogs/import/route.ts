@@ -44,6 +44,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File must be a .csv" }, { status: 400 });
     }
 
+    // GUARD: 10 MB limit — prevent memory exhaustion from oversized uploads
+    const MAX_CSV_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_CSV_BYTES) {
+      return NextResponse.json(
+        { error: "File too large. Maximum CSV size is 10 MB." },
+        { status: 413 }
+      );
+    }
+
     const csvText = await file.text();
     if (!csvText.trim()) {
       return NextResponse.json({ error: "CSV file is empty" }, { status: 400 });

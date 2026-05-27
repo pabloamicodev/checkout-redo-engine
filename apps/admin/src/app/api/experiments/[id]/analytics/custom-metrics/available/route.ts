@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const DEMO_SHOP = process.env.DEMO_SHOP_DOMAIN ?? "demo.myshopify.com";
+import { withShopAuth } from "@/lib/api-middleware";
 
 /**
  * GET /api/experiments/:id/analytics/custom-metrics/available
@@ -14,38 +13,33 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const shop = await prisma.shop.findUnique({
-    where: { shopDomain: DEMO_SHOP },
-    select: { id: true },
-  });
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const { id: experimentId } = await params;
 
-  const { id: experimentId } = await params;
+    const [customEvents, eventCounts] = await Promise.all([
+      prisma.customEvent.findMany({
+        where: { shopId },
+        orderBy: { displayName: "asc" },
+        select: { name: true, displayName: true, description: true },
+      }),
+      prisma.event.groupBy({
+        by: ["eventName"],
+        where: { shopId, experimentId, eventType: "CUSTOM" },
+        _count: { id: true },
+      }),
+    ]);
 
-  const [customEvents, eventCounts] = await Promise.all([
-    prisma.customEvent.findMany({
-      where: { shopId: shop.id },
-      orderBy: { displayName: "asc" },
-      select: { name: true, displayName: true, description: true },
-    }),
-    prisma.event.groupBy({
-      by: ["eventName"],
-      where: { shopId: shop.id, experimentId, eventType: "CUSTOM" },
-      _count: { id: true },
-    }),
-  ]);
+    const countMap = new Map(
+      eventCounts.map((e: (typeof eventCounts)[number]) => [e.eventName, e._count.id])
+    );
 
-  const countMap = new Map(
-    eventCounts.map((e: (typeof eventCounts)[number]) => [e.eventName, e._count.id])
-  );
-
-  return NextResponse.json({
-    events: customEvents.map((e: (typeof customEvents)[number]) => ({
-      name: e.name,
-      displayName: e.displayName,
-      description: e.description,
-      occurrences: countMap.get(e.name) ?? 0,
-    })),
+    return NextResponse.json({
+      events: customEvents.map((e: (typeof customEvents)[number]) => ({
+        name: e.name,
+        displayName: e.displayName,
+        description: e.description,
+        occurrences: countMap.get(e.name) ?? 0,
+      })),
+    });
   });
 }
-

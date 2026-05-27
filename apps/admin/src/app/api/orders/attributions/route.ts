@@ -10,6 +10,12 @@ export async function GET(request: NextRequest) {
   const financialStatus = searchParams.get("financialStatus") ?? undefined;
   const startDate = searchParams.get("startDate") ? new Date(searchParams.get("startDate")!) : undefined;
   const endDate = searchParams.get("endDate") ? new Date(searchParams.get("endDate")!) : undefined;
+  if (startDate && isNaN(startDate.getTime())) {
+    return NextResponse.json({ error: "Invalid startDate" }, { status: 400 });
+  }
+  if (endDate && isNaN(endDate.getTime())) {
+    return NextResponse.json({ error: "Invalid endDate" }, { status: 400 });
+  }
   const page = Math.max(0, parseInt(searchParams.get("page") ?? "1", 10) - 1);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
 

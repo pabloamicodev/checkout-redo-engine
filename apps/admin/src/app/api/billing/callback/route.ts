@@ -4,7 +4,7 @@
  * Shopify redirects the merchant here after they approve/decline a charge.
  * We activate the charge and update the ShopPlan record.
  *
- * GUARD: charge_id must match what we stored for the shop.
+ * GUARD: charge_id must match what we stored for the shop (prevents cross-shop activation).
  * GUARD: declined charge → redirect back to billing page with error.
  */
 
@@ -30,6 +30,17 @@ export async function GET(request: NextRequest) {
 
   if (!shopRecord) {
     return NextResponse.redirect(`${process.env.HOST}/billing?error=shop_not_found`);
+  }
+
+  // GUARD: verify this chargeId was initiated by this shop — prevents an attacker who
+  // obtained a valid charge ID from activating it on a different shop's plan record.
+  const shopPlan = await prisma.shopPlan.findUnique({
+    where: { shopId: shopRecord.id },
+    select: { shopifyChargeId: true },
+  });
+
+  if (!shopPlan || shopPlan.shopifyChargeId !== chargeId) {
+    return NextResponse.redirect(`${process.env.HOST}/billing?error=invalid_charge`);
   }
 
   try {

@@ -19,9 +19,10 @@ const DEFAULT_RETENTION_DAYS = 90;
 const BATCH_SIZE = 5_000;
 
 export async function GET(request: NextRequest) {
+  // GUARD: secret check — fails closed if CRON_SECRET is not set
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
