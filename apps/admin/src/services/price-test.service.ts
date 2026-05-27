@@ -99,7 +99,7 @@ export class PriceTestService {
       targetingRules: [],
       goals: [],
       settings: {},
-      priceConfig,
+      priceConfig: priceConfig as { enforcementStrategy: "RUNTIME_JS" | "SHOPIFY_FUNCTION" },
       variants: input.variants.map((v) => ({
         key: v.key,
         name: v.name,

@@ -123,7 +123,7 @@ export class SplitUrlTestService {
       targetingRules: [],
       goals: [],
       settings: {},
-      splitUrlConfig,
+      splitUrlConfig: splitUrlConfig as unknown as { preserveQueryParams: boolean; redirectBehavior: "client_side" | "server_side" },
       variants: input.variants.map((v) => ({
         key: v.key,
         name: v.name,

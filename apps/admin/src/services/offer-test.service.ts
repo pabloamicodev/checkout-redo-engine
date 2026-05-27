@@ -122,7 +122,7 @@ export class OfferTestService {
         name: v.name,
         isControl: v.isControl,
         allocationPercent: v.allocationPercent,
-        modifications: (v.isControl || !v.modification ? [] : [v.modification]) as unknown as Record<string, unknown>[],
+        modifications: (v.isControl || !v.modification ? [] : [v.modification]) as never[],
         priceOverrides: [],
         checkoutBlockIds: [],
         offerIds: [],
