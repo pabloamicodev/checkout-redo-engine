@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import * as Sentry from "@sentry/nextjs";
 import { validateWebhook } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
@@ -228,7 +229,7 @@ async function processWebhook(
         logger.info("[GDPR customers/data_request]", {
           shopDomain,
           customerId,
-          customerEmail,
+          customerEmailHash: createHash("sha256").update(customerEmail).digest("hex"),
           orders: orders.length,
           events: events.length,
           assignments: assignments.length,

@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
               "https://partner.shopify.com",
             ].join(" "),
           },
+          { key: "X-Content-Type-Options", value: "nosniff" },
         ],
       },
       // Runtime config endpoint: allow Shopify storefronts to fetch

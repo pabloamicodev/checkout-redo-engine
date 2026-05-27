@@ -149,7 +149,7 @@ export async function getShopFromRequest(request: NextRequest): Promise<{ shopId
   if (!shopDomain) return null;
 
   const shop = await prisma.shop.findUnique({
-    where: { shopDomain },
+    where: { shopDomain, uninstalledAt: null },
     select: { id: true, shopDomain: true },
   });
 

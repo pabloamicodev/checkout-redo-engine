@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
     const { visitorId, sessionId, context } = parsed.data;
 
     return withRuntimeRateLimit(
+      `runtime_assign_shop:${shopDomain}`,
+      "runtime_assign_shop",
+      () => withRuntimeRateLimit(
       `runtime_assign:${visitorId}`,
       "runtime_assign",
       async () => {
@@ -186,12 +189,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-        // Fire-and-forget: record that the storefront is assigning visitors
         recordRuntimeSignal(shopDomain, "assignment");
 
         return NextResponse.json({ assignments: Object.values(assignments) });
-      } // end withRuntimeRateLimit handler
-    ); // end withRuntimeRateLimit
+      } // end per-visitor withRuntimeRateLimit handler
+      ) // end per-visitor withRuntimeRateLimit
+    ); // end per-shop withRuntimeRateLimit
   }); // end withRuntimeAuth
 }
 

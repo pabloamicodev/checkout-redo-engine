@@ -26,6 +26,7 @@ export const RATE_LIMITS = {
   // Runtime endpoints (per shop or per visitor)
   runtime_config: { limit: 120, windowSeconds: 60 },      // 120 req/min per shop (CDN-fronted)
   runtime_assign: { limit: 100, windowSeconds: 60 },      // 100 req/min per visitor
+  runtime_assign_shop: { limit: 2000, windowSeconds: 60 }, // 2000 req/min per shop (DoS guard)
   runtime_event: { limit: 200, windowSeconds: 60 },       // 200 events/min per shop
   runtime_cart_sync: { limit: 60, windowSeconds: 60 },    // 60 req/min per visitor
   // Generic admin
