@@ -131,14 +131,16 @@ export class DiscountTestService {
       trafficAllocation: data.trafficAllocation ?? 100,
       targetingRules: (data.targetingRules ?? []) as never[],
       goals: [],
-      settings: {},
+      settings: {
+        discountType: data.discountType,
+        stacking: data.stacking,
+        eligibility: data.eligibility,
+      },
       primaryMetric: "revenue_per_visitor",
       secondaryMetrics: ["conversion_rate", "average_order_value"],
       assignmentStrategy: "visitor",
       discountConfig: {
-        discountType: data.discountType,
-        stacking: data.stacking,
-        eligibility: data.eligibility,
+        type: data.discountType as "PERCENTAGE" | "FIXED_AMOUNT" | "FREE_SHIPPING" | undefined,
       },
       variants: data.variants.map(v => {
         const key = v.isControl ? "control" : `variant_${String.fromCharCode(97 + variantIdx++)}`;
@@ -153,7 +155,7 @@ export class DiscountTestService {
           offerIds: [],
           discountConfig: {
             value: v.discountValue,
-            type: v.discountType ?? data.discountType,
+            type: (v.discountType ?? data.discountType) as "PERCENTAGE" | "FIXED_AMOUNT" | "FREE_SHIPPING" | undefined,
             tiers: v.tiers,
           },
           settings: {},
