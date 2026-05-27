@@ -106,6 +106,8 @@ export interface VariantDiscountRule {
   value: number;
   minimum_cart_value?: number;
   message?: string;
+  // Present for PRICE_TEST rules — limits the discount to a specific line item
+  target_variant_gid?: string;
 }
 
 export interface OfferRule {
@@ -484,6 +486,7 @@ export class FunctionConfigService {
           variant_key: variant.key,
           discount_type: "FIXED_AMOUNT",
           value: discountAmount,
+          target_variant_gid: override.shopifyVariantId,
           message: `Price Test – ${variant.key}`,
         });
       }

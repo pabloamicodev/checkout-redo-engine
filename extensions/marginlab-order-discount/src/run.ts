@@ -2,7 +2,7 @@ import type { RunInput, FunctionRunResult } from "../generated/api";
 import { DiscountApplicationStrategy } from "../generated/api";
 
 const EMPTY_DISCOUNT: FunctionRunResult = {
-  discountApplicationStrategy: DiscountApplicationStrategy.First,
+  discountApplicationStrategy: DiscountApplicationStrategy.All,
   discounts: [],
 };
 
@@ -17,6 +17,8 @@ interface VariantDiscountRule {
   value: number;
   minimum_cart_value?: number;
   message?: string;
+  // Present for PRICE_TEST rules — scopes the discount to a specific line item
+  target_variant_gid?: string;
 }
 
 interface OfferRule {
@@ -64,7 +66,14 @@ export function run(input: RunInput): FunctionRunResult {
 
     if (rule.minimum_cart_value !== undefined && subtotal < rule.minimum_cart_value) continue;
 
-    discounts.push(buildDiscount(rule.discount_type, rule.value, rule.message));
+    // Price test rules scope the discount to a specific Shopify variant (line item).
+    // Discount test rules apply to the whole order subtotal.
+    const target: FunctionRunResult["discounts"][number]["targets"][number] =
+      rule.target_variant_gid
+        ? { productVariant: { id: rule.target_variant_gid } }
+        : { orderSubtotal: { excludedVariantIds: [] } };
+
+    discounts.push(buildDiscount(rule.discount_type, rule.value, [target], rule.message));
   }
 
   // ── Offer rules ───────────────────────────────────────────────────────────
@@ -73,13 +82,20 @@ export function run(input: RunInput): FunctionRunResult {
     if (rule.requires_activation) continue; // activated offers handled client-side
     if (rule.minimum_cart_value !== undefined && subtotal < rule.minimum_cart_value) continue;
 
-    discounts.push(buildDiscount(rule.discount_type, rule.value, rule.message));
+    discounts.push(
+      buildDiscount(
+        rule.discount_type,
+        rule.value,
+        [{ orderSubtotal: { excludedVariantIds: [] } }],
+        rule.message
+      )
+    );
   }
 
   if (discounts.length === 0) return EMPTY_DISCOUNT;
 
   return {
-    discountApplicationStrategy: DiscountApplicationStrategy.First,
+    discountApplicationStrategy: DiscountApplicationStrategy.All,
     discounts,
   };
 }
@@ -87,10 +103,11 @@ export function run(input: RunInput): FunctionRunResult {
 function buildDiscount(
   type: "PERCENTAGE" | "FIXED_AMOUNT" | "FREE",
   value: number,
+  targets: FunctionRunResult["discounts"][number]["targets"],
   message?: string
 ): FunctionRunResult["discounts"][number] {
   const discount: FunctionRunResult["discounts"][number] = {
-    targets: [{ orderSubtotal: { excludedVariantIds: [] } }],
+    targets,
     value:
       type === "PERCENTAGE"
         ? { percentage: { value: value.toFixed(2) } }

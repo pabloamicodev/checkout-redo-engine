@@ -23,12 +23,19 @@ export interface RateLimitResult {
 
 // GUARD: default limits by endpoint class
 export const RATE_LIMITS = {
+  // Runtime endpoints (per shop or per visitor)
   runtime_config: { limit: 120, windowSeconds: 60 },      // 120 req/min per shop (CDN-fronted)
   runtime_assign: { limit: 100, windowSeconds: 60 },      // 100 req/min per visitor
   runtime_event: { limit: 200, windowSeconds: 60 },       // 200 events/min per shop
   runtime_cart_sync: { limit: 60, windowSeconds: 60 },    // 60 req/min per visitor
+  // Generic admin
   admin_api: { limit: 300, windowSeconds: 60 },           // 300 req/min per shop
   webhook_inbound: { limit: 50, windowSeconds: 60 },      // 50 webhooks/min
+  // Per-operation limits (write-heavy or expensive operations)
+  create_experiment: { limit: 10, windowSeconds: 60 },    // 10 creates/min per shop
+  import_cogs: { limit: 1, windowSeconds: 3600 },         // 1 CSV import/hour per shop
+  reset_analytics: { limit: 2, windowSeconds: 3600 },     // 2 resets/hour per shop (destructive)
+  analytics_export: { limit: 10, windowSeconds: 60 },     // 10 exports/min per shop
 } as const;
 
 export type RateLimitKey = keyof typeof RATE_LIMITS;

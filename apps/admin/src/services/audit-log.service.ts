@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export interface AuditLogInput {
   shopId: string;
@@ -34,7 +35,11 @@ export class AuditLogService {
       });
     } catch (error) {
       // Audit log failures are non-fatal but should be monitored
-      console.error("[AuditLog] Failed to write audit log:", error);
+      logger.error("[AuditLog] Failed to write audit log", error instanceof Error ? error : undefined, {
+        entityType: input.entityType,
+        entityId: input.entityId,
+        action: input.action,
+      });
     }
   }
 

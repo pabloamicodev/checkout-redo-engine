@@ -151,14 +151,9 @@ export default function NewExperimentPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const shop = process.env.NEXT_PUBLIC_DEMO_SHOP ?? "demo.myshopify.com";
-
       const res = await fetch("/api/experiments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shop-Domain": shop,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: state.name,
           hypothesis: state.hypothesis,
@@ -172,6 +167,14 @@ export default function NewExperimentPage() {
           variants: state.variants,
         }),
       });
+
+      if (res.status === 402) {
+        const body = await res.json() as { error?: string; upgradeRequired?: string };
+        toast.error(
+          (body.error ?? "Plan limit reached.") + " Visit Billing to upgrade."
+        );
+        return;
+      }
 
       if (!res.ok) {
         const err = await res.json() as { error?: string };

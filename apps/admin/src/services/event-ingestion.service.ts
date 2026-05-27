@@ -54,6 +54,22 @@ interface FunnelFlags {
 
 const dailyMetricService = new DailyMetricService();
 
+// Strip all query params from stored URLs — UTMs are captured in dedicated columns,
+// and query strings frequently contain PII (email=, token=, customer_id=, etc.).
+function sanitizeUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    // Remove all query params — PII-safe; UTMs are stored in dedicated columns
+    u.search = "";
+    u.hash = "";
+    return u.toString();
+  } catch {
+    // Not a valid absolute URL — store only up to the first ?
+    return raw.split("?")[0] ?? raw;
+  }
+}
+
 export class EventIngestionService {
   async ingest(shopId: string, batch: EventBatch): Promise<{ warnings?: string[] }> {
     // -------------------------------------------------------------------
@@ -91,9 +107,9 @@ export class EventIngestionService {
         sessionId: batch.sessionId ?? null,
         eventName: e.eventName,
         eventType: eventType as never,
-        url: e.url ?? null,
+        url: sanitizeUrl(e.url),
         path: e.path ?? null,
-        referrer: e.referrer ?? null,
+        referrer: sanitizeUrl(e.referrer),
         deviceType: e.deviceType ?? null,
         country: e.country ?? null,
         currency: e.currency ?? null,

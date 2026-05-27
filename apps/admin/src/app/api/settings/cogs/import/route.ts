@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withShopAuth } from "@/lib/api-middleware";
 import { CogsService } from "@/services/cogs.service";
+import { checkRateLimit, applyRateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
 
 const service = new CogsService();
 
@@ -15,6 +16,16 @@ const service = new CogsService();
 // GUARD: MANUAL source entries are not overwritten unless overwriteManual=true.
 export async function POST(request: NextRequest) {
   return withShopAuth(request, async (shopId) => {
+    const rl = await checkRateLimit(`${shopId}:import_cogs`, RATE_LIMITS.import_cogs);
+    if (!rl.allowed) {
+      const headers = new Headers();
+      applyRateLimitHeaders(headers, rl);
+      return NextResponse.json(
+        { error: "COGS import is limited to once per hour. Please try again later." },
+        { status: 429, headers }
+      );
+    }
+
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json(

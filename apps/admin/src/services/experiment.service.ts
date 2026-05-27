@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { cacheDel } from "@/lib/redis";
+import { cacheDel, cacheDelPattern } from "@/lib/redis";
 import { generateSlug } from "@/lib/utils";
 import type { CreateExperimentSchema, UpdateExperimentSchema } from "@/lib/zod-schemas";
 import type { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
 import { AuditLogService } from "./audit-log.service";
 import { FunctionConfigService } from "./function-config.service";
+import { logger } from "@/lib/logger";
 
 type CreateExperimentInput = z.infer<typeof CreateExperimentSchema>;
 type UpdateExperimentInput = z.infer<typeof UpdateExperimentSchema>;
@@ -157,7 +159,7 @@ export class ExperimentService {
       after: { name: experiment.name, type: experiment.type, status: experiment.status },
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, experiment.id);
 
     return experiment;
   }
@@ -207,7 +209,7 @@ export class ExperimentService {
       after: input,
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, id);
 
     return updated;
   }
@@ -241,7 +243,7 @@ export class ExperimentService {
       action: "launched",
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, id);
 
     // Sync Shopify Function metafield for Function-backed experiment types
     const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
@@ -254,7 +256,10 @@ export class ExperimentService {
         }));
         this.functionConfig
           .registerDiscountExperiment(shop.shopDomain, { id, variants })
-          .catch((err) => console.error("[ExperimentService] FunctionConfig register failed:", err));
+          .catch((err) => {
+            Sentry.captureException(err, { tags: { experimentId: id, type: "DISCOUNT_TEST", phase: "register" } });
+            logger.error("[ExperimentService] FunctionConfig register failed", err instanceof Error ? err : undefined, { experimentId: id });
+          });
       }
 
       if (experiment.type === "PRICE_TEST") {
@@ -267,7 +272,10 @@ export class ExperimentService {
           }));
           this.functionConfig
             .registerPriceExperiment(shop.shopDomain, { id, variants })
-            .catch((err) => console.error("[ExperimentService] Price FunctionConfig register failed:", err));
+            .catch((err) => {
+              Sentry.captureException(err, { tags: { experimentId: id, type: "PRICE_TEST", phase: "register" } });
+              logger.error("[ExperimentService] Price FunctionConfig register failed", err instanceof Error ? err : undefined, { experimentId: id });
+            });
         }
       }
 
@@ -280,7 +288,10 @@ export class ExperimentService {
               shippingConfig,
               variants: (experiment.variants as Array<{ key: string; isControl: boolean }>).map((v) => ({ key: v.key, isControl: v.isControl })),
             })
-            .catch((err) => console.error("[ExperimentService] Shipping FunctionConfig register failed:", err));
+            .catch((err) => {
+              Sentry.captureException(err, { tags: { experimentId: id, type: "SHIPPING_TEST", phase: "register" } });
+              logger.error("[ExperimentService] Shipping FunctionConfig register failed", err instanceof Error ? err : undefined, { experimentId: id });
+            });
         }
       }
     }
@@ -309,7 +320,7 @@ export class ExperimentService {
       action: "paused",
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, id);
 
     await this.deregisterFunctionConfig(shopId, experiment, id);
 
@@ -337,7 +348,7 @@ export class ExperimentService {
       action: "completed",
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, id);
 
     await this.deregisterFunctionConfig(shopId, experiment, id);
 
@@ -361,7 +372,7 @@ export class ExperimentService {
       action: "archived",
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, id);
 
     await this.deregisterFunctionConfig(shopId, experiment, id);
 
@@ -382,7 +393,7 @@ export class ExperimentService {
       action: "deleted",
     });
 
-    await this.invalidateCache(shopId);
+    await this.invalidateCache(shopId, id);
   }
 
   async duplicate(shopId: string, id: string, actorId?: string) {
@@ -478,7 +489,10 @@ export class ExperimentService {
     if (experiment.type === "DISCOUNT_TEST") {
       this.functionConfig
         .deregisterDiscountExperiment(shop.shopDomain, id)
-        .catch((err) => console.error("[ExperimentService] FunctionConfig deregister failed:", err));
+        .catch((err) => {
+          Sentry.captureException(err, { tags: { experimentId: id, type: "DISCOUNT_TEST", phase: "deregister" } });
+          logger.error("[ExperimentService] FunctionConfig deregister failed", err instanceof Error ? err : undefined, { experimentId: id });
+        });
     }
 
     if (experiment.type === "PRICE_TEST") {
@@ -486,7 +500,10 @@ export class ExperimentService {
       if (priceConfig?.["enforcementStrategy"] === "SHOPIFY_FUNCTION") {
         this.functionConfig
           .deregisterPriceExperiment(shop.shopDomain, id)
-          .catch((err) => console.error("[ExperimentService] Price FunctionConfig deregister failed:", err));
+          .catch((err) => {
+            Sentry.captureException(err, { tags: { experimentId: id, type: "PRICE_TEST", phase: "deregister" } });
+            logger.error("[ExperimentService] Price FunctionConfig deregister failed", err instanceof Error ? err : undefined, { experimentId: id });
+          });
       }
     }
 
@@ -495,13 +512,17 @@ export class ExperimentService {
       if (shippingConfig?.["useDeliveryCustomization"] === true) {
         this.functionConfig
           .deregisterShippingExperiment(shop.shopDomain, id)
-          .catch((err) => console.error("[ExperimentService] Shipping FunctionConfig deregister failed:", err));
+          .catch((err) => {
+            Sentry.captureException(err, { tags: { experimentId: id, type: "SHIPPING_TEST", phase: "deregister" } });
+            logger.error("[ExperimentService] Shipping FunctionConfig deregister failed", err instanceof Error ? err : undefined, { experimentId: id });
+          });
       }
     }
   }
 
-  private async invalidateCache(shopId: string): Promise<void> {
+  private async invalidateCache(shopId: string, experimentId?: string): Promise<void> {
     const shop = await prisma.shop.findUnique({ where: { id: shopId }, select: { shopDomain: true } });
     if (shop) await cacheDel(`runtime:config:${shop.shopDomain}`);
+    if (experimentId) await cacheDelPattern(`analytics:experiment:${experimentId}:*`);
   }
 }

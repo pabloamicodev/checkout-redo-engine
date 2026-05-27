@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
 
     const { visitorId, sessionId, cartToken, assignments } = parsed.data;
 
+    // GUARD: cartToken must match Shopify's token format (alphanumeric + hyphens, ≤64 chars).
+    // Prevents arbitrary strings being stored for order attribution.
+    if (!/^[a-zA-Z0-9_\-]{1,64}$/.test(cartToken)) {
+      return NextResponse.json({ error: "Invalid cart token format" }, { status: 400 });
+    }
+
     return withRuntimeRateLimit(
       `runtime_cart_sync:${visitorId}`,
       "runtime_cart_sync",
@@ -35,8 +41,36 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Shop not found" }, { status: 404 });
         }
 
+        const experimentIds = assignments.map((a) => a.experimentId);
+        const variantIds = assignments.map((a) => a.variantId);
+
+        // GUARD: verify ownership — only update assignments that actually belong to
+        // this visitor for this shop. Prevents a spoofed visitorId from touching
+        // another visitor's attribution data via a known experimentId/variantId pair.
+        const existing = await prisma.experimentAssignment.findMany({
+          where: {
+            shopId: shop.id,
+            visitorId,
+            experimentId: { in: experimentIds },
+            variantId: { in: variantIds },
+          },
+          select: { experimentId: true, variantId: true },
+        });
+
+        if (existing.length === 0) {
+          // No verified assignments — nothing to update. Return ok to not leak info.
+          return NextResponse.json({ ok: true }, { status: 200 });
+        }
+
+        // Build an allowed set to skip any unverified experimentId/variantId pairs
+        const allowedPairs = new Set(
+          existing.map((r) => `${r.experimentId}:${r.variantId}`)
+        );
+
         // Update all assignments with this cart token for attribution
         for (const assignment of assignments) {
+          if (!allowedPairs.has(`${assignment.experimentId}:${assignment.variantId}`)) continue;
+
           await prisma.experimentAssignment.updateMany({
             where: {
               shopId: shop.id,

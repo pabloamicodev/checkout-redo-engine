@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getShopifyRestFetch } from "@/lib/shopify-admin-rest";
 import { getSessionShop } from "@/lib/session-shop";
+import { logger } from "@/lib/logger";
 
 interface ShopifyShop {
   id: number;
@@ -43,7 +44,9 @@ export async function GET(_req: NextRequest) {
     });
   } catch (err) {
     // Soft-fail: return safe defaults so the wizard can still render
-    console.error("[shopify/shop-info] fetch failed:", err);
+    logger.warn("[shopify/shop-info] fetch failed — returning safe defaults", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json(
       {
         currency: null,

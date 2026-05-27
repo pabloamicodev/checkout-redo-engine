@@ -1,6 +1,7 @@
 import { ExperimentService } from "./experiment.service";
 import { prisma } from "@/lib/prisma";
 import { getShopifyRestFetch, type ShopifyTheme } from "@/lib/shopify-admin-rest";
+import { logger } from "@/lib/logger";
 
 const experimentService = new ExperimentService();
 
@@ -174,10 +175,9 @@ export class ThemeTestService {
         if (apiError instanceof Error && apiError.message.startsWith("Theme test")) {
           throw apiError; // rethrow our own guard errors
         }
-        console.warn(
-          "[ThemeTestService.activate] Could not verify themes via Shopify API:",
-          apiError instanceof Error ? apiError.message : apiError
-        );
+        logger.warn("[ThemeTestService.activate] Could not verify themes via Shopify API", {
+          error: apiError instanceof Error ? apiError.message : String(apiError),
+        });
       }
     }
 
@@ -234,9 +234,11 @@ export class ThemeTestService {
       })
     );
 
-    console.warn(
-      `[ThemeTestService] Auto-paused ${running.length} running theme test(s) for shop ${shopId} — reason: ${reason}`
-    );
+    logger.warn("[ThemeTestService] Auto-paused running theme tests", {
+      shopId,
+      paused: running.length,
+      reason,
+    });
 
     return { paused: running.length, ids: running.map((e: (typeof running)[number]) => e.id) };
   }

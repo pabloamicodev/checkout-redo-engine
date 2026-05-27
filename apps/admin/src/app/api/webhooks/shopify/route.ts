@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { validateWebhook } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
 import { cacheDel } from "@/lib/redis";
 import { OrderAttributionService } from "@/services/order-attribution.service";
 import { BillingService } from "@/services/billing.service";
 import { ThemeTestService } from "@/services/theme-test.service";
+import { EmailService } from "@/services/email.service";
+import { logger } from "@/lib/logger";
 
 const orderAttributionService = new OrderAttributionService();
 const billingService = new BillingService();
 const themeTestService = new ThemeTestService();
+const emailService = new EmailService();
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
@@ -51,7 +55,10 @@ export async function POST(request: NextRequest) {
 
   // Process webhook asynchronously (don't await to return 200 quickly)
   processWebhook(shop.id, shopDomain, topic, payload as Record<string, unknown>, webhookLog.id).catch(
-    (err) => console.error("[Webhook] Processing error:", err)
+    (err) => {
+      Sentry.captureException(err, { tags: { webhookTopic: topic, shopDomain } });
+      logger.error("[Webhook] Processing error", err instanceof Error ? err : undefined, { topic, shopDomain });
+    }
   );
 
   return NextResponse.json({ ok: true });
@@ -100,6 +107,59 @@ async function processWebhook(
         await billingService.processSubscriptionWebhook(shopId, payload);
         break;
 
+      case "checkouts/update": {
+        // Shopify sets abandoned_checkout_url when a checkout goes stale (≈1 hour of inactivity).
+        // Look up any active AbandonedCart personalization and send a recovery email.
+        const checkout = payload as Record<string, unknown>;
+        const abandonedUrl = checkout.abandoned_checkout_url as string | undefined;
+        const email = checkout.email as string | undefined;
+        if (!abandonedUrl || !email) break;
+
+        const personalization = await prisma.personalization.findFirst({
+          where: { shopId, type: "ABANDONED_CART", status: "ACTIVE" },
+          orderBy: { priority: "asc" },
+        });
+
+        if (!personalization) break;
+
+        const mods = personalization.modifications as Array<Record<string, unknown>>;
+        const bannerMod = mods.find((m) => m["type"] === "announcement_bar") ?? mods[0];
+
+        const lineItems = (checkout.line_items as Array<Record<string, unknown>> | undefined) ?? [];
+        const cartItems = lineItems.map((item) => ({
+          title: String(item["title"] ?? "Item"),
+          quantity: Number(item["quantity"] ?? 1),
+          price: String(item["price"] ?? "0.00"),
+        }));
+
+        // Find an offer code linked to this personalization if any
+        let offerCode: string | undefined;
+        if (personalization.offerIds?.[0]) {
+          const offer = await prisma.offer.findUnique({
+            where: { id: personalization.offerIds[0] },
+            select: { discountRules: true },
+          });
+          if (offer) {
+            const rules = offer.discountRules as Record<string, unknown> | null;
+            offerCode = rules?.["code"] as string | undefined;
+          }
+        }
+
+        void emailService
+          .sendAbandonedCartEmail({
+            to: email,
+            shopDomain,
+            checkoutUrl: abandonedUrl,
+            cartItems,
+            message: String(bannerMod?.["message"] ?? "You left something in your cart"),
+            subtext: bannerMod?.["subtext"] as string | undefined,
+            ctaLabel: bannerMod?.["ctaLabel"] as string | undefined,
+            offerCode,
+          })
+          .catch((err) => logger.error("[Webhook checkouts/update] Email send error", err instanceof Error ? err : undefined, { shopDomain }));
+        break;
+      }
+
       case "themes/publish": {
         // A merchant manually published a theme while a theme test may be running.
         // Auto-pause any RUNNING theme tests for this shop to avoid data corruption.
@@ -108,9 +168,13 @@ async function processWebhook(
         const reason = `themes/publish webhook: merchant published theme "${themeName}" (ID: ${themeId ?? "unknown"}) — auto-paused to protect experiment integrity`;
         const result = await themeTestService.pauseAllRunningForShop(shopId, reason);
         if (result.paused > 0) {
-          console.warn(
-            `[Webhook themes/publish] Auto-paused ${result.paused} theme test(s) for shop ${shopDomain}: ${result.ids.join(", ")}`
-          );
+          logger.warn("[Webhook themes/publish] Auto-paused theme test(s)", {
+            shopDomain,
+            paused: result.paused,
+            ids: result.ids,
+            themeId,
+            themeName,
+          });
         }
         break;
       }
@@ -137,11 +201,13 @@ async function processWebhook(
           },
           select: { eventName: true, eventType: true, occurredAt: true, url: true },
         });
-        console.log(
-          `[GDPR customers/data_request] shop=${shopDomain} customerId=${customerId} email=${customerEmail}` +
-            ` orders=${orders.length} events=${events.length}`,
-          JSON.stringify({ orders, events })
-        );
+        logger.info("[GDPR customers/data_request]", {
+          shopDomain,
+          customerId,
+          customerEmail,
+          orders: orders.length,
+          events: events.length,
+        });
         // Shopify does not require us to send this data anywhere — just acknowledge receipt.
         // For App Store compliance the log above is the audit trail.
         break;
@@ -169,7 +235,7 @@ async function processWebhook(
             await prisma.experimentAssignment.deleteMany({ where: { shopId, visitorId: { in: visitorIds } } });
           }
         }
-        console.log(`[GDPR customers/redact] shop=${shopDomain} customerId=${customerIdToRedact} — PII nullified`);
+        logger.info("[GDPR customers/redact] PII nullified", { shopDomain, customerId: customerIdToRedact });
         break;
       }
 
@@ -180,15 +246,15 @@ async function processWebhook(
         const shopRecord = await prisma.shop.findUnique({ where: { shopDomain }, select: { id: true } });
         if (shopRecord) {
           await prisma.shop.delete({ where: { id: shopRecord.id } });
-          console.log(`[GDPR shop/redact] shop=${shopDomain} — all data deleted`);
+          logger.info("[GDPR shop/redact] All data deleted", { shopDomain });
         } else {
-          console.log(`[GDPR shop/redact] shop=${shopDomain} — already deleted or not found`);
+          logger.info("[GDPR shop/redact] Shop not found or already deleted", { shopDomain });
         }
         break;
       }
 
       default:
-        console.log(`[Webhook] Unhandled topic: ${topic}`);
+        logger.warn("[Webhook] Unhandled topic", { topic, shopDomain });
     }
 
     await prisma.webhookLog.update({

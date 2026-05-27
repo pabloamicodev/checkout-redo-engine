@@ -15,6 +15,8 @@
  *   logger.error("Webhook processing failed", error, { topic, shopId });
  */
 
+import { getRequestCtx } from "@/lib/request-context";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogMeta {
@@ -27,6 +29,9 @@ interface AxiomEvent {
   message: string;
   service: string;
   environment: string;
+  request_id?: string;
+  shop_id?: string;
+  shop_domain?: string;
   [key: string]: unknown;
 }
 
@@ -109,12 +114,17 @@ function log(
     meta = errorOrMeta;
   }
 
+  const reqCtx = getRequestCtx();
+
   const event: AxiomEvent = {
     _time: new Date().toISOString(),
     level,
     message,
     service: SERVICE,
     environment: ENV,
+    ...(reqCtx?.requestId ? { request_id: reqCtx.requestId } : {}),
+    ...(reqCtx?.shopId ? { shop_id: reqCtx.shopId } : {}),
+    ...(reqCtx?.shopDomain ? { shop_domain: reqCtx.shopDomain } : {}),
     ...meta,
     ...(err
       ? {

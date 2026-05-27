@@ -16,6 +16,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getShopifyAdminClient } from "@/lib/shopify";
+import { logger } from "@/lib/logger";
 
 const GIDS_PREFIX = "gid://shopify/ProductVariant/";
 const CSV_MAX_ROWS_WITHOUT_FORCE = 10_000;
@@ -228,7 +229,7 @@ export class CogsService {
         if (!raw.data) throw new Error("Empty GraphQL response from Shopify");
         response = { data: raw.data };
       } catch (err) {
-        console.error("[CogsService.syncFromShopify] GraphQL error", err);
+        logger.error("[CogsService.syncFromShopify] GraphQL error", err instanceof Error ? err : undefined);
         errors++;
         break;
       }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsService } from "@/services/analytics.service";
+import { withShopAuth } from "@/lib/api-middleware";
 
-const DEMO_SHOP = process.env.DEMO_SHOP_DOMAIN ?? "demo.myshopify.com";
 const analyticsService = new AnalyticsService();
 
 // CSV helpers
@@ -30,12 +30,21 @@ function csvRow(values: unknown[]): string {
  *   format=csv        — only CSV supported for now
  */
 export async function GET(request: NextRequest) {
-  const shop = await prisma.shop.findUnique({
-    where: { shopDomain: DEMO_SHOP },
-    select: { id: true, currencyCode: true },
-  });
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const shop = await prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { id: true, currencyCode: true },
+    });
+    if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
+    return exportCsv(shop, request);
+  });
+}
+
+async function exportCsv(
+  shop: { id: string; currencyCode: string },
+  request: NextRequest
+): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") ?? "pl";
   const experimentId = searchParams.get("experimentId") ?? undefined;

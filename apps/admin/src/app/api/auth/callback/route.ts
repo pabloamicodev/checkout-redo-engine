@@ -25,6 +25,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/crypto";
 import { BillingService } from "@/services/billing.service";
+import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 
 const SHOPIFY_SHOP_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/;
 const billingService = new BillingService();
@@ -33,6 +35,8 @@ const REQUIRED_WEBHOOKS = [
   { topic: "orders/create", path: "/api/webhooks/shopify" },
   { topic: "orders/updated", path: "/api/webhooks/shopify" },
   { topic: "refunds/create", path: "/api/webhooks/shopify" },
+  { topic: "checkouts/update", path: "/api/webhooks/shopify" },
+  { topic: "products/update", path: "/api/webhooks/shopify" },
   { topic: "app/uninstalled", path: "/api/webhooks/shopify" },
   { topic: "app_subscriptions/update", path: "/api/webhooks/shopify" },
   { topic: "customers/data_request", path: "/api/webhooks/shopify" },
@@ -87,17 +91,7 @@ export async function GET(request: NextRequest) {
     digestBuf.length !== hmacBuf.length ||
     !timingSafeEqual(digestBuf, hmacBuf)
   ) {
-    // DEBUG: temporary — remove after fixing
-    return NextResponse.json({
-      error: "Invalid HMAC signature",
-      debug: {
-        secretLen: apiSecret.length,
-        secretPrefix: apiSecret.substring(0, 8),
-        messageUsed: message,
-        computed: digest,
-        received: hmac,
-      }
-    }, { status: 403 });
+    return NextResponse.json({ error: "Invalid HMAC signature" }, { status: 403 });
   }
 
   // Exchange code for permanent access token
@@ -112,8 +106,9 @@ export async function GET(request: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    const err = await tokenRes.text();
-    console.error("[OAuth] Token exchange failed:", err);
+    const errBody = await tokenRes.text();
+    logger.error("[OAuth] Token exchange failed", undefined, { shop, status: tokenRes.status });
+    Sentry.captureMessage("[OAuth] Token exchange failed", { level: "error", extra: { shop, status: tokenRes.status, body: errBody } });
     return NextResponse.json({ error: "Token exchange failed" }, { status: 500 });
   }
 
@@ -160,10 +155,15 @@ export async function GET(request: NextRequest) {
   // Ensure free plan record exists
   await billingService.ensurePlanRecord(shopRecord.id);
 
-  // Register webhooks (best-effort, non-blocking)
-  registerWebhooks(shop, access_token).catch((err) =>
-    console.error("[OAuth] Webhook registration failed:", err)
-  );
+  // Register webhooks — blocking so failures are caught before redirect.
+  // Non-fatal: a failed webhook registration doesn't block the merchant from using the app,
+  // but we log to Sentry so ops can remediate without the merchant noticing.
+  try {
+    await registerWebhooks(shop, access_token);
+  } catch (err) {
+    logger.error("[OAuth] Webhook registration failed", err instanceof Error ? err : undefined, { shop });
+    Sentry.captureException(err, { tags: { shop, phase: "oauth_webhook_registration" } });
+  }
 
   // Redirect back into Shopify admin embedded context, clearing the state cookie.
   // We must redirect to admin.shopify.com (not our app host directly) so Shopify
@@ -199,10 +199,11 @@ export async function GET(request: NextRequest) {
 
 async function registerWebhooks(shop: string, accessToken: string): Promise<void> {
   const host = process.env.HOST!;
+  const failures: string[] = [];
 
   for (const wh of REQUIRED_WEBHOOKS) {
     try {
-      await fetch(`https://${shop}/admin/api/2025-04/webhooks.json`, {
+      const res = await fetch(`https://${shop}/admin/api/2025-04/webhooks.json`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -216,8 +217,19 @@ async function registerWebhooks(shop: string, accessToken: string): Promise<void
           },
         }),
       });
+      // 422 = webhook already registered — not an error
+      if (!res.ok && res.status !== 422) {
+        const body = await res.text().catch(() => "");
+        logger.warn("[OAuth] Webhook registration returned unexpected status", { topic: wh.topic, status: res.status });
+        failures.push(wh.topic);
+      }
     } catch (err) {
-      console.error(`[OAuth] Failed to register webhook ${wh.topic}:`, err);
+      logger.error("[OAuth] Failed to register webhook", err instanceof Error ? err : undefined, { topic: wh.topic, shop });
+      failures.push(wh.topic);
     }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Failed to register webhooks: ${failures.join(", ")}`);
   }
 }

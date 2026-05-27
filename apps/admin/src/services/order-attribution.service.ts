@@ -219,8 +219,11 @@ export class OrderAttributionService {
       select: { settings: true },
     });
     const shopSettings = (shop?.settings ?? {}) as Record<string, unknown>;
+    // Shopify Payments default: 2.9% + $0.30 per transaction
     const transactionFeePercent = (shopSettings.transactionFeePercent as number) ?? 2.9;
-    const transactionFee = totalPrice * (transactionFeePercent / 100);
+    const transactionFeeFixed = (shopSettings.transactionFeeFixed as number) ?? 0.30;
+    const transactionFee =
+      totalPrice * (transactionFeePercent / 100) + transactionFeeFixed;
 
     const estimatedShippingCost =
       (shopSettings.estimatedShippingCost as number) ?? 0;

@@ -143,22 +143,6 @@ export async function getShopFromRequest(request: NextRequest): Promise<{ shopId
       null;
   }
 
-  // 4. Test auth bypass — requires TEST_AUTH_TOKEN env var to be set.
-  //    Pass header:  X-Test-Auth: <token>  +  X-Shop-Domain: <shop>
-  //    Works in any NODE_ENV so E2E tests can run against production.
-  if (!shopDomain) {
-    const testToken = process.env.TEST_AUTH_TOKEN;
-    if (testToken) {
-      const incomingToken = request.headers.get("x-test-auth");
-      if (incomingToken === testToken) {
-        const headerShop = request.headers.get("x-shop-domain");
-        if (headerShop?.endsWith(".myshopify.com")) {
-          shopDomain = headerShop;
-        }
-      }
-    }
-  }
-
   if (!shopDomain) return null;
 
   const shop = await prisma.shop.findUnique({
@@ -185,7 +169,12 @@ export async function withShopAuth(
       );
     }
 
-    return await handler(shop.shopId, shop.actorId);
+    const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+    const { requestStorage } = await import("@/lib/request-context");
+    return await requestStorage.run(
+      { requestId, shopId: shop.shopId, shopDomain: shop.shopDomain },
+      () => handler(shop.shopId, shop.actorId)
+    );
   } catch (error) {
     if (error instanceof Error) {
       // Domain validation errors
@@ -201,7 +190,6 @@ export async function withShopAuth(
       }
     }
 
-    console.error("[API Error]", error);
     Sentry.captureException(error);
     logger.error("[API Error]", error instanceof Error ? error : undefined, {
       path: request.nextUrl.pathname,

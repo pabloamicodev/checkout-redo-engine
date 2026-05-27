@@ -34,8 +34,26 @@ export const ExperimentStatusSchema = z.enum([
 // Targeting
 // ---------------------------------------------------------------------------
 
+export const TargetingConditionTypeSchema = z.enum([
+  "device_type",
+  "country",
+  "url_path",
+  "url_query",
+  "cart_value",
+  "cart_product_id",
+  "customer_tag",
+  "customer_logged_in",
+  "new_visitor",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "referrer",
+  "cookie",
+  "custom_attribute",
+]);
+
 const TargetingConditionSchema = z.object({
-  type: z.string(),
+  type: TargetingConditionTypeSchema,
   operator: z.enum(["eq", "neq", "contains", "not_contains", "in", "not_in", "gte", "lte", "gt", "lt"]),
   value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.array(z.number())]),
 });
@@ -94,6 +112,63 @@ export const PriceOverrideSchema = z.object({
 export const PriceOverridesSchema = z.array(PriceOverrideSchema);
 
 // ---------------------------------------------------------------------------
+// Typed config schemas
+// ---------------------------------------------------------------------------
+
+export const DiscountConfigSchema = z
+  .object({
+    type: z.enum(["PERCENTAGE", "FIXED_AMOUNT", "FREE_SHIPPING"]).optional(),
+    value: z.number().min(0).optional(),
+    minimumOrderAmount: z.number().min(0).optional(),
+    appliesTo: z.enum(["ALL", "SPECIFIC_PRODUCTS", "SPECIFIC_COLLECTIONS"]).optional(),
+    productIds: z.array(z.string()).optional(),
+    collectionIds: z.array(z.string()).optional(),
+    code: z.string().optional(),
+  })
+  .optional()
+  .nullable();
+
+export const PriceConfigSchema = z
+  .object({
+    enforcementStrategy: z.enum(["RUNTIME_JS", "SHOPIFY_FUNCTION"]).default("RUNTIME_JS"),
+    currency: z.string().length(3).optional(),
+  })
+  .optional()
+  .nullable();
+
+export const ShippingConfigSchema = z
+  .object({
+    useDeliveryCustomization: z.boolean().default(false),
+    hideMethodIds: z.array(z.string()).optional(),
+    renameMethodIds: z.record(z.string()).optional(),
+    freeShippingThreshold: z.number().min(0).optional(),
+  })
+  .optional()
+  .nullable();
+
+export const ContentConfigSchema = z
+  .object({
+    applyAntiFlicker: z.boolean().default(true),
+    antiFlickerTimeout: z.number().min(0).max(5000).optional(),
+  })
+  .optional()
+  .nullable();
+
+export const SplitUrlConfigSchema = z
+  .object({
+    preserveQueryParams: z.boolean().default(true),
+    redirectBehavior: z.enum(["client_side", "server_side"]).default("client_side"),
+  })
+  .optional()
+  .nullable();
+
+export const GoalSchema = z.object({
+  metric: z.string().min(1),
+  type: z.enum(["primary", "secondary", "guardrail"]).default("secondary"),
+  minimumDetectableEffect: z.number().min(0).max(100).optional(),
+});
+
+// ---------------------------------------------------------------------------
 // Experiment Variant
 // ---------------------------------------------------------------------------
 
@@ -107,10 +182,9 @@ export const CreateVariantSchema = z.object({
   description: z.string().optional(),
   isControl: z.boolean().default(false),
   allocationPercent: z.number().min(0).max(100),
-  // Stored as JSON — each experiment type uses its own modification shape
-  modifications: z.array(z.record(z.unknown())).default([]),
+  modifications: ModificationsSchema.default([]),
   priceOverrides: PriceOverridesSchema.default([]),
-  discountConfig: z.record(z.unknown()).optional().nullable(),
+  discountConfig: DiscountConfigSchema,
   redirectUrl: z.string().url().optional().nullable(),
   checkoutBlockIds: z.array(z.string()).default([]),
   offerIds: z.array(z.string()).default([]),
@@ -139,13 +213,13 @@ export const CreateExperimentSchema = z.object({
   startsAt: z.string().datetime().optional().nullable(),
   endsAt: z.string().datetime().optional().nullable(),
   targetingRules: TargetingRulesSchema.default([]),
-  goals: z.array(z.record(z.unknown())).default([]),
+  goals: z.array(GoalSchema).default([]),
   settings: z.record(z.unknown()).default({}),
-  priceConfig: z.record(z.unknown()).optional().nullable(),
-  discountConfig: z.record(z.unknown()).optional().nullable(),
-  shippingConfig: z.record(z.unknown()).optional().nullable(),
-  contentConfig: z.record(z.unknown()).optional().nullable(),
-  splitUrlConfig: z.record(z.unknown()).optional().nullable(),
+  priceConfig: PriceConfigSchema,
+  discountConfig: DiscountConfigSchema,
+  shippingConfig: ShippingConfigSchema,
+  contentConfig: ContentConfigSchema,
+  splitUrlConfig: SplitUrlConfigSchema,
   variants: z.array(CreateVariantSchema).min(2, "At least 2 variants required"),
 });
 
@@ -295,6 +369,7 @@ export const ShopSettingsSchema = z.object({
   defaultTimezone: z.string().optional(),
   estimatedShippingCost: z.number().min(0).optional(),
   transactionFeePercent: z.number().min(0).max(100).optional(),
+  transactionFeeFixed: z.number().min(0).optional(),
   privacyConsentRequired: z.boolean().optional(),
   debugModeEnabled: z.boolean().optional(),
   antiFlickerEnabled: z.boolean().optional(),

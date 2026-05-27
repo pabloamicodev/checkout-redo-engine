@@ -167,7 +167,7 @@ function evaluateCondition(
     case "collection_viewed":
       return (ctx.viewedCollectionIds ?? []).includes(value as string);
     default:
-      return true; // Unknown condition types pass by default
+      return false; // Unknown condition types fail-safe (deny rather than allow)
   }
 }
 

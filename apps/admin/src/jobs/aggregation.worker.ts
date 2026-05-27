@@ -11,6 +11,8 @@
 
 import { Worker } from "bullmq";
 import { DailyMetricService } from "@/services/daily-metric.service";
+import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 import {
   QUEUE_NAMES,
   type AggregationJobData,
@@ -36,17 +38,13 @@ const worker = new Worker<AggregationJobData, AggregationJobResult>(
   QUEUE_NAMES.DAILY_METRIC_AGGREGATION,
   async (job) => {
     const { shopId, triggerType } = job.data;
-    console.log(
-      `[aggregation-worker] job=${job.id} type=${triggerType} shop=${shopId} starting`
-    );
+    logger.info("[aggregation-worker] job starting", { jobId: job.id, triggerType, shopId });
 
     await job.updateProgress(0);
     const { processed } = await dailyMetricService.reAggregateShop(shopId);
     await job.updateProgress(100);
 
-    console.log(
-      `[aggregation-worker] job=${job.id} shop=${shopId} processed=${processed} experiments`
-    );
+    logger.info("[aggregation-worker] job processed", { jobId: job.id, shopId, processed });
     return { processed };
   },
   {
@@ -56,21 +54,24 @@ const worker = new Worker<AggregationJobData, AggregationJobResult>(
 );
 
 worker.on("completed", (job, result) => {
-  console.log(`[aggregation-worker] job=${job.id} completed processed=${result.processed}`);
+  logger.info("[aggregation-worker] job completed", { jobId: job.id, processed: result.processed });
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`[aggregation-worker] job=${job?.id} failed: ${err.message}`);
+  Sentry.captureException(err, { tags: { jobId: job?.id, worker: "aggregation" } });
+  logger.error("[aggregation-worker] job failed", err, { jobId: job?.id });
 });
 
 worker.on("error", (err) => {
-  console.error(`[aggregation-worker] worker error: ${err.message}`);
+  Sentry.captureException(err, { tags: { worker: "aggregation" } });
+  logger.error("[aggregation-worker] worker error", err);
 });
 
-console.log("[aggregation-worker] started, waiting for jobs...");
+logger.info("[aggregation-worker] started, waiting for jobs");
 
 async function shutdown() {
-  console.log("[aggregation-worker] shutting down...");
+  logger.info("[aggregation-worker] shutting down");
+  await logger.flush();
   await worker.close();
   process.exit(0);
 }

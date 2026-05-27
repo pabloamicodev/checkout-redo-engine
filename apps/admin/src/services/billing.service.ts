@@ -16,6 +16,7 @@
 import { prisma } from "@/lib/prisma";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { getPlan, PLAN_ORDER, LimitCheck, LimitType, PlanKey, PLANS } from "@/lib/plans";
+import { logger } from "@/lib/logger";
 
 export class BillingService {
   /**
@@ -321,7 +322,7 @@ export class BillingService {
 
     // If cancelled/frozen/expired, log the event
     if (["CANCELLED", "FROZEN", "EXPIRED"].includes(mappedStatus)) {
-      console.info(`[Billing] Subscription ${mappedStatus} for shop ${shopId}, charge ${chargeId}`);
+      logger.info("[Billing] Subscription status changed", { shopId, chargeId, status: mappedStatus });
     }
   }
 

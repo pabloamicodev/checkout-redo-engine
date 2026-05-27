@@ -45,6 +45,7 @@
     apiBase: "",
     visitorId: "",
     sessionId: "",
+    customerId: null,
     onReadyCallbacks: [],
   };
 
@@ -83,6 +84,7 @@
       state.config = config;
       runExperiments(config);
       runPersonalizations(config);
+      runOffers(config);
       state.initialized = true;
       removeAntiFlicker();
       flushReadyCallbacks();
@@ -206,7 +208,12 @@
 
       // Skip if already assigned
       if (state.assignments[exp.id]) {
-        applyVariantModifications(exp, state.assignments[exp.id]);
+        var alreadyAssigned = state.assignments[exp.id];
+        if (exp.type === "SPLIT_URL_TEST") {
+          handleSplitUrlRedirect(exp, alreadyAssigned, config);
+        } else {
+          applyVariantModifications(exp, alreadyAssigned);
+        }
         return;
       }
 
@@ -237,8 +244,12 @@
       state.assignments[exp.id] = variant;
       persistAssignments();
 
-      // Apply modifications
-      applyVariantModifications(exp, variant);
+      // Apply modifications (or redirect for split URL tests)
+      if (exp.type === "SPLIT_URL_TEST") {
+        handleSplitUrlRedirect(exp, variant, config);
+      } else {
+        applyVariantModifications(exp, variant);
+      }
 
       // Track assignment event
       trackEvent("experiment_assigned", "CUSTOM", {
@@ -251,6 +262,46 @@
       // Push to integrations
       pushToIntegrations(exp, variant);
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Split URL redirect
+  // ---------------------------------------------------------------------------
+  function handleSplitUrlRedirect(exp, variant, config) {
+    // Control stays on the original page
+    if (variant.isControl || !variant.redirectUrl) return;
+
+    // Respect kill switch
+    if (config.killSwitches && config.killSwitches.splitUrlRedirectsDisabled) return;
+
+    // Loop protection: already completed a redirect in this navigation
+    if (getQueryParam("ml_redirected") === "1") return;
+
+    var targetUrl = variant.redirectUrl;
+
+    // If already on the target URL (visitor bookmarked it), skip
+    var targetBase = targetUrl.split("?")[0];
+    var currentBase = window.location.pathname;
+    if (targetBase.startsWith("/") && currentBase === targetBase) return;
+    if (targetBase.startsWith("http") && window.location.href.startsWith(targetBase)) return;
+
+    var splitUrlConfig = exp.splitUrlConfig || {};
+
+    // Preserve current page's query params (minus ml_redirected itself)
+    if (splitUrlConfig.preserveQueryParams !== false) {
+      var currentSearch = window.location.search
+        .replace(/[?&]ml_redirected=[^&]*/g, "")
+        .replace(/^\?&/, "?")
+        .replace(/\?$/, "");
+      if (currentSearch) {
+        targetUrl += (targetUrl.includes("?") ? "&" : "?") + currentSearch.slice(1);
+      }
+    }
+
+    // Mark as redirected to prevent loops on the landing page
+    targetUrl += (targetUrl.includes("?") ? "&" : "?") + "ml_redirected=1";
+
+    window.location.replace(targetUrl);
   }
 
   // ---------------------------------------------------------------------------
@@ -291,291 +342,14 @@
   // ---------------------------------------------------------------------------
   function applyVariantModifications(exp, variant) {
     var modifications = variant.modifications || [];
-    if (modifications.length) {
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-          applyMods(modifications, exp, variant);
-        });
-      } else {
+    if (!modifications.length) return;
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () {
         applyMods(modifications, exp, variant);
-      }
-    }
-
-    // Apply price overrides for DISPLAY_ONLY price tests
-    if (exp.type === "PRICE_TEST" && variant.priceOverrides && variant.priceOverrides.length) {
-      var strategy = (exp.priceConfig && exp.priceConfig.enforcementStrategy) || "DISPLAY_ONLY";
-      if (strategy === "DISPLAY_ONLY") {
-        var priceOverrides = variant.priceOverrides;
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", function () {
-            applyPriceOverrides(priceOverrides);
-            watchVariantChanges(priceOverrides);
-          });
-        } else {
-          applyPriceOverrides(priceOverrides);
-          watchVariantChanges(priceOverrides);
-        }
-      }
-    }
-
-    // Template Test — redirect to ?view={templateHandle} for the assigned variant.
-    // Control keeps the default template (no redirect).
-    // Loop guard: skip if ?view already matches so we don't redirect infinitely.
-    if (exp.type === "TEMPLATE_TEST" && !variant.isControl) {
-      var variantSettings = variant.settings || {};
-      var templateHandle = variantSettings.templateHandle || variantSettings.template_handle;
-      if (templateHandle) {
-        var currentView = getQueryParam("view");
-        if (currentView !== templateHandle && getQueryParam("ml_redirected") !== "1") {
-          var sep = window.location.search ? "&" : "?";
-          window.location.replace(
-            window.location.pathname +
-            window.location.search +
-            sep + "view=" + encodeURIComponent(templateHandle) +
-            "&ml_redirected=1"
-          );
-        }
-      }
-    }
-
-    // Theme Test — in QA / preview mode, redirect to Shopify's theme preview URL.
-    // Production-grade theme switching for visitors requires server-side proxying
-    // (Shopify does not support serving different themes to different users via JS alone).
-    // The ?preview_theme_id= parameter only works when the user is logged in as
-    // a store admin, so this is intentionally scoped to QA / preview sessions.
-    if (exp.type === "THEME_TEST" && !variant.isControl) {
-      var themeSettings = variant.settings || {};
-      var themeId = themeSettings.themeId || themeSettings.theme_id;
-      if (themeId) {
-        var isPreviewSession = getQueryParam(PREVIEW_PARAM) !== "" || exp.status === "QA" || exp.status === "PREVIEW";
-        var alreadyPreviewingTheme = getQueryParam("preview_theme_id") === String(themeId);
-        if (isPreviewSession && !alreadyPreviewingTheme && getQueryParam("_ml_theme_preview") !== "1") {
-          var themeUrl = window.location.pathname + window.location.search;
-          var themeConnector = themeUrl.includes("?") ? "&" : "?";
-          window.location.replace(
-            themeUrl + themeConnector +
-            "preview_theme_id=" + encodeURIComponent(themeId) +
-            "&_ml_theme_preview=1"
-          );
-        }
-      }
-    }
-  }
-
-  // Price override selectors — covers Dawn, Debut, Prestige, and most Shopify themes
-  var PRICE_SELECTORS = [
-    ".price__regular .price-item--regular",
-    ".price .price-item--regular",
-    "[data-product-price]",
-    ".product__price .money",
-    ".product-single__price .money",
-    ".price-item--regular",
-    ".product__price",
-    ".product-price .money",
-  ];
-  var COMPARE_PRICE_SELECTORS = [
-    ".price__sale .price-item--sale",
-    "[data-compare-price]",
-    ".product__price .price--compare .money",
-    ".price-item--sale",
-  ];
-
-  // Original price texts captured before the first override — one value per
-  // selector, taken from the first matching element on the page.  Null until
-  // the first call to captureOriginalPriceTexts().
-  var savedPriceTexts = null;
-  // True while our test price is currently shown on screen.
-  var overrideApplied = false;
-
-  function captureOriginalPriceTexts() {
-    if (savedPriceTexts) return;
-    savedPriceTexts = {};
-    PRICE_SELECTORS.concat(COMPARE_PRICE_SELECTORS).forEach(function (sel) {
-      var els = querySelectorAll(sel);
-      if (els.length) savedPriceTexts[sel] = els[0].textContent;
-    });
-  }
-
-  // Read the numeric Shopify variant ID from the add-to-cart form.
-  // Handles hidden inputs (Dawn), <select name="id"> (classic), and radio
-  // buttons (some premium themes).
-  function getSelectedNumericVariantId() {
-    try {
-      var form = document.querySelector("form[action='/cart/add']");
-      if (!form) return null;
-      var hidden = form.querySelector("input[type='hidden'][name='id']");
-      if (hidden && hidden.value) return hidden.value;
-      var sel = form.querySelector("select[name='id']");
-      if (sel && sel.value) return sel.value;
-      var radio = form.querySelector("input[type='radio'][name='id']:checked");
-      if (radio && radio.value) return radio.value;
-    } catch (e) {}
-    return null;
-  }
-
-  // Apply DISPLAY_ONLY price overrides for the currently selected variant.
-  // Always restores saved originals first so switching away from a test
-  // variant shows the real Shopify price rather than stale test prices.
-  function applyPriceOverrides(overrides) {
-    captureOriginalPriceTexts();
-
-    var numericId = getSelectedNumericVariantId();
-    var gid = numericId ? "gid://shopify/ProductVariant/" + numericId : null;
-
-    // Find the override for the current variant.
-    // If there is only one override and the variant ID is unknown, apply it.
-    var match = null;
-    if (overrides.length === 1 && !gid) {
-      match = overrides[0];
-    } else if (gid) {
-      for (var i = 0; i < overrides.length; i++) {
-        if (overrides[i].shopifyVariantId === gid) { match = overrides[i]; break; }
-      }
-    }
-
-    // Restore originals before (re-)applying so switching variants never
-    // leaves stale test prices on screen.
-    if (savedPriceTexts) {
-      PRICE_SELECTORS.forEach(function (sel) {
-        if (savedPriceTexts[sel] !== undefined) {
-          querySelectorAll(sel).forEach(function (el) {
-            el.removeAttribute("data-ml-price-override");
-            el.textContent = savedPriceTexts[sel];
-          });
-        }
       });
-      COMPARE_PRICE_SELECTORS.forEach(function (sel) {
-        if (savedPriceTexts[sel] !== undefined) {
-          querySelectorAll(sel).forEach(function (el) {
-            el.removeAttribute("data-ml-price-override");
-            el.textContent = savedPriceTexts[sel];
-          });
-        }
-      });
-    }
-
-    if (!match) {
-      overrideApplied = false;
-      return;
-    }
-
-    var currency = (window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || "USD";
-    var formattedPrice = formatMoney(parseFloat(match.price), currency);
-
-    PRICE_SELECTORS.forEach(function (sel) {
-      querySelectorAll(sel).forEach(function (el) {
-        el.setAttribute("data-ml-price-override", "1");
-        el.textContent = formattedPrice;
-      });
-    });
-
-    if (match.compareAtPrice) {
-      var formattedCompare = formatMoney(parseFloat(match.compareAtPrice), currency);
-      COMPARE_PRICE_SELECTORS.forEach(function (sel) {
-        querySelectorAll(sel).forEach(function (el) {
-          el.setAttribute("data-ml-price-override", "1");
-          el.textContent = formattedCompare;
-        });
-      });
-    }
-
-    overrideApplied = true;
-  }
-
-  function formatMoney(amount, currencyCode) {
-    try {
-      return new Intl.NumberFormat(navigator.language || "en-US", {
-        style: "currency",
-        currency: currencyCode || "USD",
-      }).format(amount);
-    } catch (e) {
-      return "$" + amount.toFixed(2);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Variant-change listener — re-applies DISPLAY_ONLY price overrides whenever
-  // the shopper selects a different product variant.
-  //
-  // Three signals are handled:
-  //  1. Native change events on <select name="id"> / <input type="radio" name="id">
-  //     (classic Debut/Narrative themes)
-  //  2. Custom variant events emitted by premium themes
-  //     (variant:changed — Prestige/Turbo, variantChange — older themes)
-  //  3. MutationObserver on the price container — catches Dawn and other
-  //     section-rendering themes that replace DOM nodes on variant switch,
-  //     which silently wipes our data-ml-price-override attributes.
-  // ---------------------------------------------------------------------------
-  var priceWatchActive = false;
-
-  function watchVariantChanges(overrides) {
-    if (priceWatchActive) return;
-    priceWatchActive = true;
-
-    // Guards the MutationObserver against reacting to our own DOM writes.
-    // Set true before any applyPriceOverrides call, false immediately after.
-    var pending = false;
-
-    // Wraps applyPriceOverrides so the MutationObserver is suppressed while
-    // we are intentionally mutating the DOM.
-    function applyAndBlock() {
-      pending = true;
-      applyPriceOverrides(overrides);
-      pending = false;
-    }
-
-    // 1. Classic / most themes — native change event on the variant selector
-    document.addEventListener("change", function (e) {
-      var t = e.target;
-      if (t && t.name === "id" &&
-          (t.tagName === "SELECT" ||
-           (t.tagName === "INPUT" && (t.type === "radio" || t.type === "hidden")))) {
-        applyAndBlock();
-      }
-    });
-
-    // 2. Custom variant-change events fired by premium themes
-    ["variant:changed", "variantChange", "variant-changed"].forEach(function (name) {
-      document.addEventListener(name, applyAndBlock);
-    });
-
-    // 3. Dawn / section-rendering themes: the entire price block gets swapped
-    //    for fresh server-rendered HTML on variant change, destroying our
-    //    overrides.  Watch for DOM mutations inside the price container and
-    //    re-apply only when our override attribute was present and then wiped
-    //    (i.e. the theme re-rendered, not us restoring the original price).
-    var priceContainer =
-      document.querySelector(".price") ||
-      document.querySelector("[data-product-price]") ||
-      document.querySelector(".product__price");
-
-    if (priceContainer && typeof MutationObserver !== "undefined") {
-      var observer = new MutationObserver(function () {
-        if (pending) return;
-        // Only react when we currently have an active override on screen.
-        // If no override is applied (e.g. control variant / no-match variant),
-        // DOM changes are irrelevant and must not trigger a re-apply loop.
-        if (!overrideApplied) return;
-
-        var overridePresent = PRICE_SELECTORS.some(function (sel) {
-          return querySelectorAll(sel).some(function (el) {
-            return el.getAttribute("data-ml-price-override") === "1";
-          });
-        });
-
-        if (overridePresent) return; // still showing our price — nothing to do
-
-        // Override was wiped by a theme re-render — recapture originals from
-        // the fresh HTML, then re-apply.
-        pending = true;
-        savedPriceTexts = null;
-        setTimeout(function () {
-          applyPriceOverrides(overrides);
-          pending = false;
-        }, 50);
-      });
-
-      observer.observe(priceContainer, { childList: true, subtree: true });
+    } else {
+      applyMods(modifications, exp, variant);
     }
   }
 
@@ -583,6 +357,12 @@
     mods.forEach(function (mod) {
       try {
         applyMod(mod, exp, variant);
+        // Schedule retry for selector-based mods that found nothing (lazy-loaded content)
+        if (mod.selector && SELECTOR_MOD_TYPES.indexOf(mod.type) !== -1) {
+          if (!querySelectorAll(mod.selector).length) {
+            scheduleModRetry(mod, 0);
+          }
+        }
       } catch (e) {
         if (state.debugMode) {
           console.error("[MarginLab] Modification error:", mod, e);
@@ -676,6 +456,17 @@
         injectCSS(mod.css || mod.value, exp.id + "-" + variant.id);
         break;
 
+      case "js_inject": {
+        var jsCode = mod.js || mod.value;
+        if (jsCode) {
+          var injectedScript = document.createElement("script");
+          injectedScript.setAttribute("data-ml-injected", "1");
+          injectedScript.textContent = jsCode;
+          document.head && document.head.appendChild(injectedScript);
+        }
+        break;
+      }
+
       case "redirect":
         if (mod.url && window.location.href !== mod.url) {
           var targetUrl = mod.url;
@@ -723,15 +514,42 @@
     setTimeout(function () { observer.disconnect(); }, 10000);
   }
 
+  var SELECTOR_MOD_TYPES = [
+    "text_replace", "image_replace", "link_replace",
+    "hide_element", "show_element", "add_class", "remove_class", "replace_html",
+  ];
+
   function applyModToNode(root, mod) {
-    if (mod.type === "text_replace" && mod.selector) {
-      root.querySelectorAll && root.querySelectorAll(mod.selector).forEach(function (el) {
-        if (!el.getAttribute("data-ml-modified")) {
-          el.textContent = mod.value;
-          el.setAttribute("data-ml-modified", "1");
-        }
-      });
-    }
+    if (!mod.selector || SELECTOR_MOD_TYPES.indexOf(mod.type) === -1) return;
+    root.querySelectorAll && root.querySelectorAll(mod.selector).forEach(function (el) {
+      if (el.getAttribute("data-ml-modified")) return;
+      switch (mod.type) {
+        case "text_replace": el.textContent = mod.value; break;
+        case "image_replace": if (el.tagName === "IMG") el.src = mod.value; break;
+        case "link_replace": if (el.tagName === "A") el.href = mod.value; break;
+        case "hide_element": el.style.display = "none"; break;
+        case "show_element": el.style.display = ""; break;
+        case "add_class": el.classList.add.apply(el.classList, mod.value.split(" ")); break;
+        case "remove_class": el.classList.remove.apply(el.classList, mod.value.split(" ")); break;
+        case "replace_html": el.innerHTML = sanitizeHTML(mod.value); break;
+      }
+      el.setAttribute("data-ml-modified", "1");
+    });
+  }
+
+  // Retry applying a modification on elements that may not yet exist in the DOM.
+  // Tries up to 3 times with increasing delays (500ms, 1000ms, 2000ms).
+  function scheduleModRetry(mod, retryCount) {
+    if (!mod.selector || retryCount >= 3) return;
+    var delay = 500 * Math.pow(2, retryCount);
+    setTimeout(function () {
+      var found = querySelectorAll(mod.selector);
+      if (found.length) {
+        applyModToNode(document.body, mod);
+      } else {
+        scheduleModRetry(mod, retryCount + 1);
+      }
+    }, delay);
   }
 
   // ---------------------------------------------------------------------------
@@ -801,6 +619,16 @@
           if (response.ok) {
             response.clone().json().then(function (cartData) {
               syncAssignmentsToCart(cartData.token);
+              // Update cached item count for offer/personalization signals
+              try {
+                if (cartData.item_count !== undefined) {
+                  localStorage.setItem(CART_ITEMS_KEY, String(cartData.item_count));
+                }
+                if (cartData.total_price !== undefined) {
+                  window.__ml_cart_total = cartData.total_price;
+                }
+              } catch (e) {}
+              document.dispatchEvent(new CustomEvent("marginlab:cart_updated", { detail: cartData }));
             }).catch(function () {});
           }
         }).catch(function () {});
@@ -895,29 +723,45 @@
     if (!state.events.length) return;
     var batch = state.events.slice();
     state.events = [];
+    sendEventBatch(batch, 0);
+  }
 
-    var payload = JSON.stringify({
+  function sendEventBatch(batch, attempt) {
+    var MAX_ATTEMPTS = 3;
+    var RETRY_DELAYS = [1000, 2000, 4000];
+
+    var payloadObj = {
       shopDomain: state.shopDomain,
       visitorId: state.visitorId,
       sessionId: state.sessionId,
       events: batch,
-    });
+    };
+    if (state.customerId) payloadObj.customerId = state.customerId;
+    var payload = JSON.stringify(payloadObj);
 
-    // Use sendBeacon when available (page unload safe)
-    if (navigator.sendBeacon) {
-      var blob = new Blob([payload], { type: "application/json" });
-      navigator.sendBeacon(state.apiBase + "/api/runtime/events", blob);
-    } else {
-      fetch(state.apiBase + "/api/runtime/events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shop-Domain": state.shopDomain,
-        },
-        body: payload,
-        keepalive: true,
-      }).catch(function () {});
+    // On unload/hide we can only use sendBeacon (no retry possible)
+    if (attempt === 0 && navigator.sendBeacon) {
+      var sent = navigator.sendBeacon(state.apiBase + "/api/runtime/events", new Blob([payload], { type: "application/json" }));
+      if (sent) return;
+      // sendBeacon returns false if the queue is full — fall through to fetch
     }
+
+    fetch(state.apiBase + "/api/runtime/events", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shop-Domain": state.shopDomain,
+      },
+      body: payload,
+      keepalive: true,
+    }).catch(function () {
+      if (attempt < MAX_ATTEMPTS - 1) {
+        setTimeout(function () {
+          sendEventBatch(batch, attempt + 1);
+        }, RETRY_DELAYS[attempt]);
+      }
+      // After max attempts, events are dropped — acceptable data loss on persistent network failure
+    });
   }
 
   // Flush on page unload
@@ -1033,11 +877,10 @@
   function exposePublicAPI() {
     window.MarginLab = {
       getAssignment: function (experimentSlug) {
-        if (!state.config) return null;
-        var exp = state.config.experiments.find(function (e) {
-          return e.slug === experimentSlug || e.id === experimentSlug;
-        });
-        return exp ? (state.assignments[exp.id] || null) : null;
+        var assignments = Object.values(state.assignments);
+        // The config maps exp.slug → assignment, but state.assignments keys are IDs
+        // For now return the matching one
+        return state.assignments[experimentSlug] || null;
       },
       getActiveExperiments: function () {
         return Object.keys(state.assignments).map(function (expId) {
@@ -1047,7 +890,6 @@
           };
         });
       },
-      getConfig: function () { return state.config; },
       track: function (eventName, metadata) {
         trackEvent(eventName, "CUSTOM", metadata || {});
       },
@@ -1082,7 +924,23 @@
       },
       getVisitorId: function () { return state.visitorId; },
       getSessionId: function () { return state.sessionId; },
+      /**
+       * Link the current visitor to a known customer identity.
+       * Call this after login or when a customer ID becomes available.
+       * The customer ID is attached to subsequent events for attribution.
+       */
+      identify: function (customerId, properties) {
+        state.customerId = String(customerId);
+        trackEvent("customer_identified", "CUSTOM", Object.assign(
+          { customerId: state.customerId },
+          properties || {}
+        ));
+      },
     };
+
+    // Fire a DOM event so external scripts can listen for MarginLab readiness
+    // without polling. Used by the custom events snippet template.
+    document.dispatchEvent(new CustomEvent("marginlab:ready"));
   }
 
   function flushReadyCallbacks() {
@@ -1410,6 +1268,352 @@
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Offer engine
+  // ---------------------------------------------------------------------------
+  var OFFER_SHOWN_KEY = "_ml_offer_shown"; // sessionStorage set of offerId strings
+
+  /**
+   * Evaluate offer trigger rules.
+   * Supports: cart_value (gte/lte), cart_item_count (gte/lte),
+   *           url_contains, url_matches_path, visitor_type (equals)
+   */
+  function evaluateOfferTriggers(rules) {
+    if (!rules || rules.length === 0) return true;
+    var cartValue = getCartValue();
+    var cartItemCount = getCartItemCount();
+    return rules.every(function (rule) {
+      var field = rule.field;
+      var op = rule.operator;
+      var val = rule.value;
+      if (field === "cart_value") {
+        if (op === "gte") return cartValue >= val;
+        if (op === "lte") return cartValue <= val;
+        if (op === "gt")  return cartValue > val;
+        if (op === "lt")  return cartValue < val;
+      }
+      if (field === "cart_item_count") {
+        if (op === "gte") return cartItemCount >= val;
+        if (op === "lte") return cartItemCount <= val;
+        if (op === "gt")  return cartItemCount > val;
+        if (op === "lt")  return cartItemCount < val;
+      }
+      if (field === "url_contains") {
+        return window.location.href.indexOf(String(val)) !== -1;
+      }
+      if (field === "url_matches_path") {
+        return window.location.pathname === String(val);
+      }
+      if (field === "visitor_type") {
+        var isReturning = !!localStorage.getItem("_ml_returning");
+        var vt = isReturning ? "returning" : "new";
+        return op === "equals" ? vt === val : vt !== val;
+      }
+      // URL param trigger — e.g. for CAMPAIGN_LINK_OFFER
+      if (field === "url_param") {
+        return getQueryParam(String(val)) !== null;
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Main offer runner. Called once after config is loaded.
+   * Renders offer widgets based on type; deduplicates per session.
+   */
+  function runOffers(config) {
+    if (!config || !config.offers || !config.offers.length) return;
+    if (config.killSwitches && config.killSwitches.offerWidgetsDisabled) return;
+
+    var shownThisSession = [];
+    try {
+      shownThisSession = JSON.parse(sessionStorage.getItem(OFFER_SHOWN_KEY) || "[]");
+    } catch (e) {}
+
+    for (var i = 0; i < config.offers.length; i++) {
+      var offer = config.offers[i];
+      if (!offer || !offer.id) continue;
+      if (shownThisSession.indexOf(offer.id) !== -1) continue;
+      if (!evaluateOfferTriggers(offer.triggerRules)) continue;
+
+      var ds = offer.displaySettings || {};
+      var dr = offer.discountRules || {};
+
+      var rendered = false;
+      if (offer.type === "FREE_SHIPPING" || offer.type === "TIERED_PROGRESS_BAR") {
+        rendered = renderProgressBarOffer(offer, ds, dr);
+      } else if (
+        offer.type === "CAMPAIGN_LINK_OFFER"
+      ) {
+        rendered = renderCampaignLinkOffer(offer, ds, dr);
+      } else if (
+        offer.type === "PERCENTAGE_DISCOUNT" ||
+        offer.type === "FIXED_AMOUNT_DISCOUNT" ||
+        offer.type === "ORDER_DISCOUNT" ||
+        offer.type === "PRODUCT_DISCOUNT" ||
+        offer.type === "VOLUME_DISCOUNT" ||
+        offer.type === "BUY_X_GET_Y"
+      ) {
+        rendered = renderDiscountOffer(offer, ds, dr);
+      }
+
+      if (rendered) {
+        trackEvent("offer_impression", "PAGE_VIEW", { offerId: offer.id, offerType: offer.type });
+        try {
+          shownThisSession.push(offer.id);
+          sessionStorage.setItem(OFFER_SHOWN_KEY, JSON.stringify(shownThisSession));
+        } catch (e) {}
+      }
+    }
+  }
+
+  /**
+   * Render a free-shipping / tiered progress bar offer.
+   * Shows a floating bar at the bottom: "Add $X more for free shipping!"
+   */
+  function renderProgressBarOffer(offer, ds, dr) {
+    var domId = "ml-offer-progress-" + offer.id;
+    if (document.getElementById(domId)) return false;
+
+    var threshold = dr.threshold || ds.threshold || 0;
+    var cartValue = getCartValue();
+    var remaining = Math.max(0, threshold - cartValue);
+    var pct = threshold > 0 ? Math.min(100, (cartValue / threshold) * 100) : 100;
+
+    var title = ds.title || (remaining > 0
+      ? "Add " + formatMoney(remaining) + " more for free shipping!"
+      : "You've unlocked free shipping!");
+    var barColor = ds.color || "#1a56db";
+    var bgColor = ds.bgColor || "#f0f4ff";
+
+    var bar = document.createElement("div");
+    bar.id = domId;
+    bar.setAttribute("data-ml-offer", offer.id);
+    bar.style.cssText = [
+      "position:fixed", "bottom:0", "left:0", "right:0", "z-index:99998",
+      "background:" + bgColor, "padding:10px 16px 12px",
+      "box-shadow:0 -2px 8px rgba(0,0,0,0.12)", "font-family:inherit",
+      "font-size:14px", "text-align:center",
+    ].join(";");
+
+    var label = document.createElement("div");
+    label.textContent = title;
+    label.style.cssText = "margin-bottom:6px;font-weight:600;color:#1a1a1a";
+
+    var track = document.createElement("div");
+    track.style.cssText = "background:#dde3f0;border-radius:999px;height:8px;overflow:hidden;max-width:480px;margin:0 auto";
+    var fill = document.createElement("div");
+    fill.style.cssText = [
+      "height:100%", "border-radius:999px",
+      "background:" + barColor,
+      "width:" + pct + "%",
+      "transition:width 0.4s ease",
+    ].join(";");
+    track.appendChild(fill);
+
+    var close = document.createElement("button");
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Close");
+    close.style.cssText = [
+      "position:absolute", "top:8px", "right:12px",
+      "background:none", "border:none", "font-size:18px",
+      "cursor:pointer", "color:#666", "line-height:1", "padding:0",
+    ].join(";");
+    close.addEventListener("click", function () {
+      bar.remove();
+      trackEvent("offer_dismissed", "CLICK", { offerId: offer.id });
+    });
+
+    bar.style.position = "relative";
+    bar.appendChild(label);
+    bar.appendChild(track);
+    bar.appendChild(close);
+    document.body.appendChild(bar);
+
+    // Update progress bar when cart changes
+    document.addEventListener("marginlab:cart_updated", function () {
+      var newCart = getCartValue();
+      var newRemaining = Math.max(0, threshold - newCart);
+      var newPct = threshold > 0 ? Math.min(100, (newCart / threshold) * 100) : 100;
+      fill.style.width = newPct + "%";
+      label.textContent = newRemaining > 0
+        ? "Add " + formatMoney(newRemaining) + " more for free shipping!"
+        : "You've unlocked free shipping!";
+    });
+
+    return true;
+  }
+
+  /**
+   * Render a discount popup offer (sticky banner + optional code reveal).
+   */
+  function renderDiscountOffer(offer, ds, dr) {
+    var domId = "ml-offer-discount-" + offer.id;
+    if (document.getElementById(domId)) return false;
+
+    var code = dr.code || "";
+    var title = ds.title || offer.name || "Special Offer";
+    var subtitle = ds.subtitle || ds.description || "";
+    var ctaLabel = ds.ctaLabel || (code ? "Copy code" : "Shop now");
+    var ctaUrl = ds.ctaUrl || "/collections/all";
+    var position = ds.position || "bottom-right"; // top | bottom | bottom-right
+    var accentColor = ds.color || "#1a56db";
+
+    var popup = document.createElement("div");
+    popup.id = domId;
+    popup.setAttribute("data-ml-offer", offer.id);
+
+    var isBottom = position.indexOf("bottom") !== -1;
+    var isRight = position.indexOf("right") !== -1;
+    var posCSS = isBottom
+      ? (isRight ? "bottom:16px;right:16px" : "bottom:16px;left:16px")
+      : (isRight ? "top:80px;right:16px" : "top:80px;left:16px");
+
+    popup.style.cssText = [
+      "position:fixed", posCSS, "z-index:99997",
+      "background:#fff", "border-radius:12px",
+      "box-shadow:0 4px 24px rgba(0,0,0,0.15)",
+      "padding:16px 20px", "max-width:280px", "font-family:inherit",
+      "border-top:4px solid " + accentColor,
+    ].join(";");
+
+    var heading = document.createElement("div");
+    heading.style.cssText = "font-weight:700;font-size:15px;color:#1a1a1a;margin-bottom:4px";
+    heading.textContent = title;
+
+    var subEl = document.createElement("div");
+    subEl.style.cssText = "font-size:13px;color:#555;margin-bottom:12px";
+    subEl.textContent = subtitle;
+
+    var ctaBtn = document.createElement("a");
+    ctaBtn.style.cssText = [
+      "display:block", "text-align:center",
+      "background:" + accentColor, "color:#fff",
+      "padding:8px 12px", "border-radius:6px",
+      "font-size:13px", "font-weight:600", "text-decoration:none",
+      "cursor:pointer",
+    ].join(";");
+
+    if (code) {
+      ctaBtn.textContent = ctaLabel;
+      ctaBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        try { navigator.clipboard.writeText(code); } catch (_) {}
+        ctaBtn.textContent = "Copied: " + code;
+        ctaBtn.style.background = "#16a34a";
+        trackEvent("offer_claimed", "CLICK", { offerId: offer.id, code: code });
+        setTimeout(function () {
+          if (ctaUrl && ctaUrl !== "#") window.location.href = ctaUrl;
+        }, 1200);
+      });
+    } else {
+      ctaBtn.href = ctaUrl;
+      ctaBtn.textContent = ctaLabel;
+      ctaBtn.addEventListener("click", function () {
+        trackEvent("offer_claimed", "CLICK", { offerId: offer.id });
+      });
+    }
+
+    var closeBtn = document.createElement("button");
+    closeBtn.textContent = "×";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.style.cssText = [
+      "position:absolute", "top:8px", "right:10px",
+      "background:none", "border:none", "font-size:18px",
+      "cursor:pointer", "color:#999", "line-height:1", "padding:0",
+    ].join(";");
+    closeBtn.addEventListener("click", function () {
+      popup.remove();
+      trackEvent("offer_dismissed", "CLICK", { offerId: offer.id });
+    });
+
+    popup.style.position = "fixed";
+    popup.appendChild(closeBtn);
+    popup.appendChild(heading);
+    if (subtitle) popup.appendChild(subEl);
+    popup.appendChild(ctaBtn);
+    document.body.appendChild(popup);
+    return true;
+  }
+
+  /**
+   * Handle CAMPAIGN_LINK_OFFER: activated when a URL param is present.
+   * Shows a sticky top banner with the offer message and optional code.
+   */
+  function renderCampaignLinkOffer(offer, ds, dr) {
+    var domId = "ml-offer-campaign-" + offer.id;
+    if (document.getElementById(domId)) return false;
+
+    // Activate only when the designated URL param is present
+    var paramName = (dr.urlParam || ds.urlParam || "offer");
+    var paramValue = getQueryParam(paramName);
+    if (!paramValue) return false;
+
+    var code = dr.code || ds.code || paramValue;
+    var title = ds.title || offer.name || "Special offer activated!";
+    var subtitle = ds.subtitle || (code ? "Use code: " + code : "");
+    var ctaLabel = ds.ctaLabel || "Shop now";
+    var ctaUrl = ds.ctaUrl || "/collections/all";
+    var accentColor = ds.color || "#16a34a";
+
+    var banner = document.createElement("div");
+    banner.id = domId;
+    banner.setAttribute("data-ml-offer", offer.id);
+    banner.style.cssText = [
+      "position:fixed", "top:0", "left:0", "right:0", "z-index:99999",
+      "background:" + accentColor, "color:#fff",
+      "padding:10px 16px", "font-size:14px",
+      "display:flex", "align-items:center", "justify-content:center",
+      "gap:12px", "box-shadow:0 2px 8px rgba(0,0,0,0.15)",
+    ].join(";");
+
+    var text = document.createElement("span");
+    text.innerHTML =
+      "<strong>" + escapeHtml(title) + "</strong>" +
+      (subtitle ? " &mdash; " + escapeHtml(subtitle) : "");
+
+    var shopBtn = document.createElement("a");
+    shopBtn.href = ctaUrl;
+    shopBtn.textContent = ctaLabel;
+    shopBtn.style.cssText =
+      "background:#fff;color:" + accentColor + ";padding:4px 12px;border-radius:4px;font-weight:600;text-decoration:none;font-size:13px";
+    shopBtn.addEventListener("click", function () {
+      trackEvent("offer_claimed", "CLICK", { offerId: offer.id, code: code });
+    });
+
+    var closeBtn = document.createElement("button");
+    closeBtn.textContent = "×";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.style.cssText =
+      "background:none;border:none;color:#fff;font-size:18px;cursor:pointer;opacity:0.7;margin-left:8px;padding:0 4px";
+    closeBtn.addEventListener("click", function () {
+      banner.remove();
+      trackEvent("offer_dismissed", "CLICK", { offerId: offer.id });
+    });
+
+    banner.appendChild(text);
+    banner.appendChild(shopBtn);
+    banner.appendChild(closeBtn);
+    document.body.prepend(banner);
+    return true;
+  }
+
+  /**
+   * Format a monetary value for display (e.g. 12.5 → "$12.50").
+   * Uses the page currency if detectable, otherwise falls back to "$".
+   */
+  function formatMoney(amount) {
+    var symbol = "$";
+    try {
+      var curr = (window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || "USD";
+      symbol = new Intl.NumberFormat("en", { style: "currency", currency: curr })
+        .format(0)
+        .replace(/[\d.,\s]/g, "")
+        .trim() || "$";
+    } catch (e) {}
+    return symbol + parseFloat(amount).toFixed(2);
+  }
+
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
@@ -1419,122 +1623,10 @@
   }
 
   /**
-   * Detect whether the current page is a Shopify post-purchase / thank-you page.
-   * Shopify's order status URL is /orders/{token}/authenticate or contains /thank_you.
-   */
-  function isPostPurchasePage() {
-    var path = window.location.pathname;
-    return (
-      path.indexOf("/thank_you") !== -1 ||
-      path.indexOf("/orders/") !== -1 ||
-      path.indexOf("/checkouts/") !== -1 && getQueryParam("order_status") !== ""
-    );
-  }
-
-  /**
-   * Apply a POST_PURCHASE modification — renders a coupon/upsell banner on the
-   * order-confirmation / thank-you page.
-   */
-  function applyPostPurchaseModification(mod, personalizationId) {
-    if (!mod) return;
-
-    var headline = mod.headline || mod.message || "";
-    var subtext = mod.subtext || "";
-    var ctaLabel = mod.ctaLabel || "Shop again";
-    var ctaUrl = mod.ctaUrl || "/";
-    var couponCode = mod.couponCode || "";
-
-    // Track impression
-    trackEvent("personalization_view", "PAGE_VIEW", { personalizationId: personalizationId, type: "post_purchase" });
-
-    // Mark shown this session
-    try {
-      var shown = JSON.parse(sessionStorage.getItem(ACR_SHOWN_KEY) || "[]");
-      shown.push(personalizationId);
-      sessionStorage.setItem(ACR_SHOWN_KEY, JSON.stringify(shown));
-    } catch (e) {}
-
-    if (document.getElementById("ml-pp-banner")) return;
-
-    var banner = document.createElement("div");
-    banner.id = "ml-pp-banner";
-    banner.setAttribute("data-ml-pp", "1");
-    banner.style.cssText = [
-      "margin: 24px auto",
-      "max-width: 640px",
-      "background: #f0fdf4",
-      "border: 1px solid #86efac",
-      "border-radius: 12px",
-      "padding: 20px 24px",
-      "font-family: sans-serif",
-      "display: flex",
-      "align-items: center",
-      "gap: 16px",
-      "flex-wrap: wrap",
-    ].join(";");
-
-    var textWrap = document.createElement("div");
-    textWrap.style.flex = "1";
-    textWrap.innerHTML =
-      "<strong style='display:block;font-size:15px;color:#166534'>" + escapeHtml(headline) + "</strong>" +
-      (subtext ? "<span style='font-size:13px;color:#4ade80'>" + escapeHtml(subtext) + "</span>" : "");
-
-    if (couponCode) {
-      var codeBlock = document.createElement("div");
-      codeBlock.style.cssText =
-        "background:#dcfce7;border:1px dashed #4ade80;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:14px;color:#166534;cursor:pointer;user-select:all";
-      codeBlock.textContent = couponCode;
-      codeBlock.title = "Click to copy";
-      codeBlock.addEventListener("click", function () {
-        navigator.clipboard && navigator.clipboard.writeText(couponCode).catch(function () {});
-        codeBlock.textContent = "Copied!";
-        setTimeout(function () { codeBlock.textContent = couponCode; }, 2000);
-      });
-      textWrap.appendChild(codeBlock);
-    }
-
-    var cta = document.createElement("a");
-    cta.href = ctaUrl;
-    cta.textContent = ctaLabel;
-    cta.style.cssText =
-      "background:#16a34a;color:#fff;padding:8px 18px;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;white-space:nowrap;flex-shrink:0";
-    cta.addEventListener("click", function () {
-      trackEvent("personalization_click", "CLICK", { personalizationId: personalizationId, type: "post_purchase" });
-    });
-
-    var closeBtn = document.createElement("button");
-    closeBtn.textContent = "×";
-    closeBtn.setAttribute("aria-label", "Close");
-    closeBtn.style.cssText =
-      "background:none;border:none;color:#166534;font-size:20px;cursor:pointer;opacity:0.6;padding:0 4px;align-self:flex-start";
-    closeBtn.addEventListener("click", function () {
-      banner.remove();
-    });
-
-    banner.appendChild(textWrap);
-    banner.appendChild(cta);
-    banner.appendChild(closeBtn);
-
-    // Try to insert after the thank-you heading or prepend to main content
-    var target =
-      document.querySelector(".os-step__inner") ||
-      document.querySelector(".step__sections") ||
-      document.querySelector("main") ||
-      document.querySelector(".content-box") ||
-      document.body;
-
-    if (target && target !== document.body) {
-      target.insertBefore(banner, target.firstChild);
-    } else {
-      document.body.appendChild(banner);
-    }
-  }
-
-  /**
    * Main personalization runner — called after config is loaded.
    *
    * Priority: lower number = evaluated first. First matching personalization wins
-   * for each modification type.
+   * for each modification type (announcement_bar).
    */
   function runPersonalizations(config) {
     if (!config || !config.personalizations || !config.personalizations.length) return;
@@ -1543,6 +1635,14 @@
     var cartItemCount = getCartItemCount();
     var cartValue = getCartValue();
     var context = { cartItemCount: cartItemCount, cartValue: cartValue };
+
+    // ACR personalizations already sorted by priority (asc) from server
+    var acrPersonalizations = config.personalizations.filter(function (p) {
+      return p.type === "ABANDONED_CART";
+    });
+
+    // Track which modification types have already been applied (one per type)
+    var appliedTypes = {};
 
     // Deduplicate: don't show same personalization twice in one session
     var shownThisSession = [];
@@ -1553,53 +1653,27 @@
     // Check schedule validity
     var now = Date.now();
 
-    // Track which modification types have already been applied (one per type)
-    var appliedTypes = {};
-
-    // ── Abandoned Cart personalizations ───────────────────────────────────────
-    var acrPersonalizations = config.personalizations.filter(function (p) {
-      return p.type === "ABANDONED_CART";
-    });
-
     for (var i = 0; i < acrPersonalizations.length; i++) {
       var p = acrPersonalizations[i];
+
+      // Skip if already shown this session
       if (shownThisSession.indexOf(p.id) !== -1) continue;
+
+      // Skip if outside schedule window
       if (p.startsAt && new Date(p.startsAt).getTime() > now) continue;
       if (p.endsAt && new Date(p.endsAt).getTime() < now) continue;
+
+      // Evaluate targeting rules
       if (!evaluatePersonalizationRules(p.targetingRules, context)) continue;
 
+      // Apply modifications (first winner per type)
       var mods = p.modifications || [];
       for (var j = 0; j < mods.length; j++) {
         var mod = mods[j];
         var modType = mod.type || "unknown";
-        if (appliedTypes[modType]) continue;
+        if (appliedTypes[modType]) continue; // already applied this type
         applyAbandonedCartModification(mod, p.id);
         appliedTypes[modType] = true;
-      }
-    }
-
-    // ── Post-Purchase personalizations ────────────────────────────────────────
-    // Only fire on the order confirmation / thank-you page.
-    if (isPostPurchasePage()) {
-      var ppPersonalizations = config.personalizations.filter(function (p) {
-        return p.type === "POST_PURCHASE";
-      });
-
-      for (var pi = 0; pi < ppPersonalizations.length; pi++) {
-        var pp = ppPersonalizations[pi];
-        if (shownThisSession.indexOf(pp.id) !== -1) continue;
-        if (pp.startsAt && new Date(pp.startsAt).getTime() > now) continue;
-        if (pp.endsAt && new Date(pp.endsAt).getTime() < now) continue;
-
-        var ppMods = pp.modifications || [];
-        for (var pj = 0; pj < ppMods.length; pj++) {
-          var ppMod = ppMods[pj];
-          var ppModType = ppMod.type || "post_purchase_banner";
-          if (appliedTypes["pp_" + ppModType]) continue;
-          applyPostPurchaseModification(ppMod, pp.id);
-          appliedTypes["pp_" + ppModType] = true;
-          break; // one banner per personalization
-        }
       }
     }
   }
@@ -1638,6 +1712,8 @@
    * Returns 0 if unavailable — ACR will still trigger, just without the cart_value rule.
    */
   function getCartValue() {
+    // Most-recent cart response cached from AJAX intercept
+    if (window.__ml_cart_total !== undefined) return window.__ml_cart_total / 100;
     if (window.cart && window.cart.total_price) {
       return window.cart.total_price / 100; // Shopify uses cents
     }

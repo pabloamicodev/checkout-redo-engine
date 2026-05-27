@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ExperimentService } from "@/services/experiment.service";
 import { CreateExperimentSchema } from "@/lib/zod-schemas";
 import { getShopFromRequest, withShopAuth, withBillingActive, withPlanGuard } from "@/lib/api-middleware";
+import { checkRateLimit, applyRateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
 
 const service = new ExperimentService();
 
@@ -23,6 +24,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withShopAuth(request, async (shopId, actorId) => {
+    const rl = await checkRateLimit(`${shopId}:create_experiment`, RATE_LIMITS.create_experiment);
+    if (!rl.allowed) {
+      const headers = new Headers();
+      applyRateLimitHeaders(headers, rl);
+      return NextResponse.json(
+        { error: "Too many experiment creation requests. Please wait before trying again." },
+        { status: 429, headers }
+      );
+    }
+
     return withBillingActive(shopId, () =>
       withPlanGuard(shopId, "experiments", async () => {
         let body: unknown;

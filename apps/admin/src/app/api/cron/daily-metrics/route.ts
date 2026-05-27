@@ -11,8 +11,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { DailyMetricService } from "@/services/daily-metric.service";
+import { logger } from "@/lib/logger";
 
 const dailyMetricService = new DailyMetricService();
 const BATCH_SIZE = 10;
@@ -66,15 +68,25 @@ export async function GET(request: NextRequest) {
           processed++;
         } catch (err) {
           errors++;
-          console.error(`[Cron] Failed to aggregate metrics for shop ${shop.shopDomain}:`, err);
+          Sentry.captureException(err, {
+            tags: { cron: "daily-metrics", shopDomain: shop.shopDomain },
+          });
+          logger.error(
+            "[Cron] Failed to aggregate metrics for shop",
+            err instanceof Error ? err : undefined,
+            { shopDomain: shop.shopDomain, date: targetDate.toISOString().split("T")[0] }
+          );
         }
       })
     );
   }
 
-  console.info(
-    `[Cron] daily-metrics complete. Date: ${targetDate.toISOString().split("T")[0]}, Shops: ${shops.length}, Processed: ${processed}, Errors: ${errors}`
-  );
+  logger.info("[Cron] daily-metrics complete", {
+    date: targetDate.toISOString().split("T")[0],
+    shops: shops.length,
+    processed,
+    errors,
+  });
 
   return NextResponse.json({
     ok: true,

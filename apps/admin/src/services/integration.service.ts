@@ -168,6 +168,14 @@ export class IntegrationService {
           return this.testGA4(creds);
         case "KLAVIYO":
           return this.testKlaviyo(creds);
+        case "CLARITY":
+          return this.testClarity(creds);
+        case "HEAP":
+          return this.testHeap(creds);
+        case "SEGMENT":
+          return this.testSegment(creds);
+        case "ELEVAR":
+          return this.testElevar(creds);
         case "SLACK":
           return this.testSlack(creds);
         case "WEBHOOK":
@@ -204,12 +212,22 @@ export class IntegrationService {
         case "KLAVIYO":
           void this.sendToKlaviyo(creds, payload).catch(() => {});
           break;
+        case "HEAP":
+          void this.sendToHeap(creds, payload).catch(() => {});
+          break;
+        case "SEGMENT":
+          void this.sendToSegment(creds, payload).catch(() => {});
+          break;
+        case "ELEVAR":
+          void this.sendToElevar(creds, payload).catch(() => {});
+          break;
         case "WEBHOOK":
           void this.deliverWebhookWithRetry(integration.id, creds, settings, payload, 0).catch(() => {});
           break;
         case "SLACK":
           void this.sendSlackAlert(creds, payload, shopId).catch(() => {});
           break;
+        // CLARITY: data enrichment is client-side only via the Clarity JS snippet
       }
     }
   }
@@ -336,6 +354,184 @@ export class IntegrationService {
       WEBHOOK_TIMEOUT_MS
     );
     return res.ok ? { ok: true } : { ok: false, error: `HTTP ${res.status}` };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Microsoft Clarity — client-side snippet only; server validates Project ID
+  // ---------------------------------------------------------------------------
+
+  private async testClarity(creds: Record<string, string>): Promise<{ ok: boolean; error?: string }> {
+    const { projectId } = creds;
+    if (!projectId) return { ok: false, error: "Microsoft Clarity Project ID is required" };
+    if (!/^[a-z0-9]{8,24}$/i.test(projectId)) {
+      return { ok: false, error: "Invalid Clarity Project ID format" };
+    }
+    return { ok: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Heap — server-side HTTP Track API
+  // ---------------------------------------------------------------------------
+
+  private async sendToHeap(
+    creds: Record<string, string>,
+    payload: WebhookDeliveryPayload
+  ): Promise<void> {
+    const { appId } = creds;
+    if (!appId) return;
+
+    const identity =
+      (payload.data["customerId"] as string | undefined) ??
+      (payload.data["visitorId"] as string | undefined);
+    if (!identity) return;
+
+    await fetchWithTimeout(
+      "https://heapanalytics.com/api/track",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app_id: appId,
+          identity,
+          event: payload.event,
+          timestamp: payload.timestamp,
+          properties: {
+            experiment_id: payload.experimentId ?? null,
+            variant_id: payload.variantId ?? null,
+            shop_domain: payload.shopDomain,
+            ...payload.data,
+          },
+        }),
+      },
+      WEBHOOK_TIMEOUT_MS
+    );
+  }
+
+  private async testHeap(creds: Record<string, string>): Promise<{ ok: boolean; error?: string }> {
+    if (!creds["appId"]) return { ok: false, error: "Heap App ID is required" };
+    if (!/^\d+$/.test(creds["appId"])) return { ok: false, error: "Heap App ID must be numeric" };
+    return { ok: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Segment — HTTP Track API (Write Key, Basic Auth)
+  // ---------------------------------------------------------------------------
+
+  private async sendToSegment(
+    creds: Record<string, string>,
+    payload: WebhookDeliveryPayload
+  ): Promise<void> {
+    const { writeKey } = creds;
+    if (!writeKey) return;
+
+    const userId = payload.data["customerId"] as string | undefined;
+    const anonymousId = payload.data["visitorId"] as string | undefined;
+    if (!userId && !anonymousId) return;
+
+    const body: Record<string, unknown> = {
+      event: payload.event,
+      timestamp: payload.timestamp,
+      properties: {
+        experiment_id: payload.experimentId ?? null,
+        variant_id: payload.variantId ?? null,
+        shop_domain: payload.shopDomain,
+        ...payload.data,
+      },
+      context: { app: { name: "MarginLab" } },
+    };
+    if (userId) body["userId"] = userId;
+    if (anonymousId) body["anonymousId"] = anonymousId;
+
+    await fetchWithTimeout(
+      "https://api.segment.io/v1/track",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${Buffer.from(`${writeKey}:`).toString("base64")}`,
+        },
+        body: JSON.stringify(body),
+      },
+      WEBHOOK_TIMEOUT_MS
+    );
+  }
+
+  private async testSegment(creds: Record<string, string>): Promise<{ ok: boolean; error?: string }> {
+    if (!creds["writeKey"]) return { ok: false, error: "Segment Write Key is required" };
+    try {
+      const res = await fetchWithTimeout(
+        "https://api.segment.io/v1/track",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${Buffer.from(`${creds["writeKey"]}:`).toString("base64")}`,
+          },
+          body: JSON.stringify({
+            anonymousId: "marginlab-connection-test",
+            event: "connection_test",
+            timestamp: new Date().toISOString(),
+            properties: { source: "MarginLab" },
+          }),
+        },
+        WEBHOOK_TIMEOUT_MS
+      );
+      return res.ok ? { ok: true } : { ok: false, error: `HTTP ${res.status}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Request failed" };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Elevar — server-side GTM container (GA4-compatible payload format)
+  // ---------------------------------------------------------------------------
+
+  private async sendToElevar(
+    creds: Record<string, string>,
+    payload: WebhookDeliveryPayload
+  ): Promise<void> {
+    const { containerUrl } = creds;
+    if (!containerUrl) return;
+
+    const base = containerUrl.replace(/\/$/, "");
+    await fetchWithTimeout(
+      `${base}/g/collect`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: (payload.data["visitorId"] as string | undefined) ?? "unknown",
+          events: [
+            {
+              name: payload.event,
+              params: {
+                experiment_id: payload.experimentId ?? null,
+                variant_id: payload.variantId ?? null,
+                shop_domain: payload.shopDomain,
+                engagement_time_msec: 1,
+              },
+            },
+          ],
+        }),
+      },
+      WEBHOOK_TIMEOUT_MS
+    );
+  }
+
+  private async testElevar(creds: Record<string, string>): Promise<{ ok: boolean; error?: string }> {
+    if (!creds["containerUrl"]) return { ok: false, error: "Elevar Server Container URL is required" };
+    try {
+      new URL(creds["containerUrl"]);
+    } catch {
+      return { ok: false, error: "Invalid container URL" };
+    }
+    try {
+      const base = creds["containerUrl"].replace(/\/$/, "");
+      const res = await fetchWithTimeout(`${base}/healthz`, { method: "GET" }, WEBHOOK_TIMEOUT_MS);
+      return res.status < 500 ? { ok: true } : { ok: false, error: `HTTP ${res.status}` };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Container URL not reachable" };
+    }
   }
 
   // ---------------------------------------------------------------------------
