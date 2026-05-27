@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { OfferService } from "@/services/offer.service";
 import { CreateOfferSchema } from "@/lib/zod-schemas";
 import { withShopAuth, withBillingActive, withPlanGuard } from "@/lib/api-middleware";
-import { getShopId } from "@/lib/api-shop";
 
 const offerService = new OfferService();
 
 export async function GET(request: NextRequest) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status") ?? undefined;
+    const type = searchParams.get("type") ?? undefined;
+    const page = parseInt(searchParams.get("page") ?? "1", 10);
+    const limit = parseInt(searchParams.get("limit") ?? "50", 10);
 
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status") ?? undefined;
-  const type = searchParams.get("type") ?? undefined;
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = parseInt(searchParams.get("limit") ?? "50", 10);
-
-  const result = await offerService.list(shopId, { status, type, page, limit });
-  return NextResponse.json(result);
+    const result = await offerService.list(shopId, { status, type, page, limit });
+    return NextResponse.json(result);
+  });
 }
 
 export async function POST(request: NextRequest) {

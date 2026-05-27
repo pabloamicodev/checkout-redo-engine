@@ -21,6 +21,10 @@ export async function GET(
         ? { start: new Date(startParam), end: new Date(endParam) }
         : undefined;
 
+    if (dateRange && (isNaN(dateRange.start.getTime()) || isNaN(dateRange.end.getTime()))) {
+      return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
+    }
+
     const [analytics, timeSeries] = await Promise.all([
       service.getExperimentAnalytics(shopId, id, dateRange),
       service.getTimeSeriesData(shopId, id, metricParam, dateRange),

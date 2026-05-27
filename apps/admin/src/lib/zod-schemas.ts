@@ -90,8 +90,8 @@ export const ModificationSchema = z.object({
   type: ModificationTypeSchema,
   selector: z.string().optional(),
   value: z.string().optional(),
-  css: z.string().optional(),
-  js: z.string().optional(),
+  css: z.string().max(51200).optional(),
+  js: z.string().max(51200).optional(),
   url: z.string().optional(),
   preserveQueryParams: z.boolean().optional(),
 });

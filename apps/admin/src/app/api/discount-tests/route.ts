@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DiscountTestService, CreateDiscountTestSchema } from "@/services/discount-test.service";
-import { getShopId } from "@/lib/api-shop";
 import { withShopAuth, withBillingActive, withPlanGuard } from "@/lib/api-middleware";
 
 const service = new DiscountTestService();
 
 export async function GET(request: NextRequest) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status") ?? undefined;
+    const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
+    const offset = parseInt(searchParams.get("offset") ?? "0", 10);
 
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status") ?? undefined;
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
-  const offset = parseInt(searchParams.get("offset") ?? "0", 10);
-
-  const result = await service.list(shopId, { status, limit, offset });
-  return NextResponse.json(result);
+    const result = await service.list(shopId, { status, limit, offset });
+    return NextResponse.json(result);
+  });
 }
 
 export async function POST(request: NextRequest) {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { IntegrationService } from "@/services/integration.service";
 import { withShopAuth, withBillingActive, withPlanGuard } from "@/lib/api-middleware";
-import { getShopId } from "@/lib/api-shop";
 import { z } from "zod";
 
 const service = new IntegrationService();
@@ -14,11 +13,10 @@ const UpsertSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-
-  const items = await service.list(shopId);
-  return NextResponse.json({ items });
+  return withShopAuth(request, async (shopId) => {
+    const items = await service.list(shopId);
+    return NextResponse.json({ items });
+  });
 }
 
 export async function POST(request: NextRequest) {

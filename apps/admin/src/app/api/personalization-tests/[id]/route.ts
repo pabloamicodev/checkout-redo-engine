@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PersonalizationTestService } from "@/services/personalization-test.service";
-import { getShopId } from "@/lib/api-shop";
+import { withShopAuth } from "@/lib/api-middleware";
 import { z } from "zod";
 
 const service = new PersonalizationTestService();
@@ -11,48 +11,44 @@ const UpdateSchema = z.object({
 });
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-
-  const { id } = await params;
-  try {
-    const exp = await service.get(shopId, id);
-    return NextResponse.json(exp);
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  return withShopAuth(request, async (shopId) => {
+    const { id } = await params;
+    try {
+      const exp = await service.get(shopId, id);
+      return NextResponse.json(exp);
+    } catch {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const { id } = await params;
+    let body: unknown;
+    try { body = await request.json(); }
+    catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
-  const { id } = await params;
-  let body: unknown;
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+    const parsed = UpdateSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
-  const parsed = UpdateSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
-
-  try {
-    const exp = await service.update(shopId, id, parsed.data);
-    return NextResponse.json(exp);
-  } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 400 });
-  }
+    try {
+      const exp = await service.update(shopId, id, parsed.data);
+      return NextResponse.json(exp);
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 400 });
+    }
+  });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-
-  const { id } = await params;
-  try {
-    await service.archive(shopId, id);
-    return new NextResponse(null, { status: 204 });
-  } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 400 });
-  }
+  return withShopAuth(request, async (shopId) => {
+    const { id } = await params;
+    try {
+      await service.archive(shopId, id);
+      return new NextResponse(null, { status: 204 });
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 400 });
+    }
+  });
 }
-

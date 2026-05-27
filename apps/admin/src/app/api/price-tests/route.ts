@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PriceTestService } from "@/services/price-test.service";
-import { getShopId } from "@/lib/api-shop";
 import { withShopAuth, withBillingActive, withPlanGuard } from "@/lib/api-middleware";
 import { z } from "zod";
 
@@ -31,15 +30,14 @@ const CreateSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-
-  const { searchParams } = new URL(request.url);
-  const result = await service.list(shopId, {
-    status: searchParams.get("status") ?? undefined,
-    page: parseInt(searchParams.get("page") ?? "1", 10),
+  return withShopAuth(request, async (shopId) => {
+    const { searchParams } = new URL(request.url);
+    const result = await service.list(shopId, {
+      status: searchParams.get("status") ?? undefined,
+      page: parseInt(searchParams.get("page") ?? "1", 10),
+    });
+    return NextResponse.json(result);
   });
-  return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {

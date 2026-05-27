@@ -86,6 +86,9 @@ function verifyShopifyJwt(token: string): ShopifyJwtPayload | null {
   // Token must not be expired (allow 30s clock skew)
   if (payload.exp < nowSeconds - 30) return null;
 
+  // Token must not be used before it becomes valid (allow 30s clock skew)
+  if (payload.nbf > nowSeconds + 30) return null;
+
   // Token must be for this app
   if (payload.aud !== apiKey) return null;
 

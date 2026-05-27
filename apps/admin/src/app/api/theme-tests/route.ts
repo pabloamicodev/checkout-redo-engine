@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ThemeTestService } from "@/services/theme-test.service";
-import { getShopId } from "@/lib/api-shop";
+import { withShopAuth } from "@/lib/api-middleware";
 import { z } from "zod";
 
 const service = new ThemeTestService();
@@ -26,43 +26,40 @@ const CreateThemeTestSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status") ?? undefined;
+    const page = parseInt(searchParams.get("page") ?? "1", 10);
+    const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
+    const offset = (page - 1) * limit;
 
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status") ?? undefined;
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
-  const offset = (page - 1) * limit;
-
-  const result = await service.list(shopId, { status, limit, offset });
-  return NextResponse.json(result);
+    const result = await service.list(shopId, { status, limit, offset });
+    return NextResponse.json(result);
+  });
 }
 
 export async function POST(request: NextRequest) {
-  const shopId = await getShopId(request);
-  if (!shopId) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  return withShopAuth(request, async (shopId) => {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    const parsed = CreateThemeTestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+    }
 
-  const parsed = CreateThemeTestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
-  }
-
-  try {
-    const experiment = await service.create(shopId, parsed.data);
-    return NextResponse.json(experiment, { status: 201 });
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create theme test" },
-      { status: 400 }
-    );
-  }
+    try {
+      const experiment = await service.create(shopId, parsed.data);
+      return NextResponse.json(experiment, { status: 201 });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Failed to create theme test" },
+        { status: 400 }
+      );
+    }
+  });
 }
-

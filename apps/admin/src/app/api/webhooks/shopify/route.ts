@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { validateWebhook } from "@/lib/shopify";
 import { prisma } from "@/lib/prisma";
 import { cacheDel } from "@/lib/redis";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { OrderAttributionService } from "@/services/order-attribution.service";
 import { BillingService } from "@/services/billing.service";
 import { ThemeTestService } from "@/services/theme-test.service";
@@ -36,6 +37,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // Rate limit inbound webhooks per shop to prevent flooding
+  const rl = await checkRateLimit(`webhook:${shopDomain}`, RATE_LIMITS.webhook_inbound);
+  if (!rl.allowed) {
+    logger.warn("[Webhook] Rate limit exceeded — dropping webhook", { shopDomain, topic });
+    return NextResponse.json({ ok: true });
+  }
+
   let payload: unknown;
   try {
     payload = JSON.parse(rawBody) as unknown;
@@ -53,13 +61,12 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Process webhook asynchronously (don't await to return 200 quickly)
-  processWebhook(shop.id, shopDomain, topic, payload as Record<string, unknown>, webhookLog.id).catch(
-    (err) => {
-      Sentry.captureException(err, { tags: { webhookTopic: topic, shopDomain } });
-      logger.error("[Webhook] Processing error", err instanceof Error ? err : undefined, { topic, shopDomain });
-    }
-  );
+  try {
+    await processWebhook(shop.id, shopDomain, topic, payload as Record<string, unknown>, webhookLog.id);
+  } catch (err) {
+    Sentry.captureException(err, { tags: { webhookTopic: topic, shopDomain } });
+    logger.error("[Webhook] Processing error", err instanceof Error ? err : undefined, { topic, shopDomain });
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -207,19 +214,24 @@ async function processWebhook(
             attributedAt: true,
           },
         });
-        const events = await prisma.event.findMany({
-          where: {
-            shopId,
-            visitorId: { in: orders.map((o: (typeof orders)[number]) => o.visitorId).filter(Boolean) as string[] },
-          },
-          select: { eventName: true, eventType: true, occurredAt: true, url: true },
-        });
+        const visitorIds = orders.map((o: (typeof orders)[number]) => o.visitorId).filter(Boolean) as string[];
+        const [events, assignments] = await Promise.all([
+          prisma.event.findMany({
+            where: { shopId, visitorId: { in: visitorIds } },
+            select: { eventName: true, eventType: true, occurredAt: true, url: true },
+          }),
+          prisma.experimentAssignment.findMany({
+            where: { shopId, visitorId: { in: visitorIds } },
+            select: { experimentId: true, variantId: true, firstSeenAt: true, lastSeenAt: true },
+          }),
+        ]);
         logger.info("[GDPR customers/data_request]", {
           shopDomain,
           customerId,
           customerEmail,
           orders: orders.length,
           events: events.length,
+          assignments: assignments.length,
         });
         // Shopify does not require us to send this data anywhere — just acknowledge receipt.
         // For App Store compliance the log above is the audit trail.

@@ -126,7 +126,7 @@ async function exportCsv(
         launchedAt: { not: null },
       },
       orderBy: { launchedAt: "desc" },
-      take: 100,
+      take: 50,
       select: { id: true, name: true, type: true, status: true, launchedAt: true },
     });
 

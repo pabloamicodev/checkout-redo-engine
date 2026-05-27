@@ -47,7 +47,7 @@ export async function GET() {
   }
 
   // Env var presence check (no values exposed)
-  const requiredEnvs = ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "ENCRYPTION_KEY", "HOST"];
+  const requiredEnvs = ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "ENCRYPTION_KEY", "HOST", "CRON_SECRET", "RESEND_API_KEY"];
   const missingEnvs = requiredEnvs.filter((k) => !process.env[k]);
   checks["env"] = {
     ok: missingEnvs.length === 0,

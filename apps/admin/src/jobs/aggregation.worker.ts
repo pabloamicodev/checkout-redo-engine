@@ -50,6 +50,8 @@ const worker = new Worker<AggregationJobData, AggregationJobResult>(
   {
     connection: redisOpts(),
     concurrency: 2,
+    stalledInterval: 30_000,
+    lockDuration: 60_000,
   }
 );
 
@@ -71,8 +73,13 @@ logger.info("[aggregation-worker] started, waiting for jobs");
 
 async function shutdown() {
   logger.info("[aggregation-worker] shutting down");
+  const forceExit = setTimeout(() => {
+    logger.warn("[aggregation-worker] shutdown timeout — forcing exit");
+    process.exit(1);
+  }, 15_000);
   await logger.flush();
   await worker.close();
+  clearTimeout(forceExit);
   process.exit(0);
 }
 
