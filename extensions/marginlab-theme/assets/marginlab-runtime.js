@@ -257,14 +257,8 @@
       state.assignments[exp.id] = variant;
       persistAssignments();
 
-      // Apply modifications (or redirect for split URL tests)
-      if (exp.type === "SPLIT_URL_TEST") {
-        handleSplitUrlRedirect(exp, variant, config);
-      } else {
-        applyVariantModifications(exp, variant);
-      }
-
-      // Track assignment event
+      // Track assignment event BEFORE any redirect so the event is in state.events
+      // when window.location.replace() triggers beforeunload → sendBeacon flush.
       trackEvent("experiment_assigned", "CUSTOM", {
         experimentId: exp.id,
         experimentSlug: exp.slug,
@@ -272,8 +266,17 @@
         variantKey: variant.key,
       });
 
-      // Push to integrations
+      // Push to integrations (also before redirect)
       pushToIntegrations(exp, variant);
+
+      // Apply modifications (or redirect for split URL tests).
+      // For SPLIT_URL_TEST this may call window.location.replace() — page navigates
+      // away after this, so nothing below this call executes for new redirect cases.
+      if (exp.type === "SPLIT_URL_TEST") {
+        handleSplitUrlRedirect(exp, variant, config);
+      } else {
+        applyVariantModifications(exp, variant);
+      }
     });
   }
 
@@ -290,6 +293,17 @@
     // Loop protection: already completed a redirect in this navigation
     if (getQueryParam("ml_redirected") === "1") return;
 
+    // Only redirect when the visitor is on the control / origin URL (baseUrl).
+    // This prevents the experiment from hijacking unrelated pages.
+    var splitUrlConfig = exp.splitUrlConfig || {};
+    if (splitUrlConfig.baseUrl) {
+      var controlBase = splitUrlConfig.baseUrl.split("?")[0];
+      var onControlPage = controlBase.startsWith("/")
+        ? window.location.pathname === controlBase
+        : window.location.href.startsWith(controlBase);
+      if (!onControlPage) return;
+    }
+
     var targetUrl = variant.redirectUrl;
 
     // If already on the target URL (visitor bookmarked it), skip
@@ -297,8 +311,6 @@
     var currentBase = window.location.pathname;
     if (targetBase.startsWith("/") && currentBase === targetBase) return;
     if (targetBase.startsWith("http") && window.location.href.startsWith(targetBase)) return;
-
-    var splitUrlConfig = exp.splitUrlConfig || {};
 
     // Preserve current page's query params (minus ml_redirected itself)
     if (splitUrlConfig.preserveQueryParams !== false) {
@@ -703,9 +715,17 @@
   // Event tracking
   // ---------------------------------------------------------------------------
   function trackEvent(eventName, eventType, metadata) {
-    var activeAssignments = Object.entries(state.assignments);
-    var experimentId = activeAssignments.length > 0 ? activeAssignments[0][0] : undefined;
-    var variantId = activeAssignments.length > 0 ? activeAssignments[0][1].id : undefined;
+    // If the caller specifies experimentId/variantId in metadata (e.g. experiment_assigned),
+    // use those directly. Otherwise fall back to the first active assignment for generic
+    // events like page_viewed.
+    var meta = metadata || {};
+    var experimentId = meta.experimentId;
+    var variantId = meta.variantId;
+    if (!experimentId) {
+      var activeAssignments = Object.entries(state.assignments);
+      experimentId = activeAssignments.length > 0 ? activeAssignments[0][0] : undefined;
+      variantId = activeAssignments.length > 0 ? activeAssignments[0][1].id : undefined;
+    }
 
     state.events.push({
       eventName: eventName,
