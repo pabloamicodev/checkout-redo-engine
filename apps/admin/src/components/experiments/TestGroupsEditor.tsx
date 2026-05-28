@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Pencil, ArrowLeftRight, Plus, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { SAVE_GROUPS_EVENT } from "./ExperimentSaveButton";
+import { SAVE_GROUPS_EVENT, SAVE_GROUPS_RESULT_EVENT } from "./ExperimentSaveButton";
 
 interface Group {
   id: string;
@@ -43,7 +43,7 @@ export function TestGroupsEditor({ initialVariants, experimentId }: Props) {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  const saveGroups = useCallback(async () => {
+  const saveGroups = useCallback(async (dispatchResult = false) => {
     if (!experimentId) return;
     setSaving(true);
     try {
@@ -62,11 +62,20 @@ export function TestGroupsEditor({ initialVariants, experimentId }: Props) {
         const d = await res.json() as { error?: string };
         throw new Error(d.error ?? "Save failed");
       }
-      toast.success("Test groups saved.");
       setDirty(false);
       router.refresh();
+      if (dispatchResult) {
+        window.dispatchEvent(new CustomEvent(SAVE_GROUPS_RESULT_EVENT, { detail: { experimentId, ok: true } }));
+      } else {
+        toast.success("Test groups saved.");
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save groups. Please try again.");
+      const msg = err instanceof Error ? err.message : "Could not save groups. Please try again.";
+      if (dispatchResult) {
+        window.dispatchEvent(new CustomEvent(SAVE_GROUPS_RESULT_EVENT, { detail: { experimentId, ok: false, error: msg } }));
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -77,7 +86,7 @@ export function TestGroupsEditor({ initialVariants, experimentId }: Props) {
     function onSaveEvent(e: Event) {
       const detail = (e as CustomEvent<{ experimentId: string }>).detail;
       if (detail?.experimentId === experimentId) {
-        saveGroups();
+        saveGroups(true);
       }
     }
     window.addEventListener(SAVE_GROUPS_EVENT, onSaveEvent);
@@ -326,7 +335,7 @@ export function TestGroupsEditor({ initialVariants, experimentId }: Props) {
         <div className="mt-4 flex items-center justify-between px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
           <span className="text-xs text-amber-700 font-medium">You have unsaved changes to the group allocation.</span>
           <button
-            onClick={saveGroups}
+            onClick={() => saveGroups(false)}
             disabled={saving}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all active:scale-95 disabled:opacity-60"
             style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
