@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { X, Pencil, ArrowLeftRight, Plus, Check } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { X, Pencil, ArrowLeftRight, Plus, Check, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
+import { SAVE_GROUPS_EVENT } from "./ExperimentSaveButton";
 
 interface Group {
   id: string;
@@ -12,6 +15,7 @@ interface Group {
 
 interface Props {
   initialVariants: { id: string; name: string; isControl: boolean; allocationPercent: number }[];
+  experimentId?: string;
 }
 
 // Group colors: blue for control, green for first variant, then others
@@ -23,7 +27,9 @@ const GROUP_COLORS = [
   { border: "#dc2626", text: "#dc2626", track: "#dc2626", bg: "#fef2f2" },
 ];
 
-export function TestGroupsEditor({ initialVariants }: Props) {
+export function TestGroupsEditor({ initialVariants, experimentId }: Props) {
+  const toast = useToast();
+  const router = useRouter();
   const [groups, setGroups] = useState<Group[]>(() =>
     initialVariants.map((v) => ({
       id: v.id,
@@ -34,6 +40,49 @@ export function TestGroupsEditor({ initialVariants }: Props) {
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const saveGroups = useCallback(async () => {
+    if (!experimentId) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/experiments/${experimentId}/groups`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variants: groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            allocationPercent: g.percent,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Save failed");
+      }
+      toast.success("Test groups saved.");
+      setDirty(false);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save groups. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }, [experimentId, groups, toast, router]);
+
+  // Listen for the header Save button dispatching the save event
+  useEffect(() => {
+    function onSaveEvent(e: Event) {
+      const detail = (e as CustomEvent<{ experimentId: string }>).detail;
+      if (detail?.experimentId === experimentId) {
+        saveGroups();
+      }
+    }
+    window.addEventListener(SAVE_GROUPS_EVENT, onSaveEvent);
+    return () => window.removeEventListener(SAVE_GROUPS_EVENT, onSaveEvent);
+  }, [experimentId, saveGroups]);
 
   const startEdit = (g: Group) => {
     setEditingId(g.id);
@@ -42,7 +91,7 @@ export function TestGroupsEditor({ initialVariants }: Props) {
 
   const commitEdit = () => {
     if (editingId && editName.trim()) {
-      setGroups((gs) =>
+      setGroupsAndDirty((gs) =>
         gs.map((g) => (g.id === editingId ? { ...g, name: editName.trim() } : g))
       );
     }
@@ -54,7 +103,7 @@ export function TestGroupsEditor({ initialVariants }: Props) {
     const newId = `new-${Date.now()}`;
     const evenShare = Math.floor(100 / (groups.length + 1));
     const remainder = 100 - evenShare * (groups.length + 1);
-    setGroups((gs) => [
+    setGroupsAndDirty((gs) => [
       ...gs.map((g, i): Group => ({
         id: g.id,
         name: g.name,
@@ -76,7 +125,7 @@ export function TestGroupsEditor({ initialVariants }: Props) {
     const remaining = groups.filter((g) => g.id !== id);
     const share = Math.floor(removed.percent / remaining.length);
     const remainder = removed.percent - share * remaining.length;
-    setGroups(
+    setGroupsAndDirty(() =>
       remaining.map((g, i) => ({
         ...g,
         percent: g.percent + share + (i === 0 ? remainder : 0),
@@ -95,6 +144,12 @@ export function TestGroupsEditor({ initialVariants }: Props) {
       { ...g0, percent: pct },
       { ...g1, percent: 100 - pct },
     ]);
+    setDirty(true);
+  };
+
+  const setGroupsAndDirty = (fn: (gs: Group[]) => Group[]) => {
+    setGroups(fn);
+    setDirty(true);
   };
 
   return (
@@ -265,6 +320,22 @@ export function TestGroupsEditor({ initialVariants }: Props) {
           )}
         </div>
       </div>
+
+      {/* Save footer — only shown when there are unsaved changes */}
+      {dirty && experimentId && (
+        <div className="mt-4 flex items-center justify-between px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <span className="text-xs text-amber-700 font-medium">You have unsaved changes to the group allocation.</span>
+          <button
+            onClick={saveGroups}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all active:scale-95 disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+          >
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            {saving ? "Saving…" : "Save groups"}
+          </button>
+        </div>
+      )}
 
       {/* Slider thumb style */}
       <style>{`

@@ -2284,7 +2284,7 @@ function AudienceTable({
 function TestGroupsTab({ experiment }: { experiment: ExperimentData }) {
   return (
     <div className="p-6  mx-auto bg-neutral-50/50">
-      <TestGroupsEditor initialVariants={experiment.variants} />
+      <TestGroupsEditor initialVariants={experiment.variants} experimentId={experiment.id} />
     </div>
   );
 }

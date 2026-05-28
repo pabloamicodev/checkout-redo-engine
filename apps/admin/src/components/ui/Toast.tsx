@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from "lucide-react";
 
@@ -43,19 +44,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     info: (message) => addToast("info", message),
   };
 
+  const container = (
+    <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 w-80 pointer-events-none">
+      {toasts.map((toast) => (
+        <ToastItem
+          key={toast.id}
+          toast={toast}
+          onRemove={removeToast}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <ToastContext.Provider value={ctx}>
       {children}
-      {/* Toast container */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-80">
-        {toasts.map((toast) => (
-          <ToastItem
-            key={toast.id}
-            toast={toast}
-            onRemove={removeToast}
-          />
-        ))}
-      </div>
+      {/* Render via portal so fixed positioning is always relative to viewport */}
+      {typeof document !== "undefined" ? createPortal(container, document.body) : container}
     </ToastContext.Provider>
   );
 }
@@ -95,7 +100,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   return (
     <div
       className={cn(
-        "flex items-start gap-2.5 px-3.5 py-3 rounded-xl border shadow-md animate-slide-in-up",
+        "flex items-start gap-2.5 px-3.5 py-3 rounded-xl border shadow-md animate-slide-in-up pointer-events-auto",
         config.bg,
         config.border
       )}

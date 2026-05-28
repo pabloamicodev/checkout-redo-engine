@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AnalyticsService } from "@/services/analytics.service";
 import { ExperimentTabs } from "@/components/experiments/ExperimentTabs";
 import { ExperimentStatusActions } from "@/components/experiments/ExperimentStatusActions";
+import { ExperimentSaveButton } from "@/components/experiments/ExperimentSaveButton";
 import { getSessionShop } from "@/lib/session-shop";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { ChevronRight, Settings, Share2, LogOut } from "lucide-react";
@@ -107,12 +108,7 @@ export default async function ExperimentDetailPage({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <ExperimentStatusActions experimentId={id} status={experiment.status} />
-          <button
-            className="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
-          >
-            Save
-          </button>
+          <ExperimentSaveButton experimentId={id} currentTab={tab} />
         </div>
       </div>
 
