@@ -291,6 +291,7 @@ interface VariantContent {
 }
 
 interface VariantConfig extends AllocationVariant {
+  contentMode: "existing_block" | "inline";
   checkoutBlockIds: string[];
   inlineContent: VariantContent;
 }
@@ -339,12 +340,14 @@ function emptyVariant(isControl: boolean, idx: number): VariantConfig {
     name: isControl ? "Control (no block)" : `Variant ${String.fromCharCode(65 + idx - 1)}`,
     isControl,
     allocationPercent: 50,
+    contentMode: "inline" as const,
     checkoutBlockIds: [],
     inlineContent: emptyContent(),
   };
 }
 
 function isContentEmpty(v: VariantConfig, blockType: BlockTypeKey | null): boolean {
+  if (v.contentMode === "existing_block") return v.checkoutBlockIds.length === 0;
   if (!blockType) return false;
   const c = v.inlineContent;
   if (blockType === "trust_badges" || blockType === "payment_icons" || blockType === "trust_badges_with_reviews") return c.selectedBadges.length === 0;
@@ -1218,9 +1221,11 @@ function ContentEditor({
 function StepVariantContent({
   state,
   onChange,
+  availableBlocks,
 }: {
   state: WizardState;
   onChange: (p: Partial<WizardState>) => void;
+  availableBlocks: CheckoutBlock[];
 }) {
   function patchVariant(i: number, patch: Partial<VariantConfig>) {
     onChange({ variants: state.variants.map((v, idx) => (idx === i ? { ...v, ...patch } : v)) });
@@ -1306,17 +1311,94 @@ function StepVariantContent({
                   </p>
                 ) : blockType ? (
                   <>
-                    <ContentEditor
-                      variant={v}
-                      blockType={blockType}
-                      onChange={(patch) => patchContent(vi, patch)}
-                    />
-                    {isContentEmpty(v, blockType) && (
-                      <div className="mt-3">
-                        <InlineAlert variant="danger">
-                          Content cannot be empty for a non-control variant.
-                        </InlineAlert>
-                      </div>
+                    {/* Mode toggle */}
+                    <div className="flex gap-3 mb-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`mode-${vi}`}
+                          checked={v.contentMode === "existing_block"}
+                          onChange={() => patchVariant(vi, { contentMode: "existing_block", checkoutBlockIds: [] })}
+                          style={{ accentColor: ACCENT }}
+                        />
+                        <span className="text-sm text-neutral-700 font-medium">Use existing block</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`mode-${vi}`}
+                          checked={v.contentMode === "inline"}
+                          onChange={() => patchVariant(vi, { contentMode: "inline", checkoutBlockIds: [] })}
+                          style={{ accentColor: ACCENT }}
+                        />
+                        <span className="text-sm text-neutral-700 font-medium">Configure inline</span>
+                      </label>
+                    </div>
+
+                    {v.contentMode === "existing_block" ? (
+                      availableBlocks.length === 0 ? (
+                        <p className="text-xs text-neutral-400 italic">
+                          No checkout blocks found.{" "}
+                          <a href="/checkout-blocks" className="underline text-indigo-500">Create one first.</a>
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-neutral-600 mb-1">Select a block to show in this variant</p>
+                          {availableBlocks.map((block) => {
+                            const selected = v.checkoutBlockIds.includes(block.id);
+                            return (
+                              <label key={block.id} className="flex items-center gap-3 cursor-pointer p-2.5 rounded-lg border border-neutral-200 hover:border-indigo-300 transition-colors" style={selected ? { borderColor: ACCENT, background: "#eef2ff" } : {}}>
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() =>
+                                    patchVariant(vi, {
+                                      checkoutBlockIds: selected
+                                        ? v.checkoutBlockIds.filter((id) => id !== block.id)
+                                        : [...v.checkoutBlockIds, block.id],
+                                    })
+                                  }
+                                  style={{ accentColor: ACCENT }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-neutral-800 truncate">{block.name}</p>
+                                  <p className="text-xs text-neutral-400">{block.type}</p>
+                                </div>
+                                <span
+                                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  style={
+                                    block.status === "active"
+                                      ? { background: "#dcfce7", color: "#16a34a" }
+                                      : { background: "#f3f4f6", color: "#6b7280" }
+                                  }
+                                >
+                                  {block.status}
+                                </span>
+                              </label>
+                            );
+                          })}
+                          {v.checkoutBlockIds.length === 0 && (
+                            <div className="mt-2">
+                              <InlineAlert variant="danger">Select at least one block for this variant.</InlineAlert>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <>
+                        <ContentEditor
+                          variant={v}
+                          blockType={blockType}
+                          onChange={(patch) => patchContent(vi, patch)}
+                        />
+                        {isContentEmpty(v, blockType) && (
+                          <div className="mt-3">
+                            <InlineAlert variant="danger">
+                              Content cannot be empty for a non-control variant.
+                            </InlineAlert>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 ) : (
@@ -1680,7 +1762,7 @@ export function CheckoutTestWizard() {
             isControl: v.isControl,
             allocationPercent: v.allocationPercent,
             checkoutBlockIds: v.isControl ? [] : v.checkoutBlockIds,
-            inlineContent: v.isControl ? undefined : v.inlineContent,
+            inlineContent: (!v.isControl && v.contentMode === "inline") ? v.inlineContent : undefined,
           })),
         }),
       });
@@ -1711,7 +1793,7 @@ export function CheckoutTestWizard() {
     <StepSetup key="setup" state={state} onChange={patch} />,
     <StepBlockType key="block-type" state={state} onChange={patch} />,
     <StepPlacement key="placement" state={state} onChange={patch} />,
-    <StepVariantContent key="content" state={state} onChange={patch} />,
+    <StepVariantContent key="content" state={state} onChange={patch} availableBlocks={availableBlocks} />,
     <StepQA key="qa" qa={qa} onChange={patchQa} />,
     <StepReview key="review" state={state} qa={qa} availableBlocks={availableBlocks} />,
   ];
