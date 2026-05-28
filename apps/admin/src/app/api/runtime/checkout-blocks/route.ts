@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
           select: {
             key: true,
             settings: true,
+            checkoutBlockIds: true,
           },
         },
       },
@@ -62,16 +63,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ block: null });
     }
 
-    const config = variant.settings as Record<string, unknown> | null;
-    const checkoutBlockType = config?.checkoutBlockType as string | undefined;
-    if (!checkoutBlockType) {
-      return NextResponse.json({ block: null });
+    let block: { type: string; content: Record<string, unknown> } | null = null;
+
+    // Path A: variant references an existing CheckoutBlock record.
+    // Status is intentionally NOT filtered — DRAFT blocks are allowed inside
+    // a running test so merchants can validate before publishing to live theme.
+    const blockIds = (variant.checkoutBlockIds ?? []) as string[];
+    if (blockIds.length > 0) {
+      const checkoutBlock = await prisma.checkoutBlock.findFirst({
+        where: { id: blockIds[0], shopId: shop.id },
+        select: { type: true, content: true },
+      });
+      if (checkoutBlock) {
+        block = {
+          type: checkoutBlock.type as string,
+          content: (checkoutBlock.content ?? {}) as Record<string, unknown>,
+        };
+      }
     }
 
-    const block = {
-      type: checkoutBlockType,
-      content: (config?.content ?? {}) as Record<string, unknown>,
-    };
+    // Path B: inline content stored directly in variant.settings (legacy / inline flow).
+    if (!block) {
+      const config = variant.settings as Record<string, unknown> | null;
+      const checkoutBlockType = config?.checkoutBlockType as string | undefined;
+      if (!checkoutBlockType) {
+        return NextResponse.json({ block: null });
+      }
+      block = {
+        type: checkoutBlockType,
+        content: (config?.content ?? {}) as Record<string, unknown>,
+      };
+    }
 
     const response = NextResponse.json({ block });
     response.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
