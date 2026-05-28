@@ -148,6 +148,7 @@ export default async function ExperimentDetailPage({
         experiment={experiment}
         analytics={analytics}
         currencyCode={currencyCode}
+        shopDomain={shopDomain}
       />
     </div>
   );

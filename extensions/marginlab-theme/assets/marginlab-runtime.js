@@ -284,14 +284,31 @@
   // Split URL redirect
   // ---------------------------------------------------------------------------
   function handleSplitUrlRedirect(exp, variant, config) {
-    // Control stays on the original page
-    if (variant.isControl || !variant.redirectUrl) return;
+    var debugPrefix = "[MarginLab][SplitURL][" + exp.id + "]";
 
-    // Respect kill switch
-    if (config.killSwitches && config.killSwitches.splitUrlRedirectsDisabled) return;
+    // Control stays on the original page
+    if (variant.isControl || !variant.redirectUrl) {
+      if (state.debugMode) console.log(debugPrefix, "skip — control variant or no redirectUrl");
+      return;
+    }
+
+    // Global kill switch
+    if (config.killSwitches && config.killSwitches.globalDisabled) {
+      console.warn(debugPrefix, "skip — globalDisabled kill switch is ON");
+      return;
+    }
+
+    // Redirect-specific kill switch
+    if (config.killSwitches && config.killSwitches.splitUrlRedirectsDisabled) {
+      console.warn(debugPrefix, "skip — splitUrlRedirectsDisabled kill switch is ON");
+      return;
+    }
 
     // Loop protection: already completed a redirect in this navigation
-    if (getQueryParam("ml_redirected") === "1") return;
+    if (getQueryParam("ml_redirected") === "1") {
+      if (state.debugMode) console.log(debugPrefix, "skip — ml_redirected=1 already in URL (loop guard)");
+      return;
+    }
 
     // Only redirect when the visitor is on the control / origin URL (baseUrl).
     // This prevents the experiment from hijacking unrelated pages.
@@ -301,7 +318,10 @@
       var onControlPage = controlBase.startsWith("/")
         ? window.location.pathname === controlBase
         : window.location.href.startsWith(controlBase);
-      if (!onControlPage) return;
+      if (!onControlPage) {
+        if (state.debugMode) console.log(debugPrefix, "skip — not on control URL. current:", window.location.href, "expected:", controlBase);
+        return;
+      }
     }
 
     var targetUrl = variant.redirectUrl;
@@ -309,8 +329,14 @@
     // If already on the target URL (visitor bookmarked it), skip
     var targetBase = targetUrl.split("?")[0];
     var currentBase = window.location.pathname;
-    if (targetBase.startsWith("/") && currentBase === targetBase) return;
-    if (targetBase.startsWith("http") && window.location.href.startsWith(targetBase)) return;
+    if (targetBase.startsWith("/") && currentBase === targetBase) {
+      if (state.debugMode) console.log(debugPrefix, "skip — already on target URL:", targetBase);
+      return;
+    }
+    if (targetBase.startsWith("http") && window.location.href.startsWith(targetBase)) {
+      if (state.debugMode) console.log(debugPrefix, "skip — already on target URL (full):", targetBase);
+      return;
+    }
 
     // Preserve current page's query params (minus ml_redirected itself)
     if (splitUrlConfig.preserveQueryParams !== false) {
@@ -326,6 +352,7 @@
     // Mark as redirected to prevent loops on the landing page
     targetUrl += (targetUrl.includes("?") ? "&" : "?") + "ml_redirected=1";
 
+    console.log(debugPrefix, "✓ redirecting to:", targetUrl);
     window.location.replace(targetUrl);
   }
 
