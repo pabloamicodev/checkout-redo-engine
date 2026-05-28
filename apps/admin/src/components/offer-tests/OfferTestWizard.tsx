@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import { Plus, Trash2 } from "lucide-react";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { FormSection, FormField } from "@/components/forms/FormSection";
@@ -1725,6 +1726,7 @@ const TOTAL_STEPS = STEP_DEFS.length;
 
 export function OfferTestWizard() {
   const router = useRouter();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>({ ...DEFAULT_STATE });
   const [saving, setSaving] = useState(false);
@@ -1784,13 +1786,16 @@ export function OfferTestWizard() {
         );
       }
 
+      toast.success(`Offer test "${state.name}" created — activate it from the test detail page.`);
       router.push("/offer-tests");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [state, router]);
+  }, [state, router, toast]);
 
   const handleNext = useCallback(() => {
     if (step < TOTAL_STEPS - 1) {

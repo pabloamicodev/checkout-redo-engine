@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ArrowLeft, ArrowRight, Plus, Trash2, User, Tag, ShoppingBag, MapPin, Target } from "lucide-react";
@@ -504,6 +505,7 @@ const STEPS = [
 
 export function PersonalizationTestWizard() {
   const router = useRouter();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -580,13 +582,18 @@ export function PersonalizationTestWizard() {
 
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error ?? "Failed to save personalization");
+        const msg = json.error ?? "Failed to save personalization";
+        toast.error(msg);
+        setError(msg);
         return;
       }
 
+      toast.success(`Personalization test created — activate it from the test detail page.`);
       router.push("/personalization-tests");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error");
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setSaving(false);
     }

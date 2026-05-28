@@ -1386,7 +1386,7 @@ interface ShopInfo {
 
 export function PriceTestWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState<StepIndex>(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1546,14 +1546,16 @@ export function PriceTestWizard() {
       const data = (await res.json()) as { error?: string };
       if (res.status === 402) { setShowUpgradeModal(true); setSaving(false); return; }
       if (!res.ok) throw new Error(data.error ?? "Failed to create price test");
-      showSuccess(`Price test "${setup.name.trim()}" created — activate it from the test detail page.`);
+      toast.success(`Price test "${setup.name.trim()}" created — activate it from the test detail page.`);
       router.push("/price-tests");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create test. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create test. Check your connection and try again.";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [setup, activeRows, variants, matrix, strategy, router, showSuccess]);
+  }, [setup, activeRows, variants, matrix, strategy, router, toast]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 

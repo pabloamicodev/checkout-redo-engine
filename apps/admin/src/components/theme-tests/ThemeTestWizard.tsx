@@ -837,7 +837,7 @@ function ThemePreviewPanel({
 
 export function ThemeTestWizard({ shopDomain }: { shopDomain: string }) {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [saving, setSaving] = useState(false);
@@ -932,14 +932,16 @@ export function ThemeTestWizard({ shopDomain }: { shopDomain: string }) {
       }
 
       const created = (await res.json()) as { id: string };
-      showSuccess(`Theme test "${state.name}" created — activate it from the test detail page.`);
+      toast.success(`Theme test "${state.name}" created — activate it from the test detail page.`);
       router.push(`/theme-tests/${created.id}`);
       router.refresh();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to save");
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      toast.error(msg);
+      setSubmitError(msg);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const isLastStep = step === TOTAL_STEPS - 1;
 

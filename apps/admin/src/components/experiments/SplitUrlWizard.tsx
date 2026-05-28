@@ -907,7 +907,7 @@ function StepReview({
 // ---------------------------------------------------------------------------
 export function SplitUrlWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState<StepIndex>(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [saving, setSaving] = useState(false);
@@ -997,14 +997,16 @@ export function SplitUrlWizard() {
         throw new Error(typeof d.error === "string" ? d.error : "Failed to create test");
       }
 
-      showSuccess(`Split URL test "${state.name}" created — activate it from the test detail page.`);
+      toast.success(`Split URL test "${state.name}" created — activate it from the test detail page.`);
       router.push("/split-url-tests");
       router.refresh();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Could not create test. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create test. Check your connection and try again.";
+      toast.error(msg);
+      setSubmitError(msg);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const handleBack = useCallback(() => {
     if (step === 0) {

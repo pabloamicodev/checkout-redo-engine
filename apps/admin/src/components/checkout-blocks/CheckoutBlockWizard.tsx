@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import { Check, ChevronRight, ArrowLeft, Layers, Plus, X } from "lucide-react";
 import { WizardLayout } from "@/components/layout/WizardLayout";
 import { type WizardStep } from "@/components/experiments/WizardStepNav";
@@ -1009,6 +1010,7 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 
 export function CheckoutBlockWizard() {
   const router = useRouter();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1078,10 +1080,13 @@ export function CheckoutBlockWizard() {
         throw new Error(typeof data.error === "string" ? data.error : "Failed to create checkout block");
       }
 
+      toast.success(`Checkout block "${state.name}" created — activate it from the blocks page.`);
       router.push("/checkout-blocks");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save checkout block");
+      const msg = err instanceof Error ? err.message : "Failed to save checkout block";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
   }

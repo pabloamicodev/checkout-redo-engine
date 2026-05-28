@@ -1,10 +1,59 @@
 {% comment %}
   MarginLab App Embed Block
-  This block is injected into every page via the Theme App Extension.
-  It bootstraps the storefront runtime.
+  ─────────────────────────────────────────────────────────────────────────────
+  Single "MarginLab" accordion in the Theme Editor.
+  Runs in <head>: boots the runtime and optionally runs the anti-flicker script.
 {% endcomment %}
 
 {%- assign marginlab_api_base = block.settings.api_base | default: "https://your-marginlab-app.vercel.app" -%}
+{%- assign ml_afc_timeout = block.settings.antiflicker_timeout | default: 400 -%}
+
+{% if block.settings.enable_antiflicker %}
+<style id="ml-afs">body{opacity:0!important;transition:none!important}</style>
+<script>
+(function(){
+  var TIMEOUT = {{ ml_afc_timeout }};
+  function show(){
+    var s=document.getElementById('ml-afs');
+    if(s&&s.parentNode)s.parentNode.removeChild(s);
+    if(document.body)document.body.style.opacity='';
+    clearTimeout(t);
+  }
+  var t = setTimeout(show, TIMEOUT);
+  try {
+    var assignments = JSON.parse(localStorage.getItem('_ml_assignments')||'{}');
+    var config = JSON.parse(localStorage.getItem('_ml_config')||'{}');
+    var experiments = (config && config.experiments) || [];
+    var redirected = false;
+    for(var i=0;i<experiments.length;i++){
+      var exp = experiments[i];
+      if(exp.status!=='RUNNING'||exp.type!=='SPLIT_URL_TEST') continue;
+      var asgn = assignments[exp.id];
+      if(!asgn||asgn.isControl||!asgn.redirectUrl) continue;
+      if(window.location.search.indexOf('ml_redirected=1')!==-1){ show(); return; }
+      var cfg = exp.splitUrlConfig||{};
+      if(!cfg.baseUrl) continue;
+      var ctrlPath = cfg.baseUrl.startsWith('http')
+        ? new URL(cfg.baseUrl).pathname
+        : cfg.baseUrl;
+      ctrlPath = ctrlPath.replace(/\/$/,'');
+      var currPath = window.location.pathname.replace(/\/$/,'');
+      if(currPath!==ctrlPath) continue;
+      var targetPath = asgn.redirectUrl.split('?')[0].replace(/\/$/,'');
+      if(currPath===targetPath){ show(); return; }
+      var targetUrl = asgn.redirectUrl;
+      targetUrl += (targetUrl.indexOf('?')!==-1?'&':'?')+'ml_redirected=1';
+      redirected = true;
+      window.location.replace(targetUrl);
+      break;
+    }
+    if(!redirected) show();
+  } catch(e){
+    show();
+  }
+})();
+</script>
+{% endif %}
 
 <script>
   window.marginlabConfig = {
@@ -14,25 +63,43 @@
   };
 </script>
 
-{{ 'marginlab-runtime.js' | asset_url | script_tag }}
+<script src="{{ 'marginlab-runtime.js' | asset_url }}" defer></script>
 
 {% schema %}
 {
-  "name": "MarginLab Runtime",
-  "target": "body",
+  "name": "MarginLab",
+  "target": "head",
   "settings": [
     {
       "type": "text",
       "id": "api_base",
-      "label": "MarginLab API Base URL",
+      "label": "API Base URL",
       "info": "The URL of your MarginLab admin app (e.g. https://your-app.vercel.app)"
     },
     {
       "type": "checkbox",
       "id": "debug_mode",
-      "label": "Enable Debug Mode",
+      "label": "Debug Mode",
       "default": false,
-      "info": "Shows the debug overlay on every page (for development only)"
+      "info": "Shows the debug overlay on every page (development only)"
+    },
+    {
+      "type": "header",
+      "content": "Anti-Flicker"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_antiflicker",
+      "label": "Enable Anti-Flicker",
+      "default": true,
+      "info": "Prevents flash of control page for returning split-URL test visitors"
+    },
+    {
+      "type": "number",
+      "id": "antiflicker_timeout",
+      "label": "Anti-Flicker Timeout (ms)",
+      "default": 400,
+      "info": "Maximum time to hide the page while checking assignments (default: 400ms)"
     }
   ]
 }

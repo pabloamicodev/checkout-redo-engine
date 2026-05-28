@@ -609,7 +609,7 @@ function MiniRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function PostPurchaseWizard({ availableOffers }: Props) {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -723,14 +723,16 @@ export function PostPurchaseWizard({ availableOffers }: Props) {
         );
       }
 
-      showSuccess(`Post-purchase offer "${name.trim()}" created — activate it from the detail page.`);
+      toast.success(`Post-purchase offer "${name.trim()}" created — activate it from the detail page.`);
       router.push("/personalizations/post-purchase");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create personalization. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create personalization. Check your connection and try again.";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [name, selectedOfferIds, rules, priority, startsAt, endsAt, router, showSuccess]);
+  }, [name, selectedOfferIds, rules, priority, startsAt, endsAt, router, toast]);
 
   // ── Navigation ────────────────────────────────────────────────────────────────
 

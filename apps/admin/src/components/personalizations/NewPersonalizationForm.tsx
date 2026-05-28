@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import { Plus, X, ChevronRight, ArrowLeft, Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { InlineAlert } from "@/components/ui/InlineAlert";
@@ -621,8 +622,7 @@ function MiniRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function NewPersonalizationForm({ availableOffers }: Props) {
   const router = useRouter();
-
-  // Wizard state
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -735,10 +735,13 @@ export function NewPersonalizationForm({ availableOffers }: Props) {
         );
       }
 
+      toast.success(`Personalization "${name.trim()}" created — activate it from the detail page.`);
       router.push("/personalizations");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
   }

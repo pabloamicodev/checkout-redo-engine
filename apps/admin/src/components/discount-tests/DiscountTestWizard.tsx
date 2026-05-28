@@ -1586,7 +1586,7 @@ function StepReview({ state }: { state: WizardState }) {
 // ---------------------------------------------------------------------------
 export function DiscountTestWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState<StepIndex>(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [saving, setSaving] = useState(false);
@@ -1726,14 +1726,16 @@ export function DiscountTestWizard() {
         );
       }
 
-      showSuccess(`Discount test "${state.name}" created — activate it from the test detail page.`);
+      toast.success(`Discount test "${state.name}" created — activate it from the test detail page.`);
       router.push("/discount-tests");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create test. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create test. Check your connection and try again.";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const handleNext = useCallback(() => {
     if (step < 5) {

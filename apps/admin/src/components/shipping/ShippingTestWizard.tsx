@@ -1393,7 +1393,7 @@ function StepReview({ state }: { state: WizardState }) {
 
 export function ShippingTestWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [saving, setSaving] = useState(false);
@@ -1467,14 +1467,16 @@ export function ShippingTestWizard() {
         throw new Error(typeof d.error === "string" ? d.error : "Failed to create shipping test");
       }
 
-      showSuccess(`Shipping test "${state.name}" created — activate it from the test detail page.`);
+      toast.success(`Shipping test "${state.name}" created — activate it from the test detail page.`);
       router.push("/shipping-tests");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create test. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create test. Check your connection and try again.";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const handleBack = useCallback(() => {
     if (step === 0) {

@@ -1381,7 +1381,7 @@ const STEP_LABELS = STEP_DEFS.map((s) => s.label);
 
 export function ContentTestWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState<number>(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [saving, setSaving] = useState(false);
@@ -1473,15 +1473,16 @@ export function ContentTestWizard() {
         throw new Error(typeof d.error === "string" ? d.error : "Failed to create test");
       }
 
-      showSuccess(`Content test "${state.name}" created — activate it from the test detail page.`);
+      toast.success(`Content test "${state.name}" created — activate it from the test detail page.`);
       router.push("/content-tests");
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to save";
+      toast.error(`Could not create test: ${msg}. Check your connection and try again.`);
       setSubmitError(`Could not create test: ${msg}. Check your connection and try again.`);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const handleNext = useCallback(() => {
     if (step < TOTAL_STEPS - 1) setStep((s) => s + 1);

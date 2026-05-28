@@ -8,6 +8,7 @@ import {
   ChevronRight, Layers, Eye, Zap,
 } from "lucide-react";
 import { InlineAlert } from "@/components/ui/InlineAlert";
+import { useToast } from "@/components/ui/Toast";
 import { FormSection } from "@/components/forms/FormSection";
 import { StickyFormActions } from "@/components/forms/StickyFormActions";
 import { WizardStepNav, type WizardStep } from "@/components/experiments/WizardStepNav";
@@ -902,6 +903,7 @@ function TemplatePreviewPanel({ state, step }: { state: WizardState; step: numbe
 
 export function TemplateTestWizard() {
   const router = useRouter();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [saving, setSaving] = useState(false);
@@ -992,13 +994,16 @@ export function TemplateTestWizard() {
       }
 
       const created = (await res.json()) as { id: string };
+      toast.success(`Template test "${state.name}" created — activate it from the test detail page.`);
       router.push(`/template-tests/${created.id}`);
       router.refresh();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to save");
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      toast.error(msg);
+      setSubmitError(msg);
       setSaving(false);
     }
-  }, [state, router]);
+  }, [state, router, toast]);
 
   const isLastStep = step === TOTAL_STEPS - 1;
 

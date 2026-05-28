@@ -719,7 +719,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function OfferWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -771,14 +771,16 @@ export function OfferWizard() {
         );
       }
 
-      showSuccess(`Offer "${state.name}" created — activate it from the offers library.`);
-      router.push(`/offers-library`);
+      toast.success(`Offer "${state.name}" created — activate it from the offers library.`);
+      router.push("/offers");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create offer. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create offer. Check your connection and try again.";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const handleNext = useCallback(() => {
     if (step < STEPS.length - 1) setStep((s) => s + 1);

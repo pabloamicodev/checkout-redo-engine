@@ -1428,7 +1428,7 @@ const DEFAULT_STATE: WizardState = {
 
 export function CheckoutTestWizard() {
   const router = useRouter();
-  const { success: showSuccess } = useToast();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(DEFAULT_STATE);
   const [qa, setQa] = useState<QAState>(DEFAULT_QA);
@@ -1510,14 +1510,16 @@ export function CheckoutTestWizard() {
         const d = (await res.json()) as { error?: unknown };
         throw new Error(typeof d.error === "string" ? d.error : "Failed to create test");
       }
-      showSuccess(`Checkout test "${state.name}" created — activate it from the test detail page.`);
+      toast.success(`Checkout test "${state.name}" created — activate it from the test detail page.`);
       router.push("/checkout-tests");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create test. Check your connection and try again.");
+      const msg = err instanceof Error ? err.message : "Could not create test. Check your connection and try again.";
+      toast.error(msg);
+      setError(msg);
       setSaving(false);
     }
-  }, [state, router, showSuccess]);
+  }, [state, router, toast]);
 
   const TOTAL_STEPS = WIZARD_STEPS.length;
 
