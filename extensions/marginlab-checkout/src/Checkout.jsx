@@ -69,8 +69,9 @@ function Extension() {
 function BlockRenderer({ content, cartLines, applyCartLinesChange, currency }) {
   const props = { content, cartLines, applyCartLinesChange, currency };
   switch (content.type) {
-    case "TRUST_BADGES":       return <TrustBadgesBlock {...props} />;
-    case "SOCIAL_PROOF":       return <SocialProofBlock {...props} />;
+    case "TRUST_BADGES":                return <TrustBadgesBlock {...props} />;
+    case "SOCIAL_PROOF":                return <SocialProofBlock {...props} />;
+    case "TRUST_BADGES_WITH_REVIEWS":   return <TrustBadgesWithReviewsBlock {...props} />;
     case "GUARANTEE":          return <GuaranteeBlock {...props} />;
     case "SHIPPING_MESSAGE":   return <ShippingMessageBlock {...props} />;
     case "URGENCY_MESSAGE":    return <UrgencyMessageBlock {...props} />;
@@ -110,6 +111,151 @@ function SocialProofBlock({ content }) {
     <s-stack direction="block" gap="small">
       {content.heading && <s-text type="strong">{content.heading}</s-text>}
       {content.body && <s-text color="subdued">{content.body}</s-text>}
+    </s-stack>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TRUST_BADGES_WITH_REVIEWS — combined block
+//
+// Layout:
+//   ┌──────────────────────────────────────────┐
+//   │  [badge 1]    [badge 2]    [badge 3]     │  ← 3 badges, equal columns
+//   ├──────────────────────────────────────────┤
+//   │  [review] [review] [review] →scroll→     │  ← horizontal carousel
+//   └──────────────────────────────────────────┘
+//
+// content shape:
+//   {
+//     type: "TRUST_BADGES_WITH_REVIEWS",
+//     heading?: string,              // optional section title
+//     badges: Array<{
+//       iconUrl:    string,          // image URL
+//       label:      string,          // main text (e.g. "Secure Checkout")
+//       sublabel?:  string,          // secondary line (e.g. "256-bit SSL")
+//       alt?:       string,          // img alt, defaults to label
+//     }>,
+//     reviews: Array<{
+//       quote:   string,
+//       name:    string,
+//       rating?: number,             // 1–5, default 5
+//       label?:  string,             // e.g. "Verified Buyer"
+//     }>,
+//   }
+// ---------------------------------------------------------------------------
+
+function TrustBadgesWithReviewsBlock({ content }) {
+  const badges = content.badges ?? [];
+  const reviews = content.reviews ?? [];
+
+  return (
+    <s-stack direction="block" gap="base">
+
+      {/* Optional section heading */}
+      {content.heading && (
+        <s-text type="strong" alignment="center">{content.heading}</s-text>
+      )}
+
+      {/* ── Row 1: Trust badges ── */}
+      {badges.length > 0 && (
+        <s-grid gridTemplateColumns="1fr 1fr 1fr" gap="small">
+          {badges.slice(0, 3).map((badge, i) => (
+            <CombinedBadge
+              key={badge.label ?? i}
+              iconUrl={badge.iconUrl}
+              label={badge.label}
+              sublabel={badge.sublabel}
+              alt={badge.alt ?? badge.label}
+            />
+          ))}
+        </s-grid>
+      )}
+
+      {/* Divider between sections */}
+      {badges.length > 0 && reviews.length > 0 && <s-divider />}
+
+      {/* ── Row 2: Reviews carousel (horizontal scroll) ── */}
+      {reviews.length > 0 && (
+        <s-scroll-box overflow="hidden auto">
+          {/* Fixed-pixel columns make each card the same width and force the
+              grid to overflow the scroll container instead of wrapping. */}
+          <s-grid gridTemplateColumns={reviews.map(() => "240px").join(" ")} gap="small">
+            {reviews.map((review, i) => (
+              <CombinedReviewCard
+                key={review.name ?? i}
+                quote={review.quote}
+                name={review.name}
+                rating={Math.min(5, Math.max(1, Number(review.rating ?? 5)))}
+                label={review.label ?? "Verified Buyer"}
+              />
+            ))}
+          </s-grid>
+        </s-scroll-box>
+      )}
+
+    </s-stack>
+  );
+}
+
+/**
+ * Single trust badge with normalized image container.
+ * Image box is clamped between 40px–72px on both axes so wildly
+ * different icon sizes all render consistently side-by-side.
+ */
+function CombinedBadge({ iconUrl, label, sublabel, alt }) {
+  return (
+    <s-stack direction="block" gap="extra-small" alignItems="center">
+      {/* Normalized image container — min 40px, max 72px */}
+      <s-box
+        minInlineSize="40px"
+        maxInlineSize="72px"
+        minBlockSize="40px"
+        maxBlockSize="72px"
+        overflow="hidden"
+      >
+        <s-image
+          src={iconUrl}
+          alt={alt ?? label}
+          inlineSize="fill"
+          blockSize="fill"
+          fit="contain"
+        />
+      </s-box>
+      <s-text type="small" alignment="center">{label}</s-text>
+      {sublabel && (
+        <s-text type="small" color="subdued" alignment="center">{sublabel}</s-text>
+      )}
+    </s-stack>
+  );
+}
+
+/**
+ * Single review card inside the horizontal carousel.
+ * Fixed inlineSize keeps all cards the same width and triggers scroll.
+ */
+function CombinedReviewCard({ quote, name, rating, label }) {
+  return (
+    <s-stack
+      direction="block"
+      gap="small"
+      border="base"
+      borderRadius="base"
+      padding="base"
+      justifyContent="space-between"
+    >
+      {/* Stars */}
+      <s-stack direction="inline" gap="extra-small">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <s-text key={i} color={i < rating ? "default" : "subdued"}>★</s-text>
+        ))}
+      </s-stack>
+      {/* Quote */}
+      <s-text>"{quote}"</s-text>
+      {/* Reviewer */}
+      <s-stack direction="block" gap="none">
+        <s-text type="strong">{name}</s-text>
+        <s-text type="emphasis" color="subdued">{label}</s-text>
+      </s-stack>
     </s-stack>
   );
 }
