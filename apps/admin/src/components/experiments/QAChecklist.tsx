@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, Circle, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface ChecklistItem {
   id: string;
@@ -81,10 +82,10 @@ interface Props {
 }
 
 export function QAChecklist({ experimentId, experimentStatus, onLaunch }: Props) {
+  const toast = useToast();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState(false);
   const [launching, setLaunching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const requiredItems = CHECKLIST_ITEMS.filter((i) => i.required);
   const allRequiredChecked = requiredItems.every((i) => checked.has(i.id));
@@ -103,14 +104,14 @@ export function QAChecklist({ experimentId, experimentStatus, onLaunch }: Props)
   async function handleLaunch() {
     if (!allRequiredChecked) return;
     setLaunching(true);
-    setError(null);
     try {
       const res = await fetch(`/api/experiments/${experimentId}/launch`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Launch failed");
+      toast.success("Test launched — visitors are being enrolled.");
       onLaunch?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Launch failed");
+      toast.error(err instanceof Error ? err.message : "Launch failed. Please try again.");
     } finally {
       setLaunching(false);
     }
@@ -175,9 +176,6 @@ export function QAChecklist({ experimentId, experimentStatus, onLaunch }: Props)
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 Complete all required items before launching.
               </div>
-            )}
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
             )}
             {canLaunch && (
               <Button

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface Props {
   initialShippingCost: number;
@@ -9,16 +10,15 @@ interface Props {
 }
 
 export function CogsSettingsForm({ initialShippingCost, initialTransactionFee }: Props) {
+  const toast = useToast();
   const [shippingCost, setShippingCost] = useState(initialShippingCost);
   const [transactionFee, setTransactionFee] = useState(initialTransactionFee);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   async function handleSave() {
     setSaving(true);
-    setSaved(false);
     try {
-      await fetch("/api/settings/shop", {
+      const res = await fetch("/api/settings/shop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -26,8 +26,13 @@ export function CogsSettingsForm({ initialShippingCost, initialTransactionFee }:
           transactionFeePercent: transactionFee,
         }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Save failed");
+      }
+      toast.success("COGS settings saved.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -80,8 +85,6 @@ export function CogsSettingsForm({ initialShippingCost, initialTransactionFee }:
         >
           {saving ? (
             <><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</>
-          ) : saved ? (
-            <><Check className="w-3.5 h-3.5" />Saved</>
           ) : (
             "Save settings"
           )}

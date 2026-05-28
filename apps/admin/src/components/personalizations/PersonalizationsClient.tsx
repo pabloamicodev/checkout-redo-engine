@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import {
   Plus,
   Play,
@@ -40,6 +41,7 @@ interface Props {
 const STATUS_FILTERS = ["All", "DRAFT", "ACTIVE", "SCHEDULED", "PAUSED", "ARCHIVED"] as const;
 
 export function PersonalizationsClient({ initialItems, initialTotal, pageSize }: Props) {
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
   const [total, setTotal] = useState(initialTotal);
@@ -71,10 +73,26 @@ export function PersonalizationsClient({ initialItems, initialTotal, pageSize }:
     startTransition(() => { fetchPage(statusFilter, p); });
   }
 
+  const PERS_MSGS: Record<"activate" | "pause" | "archive", string> = {
+    activate: "Personalization activated — it is now live for eligible visitors.",
+    pause:    "Personalization paused — it will no longer be shown.",
+    archive:  "Personalization archived.",
+  };
+
   async function doAction(id: string, action: "activate" | "pause" | "archive") {
     setOpenMenuId(null);
-    const res = await fetch(`/api/personalizations/${id}/${action}`, { method: "POST" });
-    if (res.ok) startTransition(() => { fetchPage(statusFilter, page); });
+    const name = items.find((p) => p.id === id)?.name ?? "Personalization";
+    try {
+      const res = await fetch(`/api/personalizations/${id}/${action}`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Action failed");
+      }
+      toast.success(PERS_MSGS[action]);
+      startTransition(() => { fetchPage(statusFilter, page); });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not ${action} "${name}". Please try again.`);
+    }
   }
 
   function doDelete(id: string, name: string) {
@@ -84,9 +102,15 @@ export function PersonalizationsClient({ initialItems, initialTotal, pageSize }:
 
   async function executeDelete() {
     if (!confirmDelete) return;
+    const name = confirmDelete.name;
     const res = await fetch(`/api/personalizations/${confirmDelete.id}`, { method: "DELETE" });
     setConfirmDelete(null);
-    if (res.ok) startTransition(() => { fetchPage(statusFilter, page); });
+    if (res.ok) {
+      toast.success(`"${name}" deleted permanently.`);
+      startTransition(() => { fetchPage(statusFilter, page); });
+    } else {
+      toast.error(`Could not delete "${name}". Please try again.`);
+    }
   }
 
   const activeCount = items.filter((i) => i.status === "ACTIVE").length;

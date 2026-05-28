@@ -3,29 +3,36 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Pause, Archive, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface Props {
   itemId: string;
   status: string;
 }
 
+const ACR_MSGS: Record<"activate" | "pause" | "archive", string> = {
+  activate: "Recovery campaign activated — it is now live for eligible visitors.",
+  pause:    "Recovery campaign paused — it will no longer trigger.",
+  archive:  "Recovery campaign archived.",
+};
+
 export function AbandonedCartItemActions({ itemId, status }: Props) {
+  const toast = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function callAction(action: "activate" | "pause" | "archive") {
     setLoading(action);
-    setError(null);
     try {
       const res = await fetch(`/api/personalizations/abandoned-cart/${itemId}/${action}`, { method: "POST" });
       if (!res.ok) {
         const d = (await res.json()) as { error?: string };
         throw new Error(d.error ?? "Action failed");
       }
+      toast.success(ACR_MSGS[action]);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Action failed");
+      toast.error(err instanceof Error ? err.message : `Could not ${action} recovery campaign. Please try again.`);
     } finally {
       setLoading(null);
     }
@@ -37,10 +44,6 @@ export function AbandonedCartItemActions({ itemId, status }: Props) {
 
   return (
     <div className="flex items-center gap-2">
-      {error && (
-        <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded max-w-xs">{error}</span>
-      )}
-
       {canActivate && (
         <button
           onClick={() => callAction("activate")}

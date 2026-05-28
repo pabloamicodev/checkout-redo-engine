@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { useToast } from "@/components/ui/Toast";
 import { CheckCircle2, XCircle, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
 type IntegrationType = "GA4" | "KLAVIYO" | "CLARITY" | "HEAP" | "SEGMENT" | "ELEVAR" | "SLACK" | "OUTBOUND_WEBHOOK";
@@ -97,6 +98,7 @@ interface Props {
 }
 
 export function IntegrationsClient({ initialIntegrations }: Props) {
+  const toast = useToast();
   const [integrations, setIntegrations] = useState<Map<IntegrationType, Integration>>(
     () => new Map(initialIntegrations.map((i) => [i.type as IntegrationType, i]))
   );
@@ -122,6 +124,7 @@ export function IntegrationsClient({ initialIntegrations }: Props) {
 
   async function handleSave(type: IntegrationType) {
     setSaving(type);
+    const label = INTEGRATION_META[type].label;
     try {
       const existing = integrations.get(type);
       const res = await fetch("/api/integrations", {
@@ -141,8 +144,9 @@ export function IntegrationsClient({ initialIntegrations }: Props) {
         next.set(type, data);
         return next;
       });
-    } catch {
-      // silent fail — test connection will surface errors
+      toast.success(`${label} credentials saved.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not save ${label} credentials. Please try again.`);
     } finally {
       setSaving(null);
     }
@@ -151,6 +155,7 @@ export function IntegrationsClient({ initialIntegrations }: Props) {
   async function handleToggle(type: IntegrationType) {
     const existing = integrations.get(type);
     const newEnabled = !(existing?.enabled ?? false);
+    const label = INTEGRATION_META[type].label;
     try {
       const res = await fetch("/api/integrations", {
         method: "POST",
@@ -163,34 +168,36 @@ export function IntegrationsClient({ initialIntegrations }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) return;
+      if (!res.ok) throw new Error();
       setIntegrations((prev) => {
         const next = new Map(prev);
         next.set(type, data);
         return next;
       });
+      toast.success(newEnabled ? `${label} enabled.` : `${label} disabled.`);
     } catch {
-      // silent
+      toast.error(`Could not update ${label}. Please try again.`);
     }
   }
 
   async function handleTest(type: IntegrationType, integrationId: string) {
     setTesting(type);
     setTestResult((prev) => { const n = new Map(prev); n.delete(type); return n; });
+    const label = INTEGRATION_META[type].label;
     try {
       const res = await fetch(`/api/integrations/${integrationId}/test`, { method: "POST" });
       const data = await res.json();
-      setTestResult((prev) => {
-        const n = new Map(prev);
-        n.set(type, { ok: data.ok, message: data.message ?? (data.ok ? "Connection successful" : "Test failed") });
-        return n;
-      });
+      const result = { ok: data.ok, message: data.message ?? (data.ok ? "Connection successful" : "Test failed") };
+      setTestResult((prev) => { const n = new Map(prev); n.set(type, result); return n; });
+      if (data.ok) {
+        toast.success(`${label} connection test passed.`);
+      } else {
+        toast.error(`${label} connection test failed: ${result.message}`);
+      }
     } catch {
-      setTestResult((prev) => {
-        const n = new Map(prev);
-        n.set(type, { ok: false, message: "Network error" });
-        return n;
-      });
+      const result = { ok: false, message: "Network error" };
+      setTestResult((prev) => { const n = new Map(prev); n.set(type, result); return n; });
+      toast.error(`Could not test ${label} connection. Check your network.`);
     } finally {
       setTesting(null);
     }

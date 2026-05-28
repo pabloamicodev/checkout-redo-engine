@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Pause, Square, Archive, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "./ExperimentActionsMenu";
+import { useToast } from "@/components/ui/Toast";
 
 interface ExperimentStatusActionsProps {
   experimentId: string;
@@ -30,7 +31,16 @@ const CONFIRM_CONFIG: Partial<Record<ActionKey, { title: string; body: string; c
   },
 };
 
+const SUCCESS_MSGS: Record<ActionKey, (isPaused: boolean) => string> = {
+  launch: (wasPaused) => wasPaused ? "Test resumed — visitor enrollments are active again." : "Test launched — visitors are being enrolled.",
+  pause:    () => "Test paused — no new assignments will be made.",
+  complete: () => "Test stopped and results preserved.",
+  archive:  () => "Test archived.",
+  delete:   () => "Test deleted permanently.",
+};
+
 export function ExperimentStatusActions({ experimentId, status }: ExperimentStatusActionsProps) {
+  const toast = useToast();
   const [loading, setLoading] = useState<ActionKey | null>(null);
   const [confirmKey, setConfirmKey] = useState<ActionKey | null>(null);
   const router = useRouter();
@@ -44,14 +54,18 @@ export function ExperimentStatusActions({ experimentId, status }: ExperimentStat
     setLoading(key);
     try {
       const res = await fetch(`/api/experiments/${experimentId}/${key}`, { method: "POST" });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? "Action failed");
+      }
+      toast.success(SUCCESS_MSGS[key](status === "PAUSED"));
       if (key === "delete") {
         router.push("/experiments");
       } else {
         router.refresh();
       }
-    } catch {
-      // TODO: toast
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not ${key} test. Please try again.`);
     } finally {
       setLoading(null);
     }

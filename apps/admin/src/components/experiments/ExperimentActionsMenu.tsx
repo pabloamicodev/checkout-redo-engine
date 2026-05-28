@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { MoreHorizontal, Play, Pause, Square, Archive, Trash2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,16 @@ interface ExperimentActionsMenuProps {
   status: string;
 }
 
+const ACTION_SUCCESS: Record<string, (isPaused: boolean) => string> = {
+  launch:   (wasPaused) => wasPaused ? "Test resumed — visitor enrollments are active again." : "Test launched — visitors are being enrolled.",
+  pause:    () => "Test paused — no new assignments will be made.",
+  complete: () => "Test stopped and results preserved.",
+  archive:  () => "Test archived.",
+  delete:   () => "Test deleted permanently.",
+};
+
 export function ExperimentActionsMenu({ experimentId, status }: ExperimentActionsMenuProps) {
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ActionDef | null>(null);
@@ -130,17 +140,20 @@ export function ExperimentActionsMenu({ experimentId, status }: ExperimentAction
     setLoading(action.key);
     setOpen(false);
     try {
-      const res = await fetch(`/api/experiments/${experimentId}/${action.endpoint}`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error();
+      const res = await fetch(`/api/experiments/${experimentId}/${action.endpoint}`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? "Action failed");
+      }
+      const msgFn = ACTION_SUCCESS[action.key];
+      if (msgFn) toast.success(msgFn(status === "PAUSED"));
       if (action.key === "delete") {
         router.push("/experiments");
       } else {
         router.refresh();
       }
-    } catch {
-      // TODO: toast
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not ${action.label.toLowerCase()}. Please try again.`);
     } finally {
       setLoading(null);
     }

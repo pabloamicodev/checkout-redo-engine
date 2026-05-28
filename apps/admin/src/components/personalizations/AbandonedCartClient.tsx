@@ -10,11 +10,9 @@ import {
   Pause,
   Trash2,
   ChevronRight,
-  X,
   ArrowLeft,
   Check,
   Clock,
-  AlertCircle,
 } from "lucide-react";
 import { WizardLayout } from "@/components/layout/WizardLayout";
 import { type WizardStep } from "@/components/experiments/WizardStepNav";
@@ -22,6 +20,7 @@ import { FormSection, FormField } from "@/components/forms/FormSection";
 import { InlineAlert } from "@/components/ui/InlineAlert";
 import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experiments/LaunchReadinessPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -379,13 +378,13 @@ function MiniRow({ label, value }: { label: string; value: React.ReactNode }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function AbandonedCartClient({ initialItems, initialShowWizard = false, redirectAfterCreate }: Props) {
+  const toast = useToast();
   const router = useRouter();
   const [items, setItems] = useState<AcrItem[]>(initialItems);
   const [showWizard, setShowWizard] = useState(initialShowWizard);
   const [wizardStep, setWizardStep] = useState<WizardStepIndex>(0);
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [formError, setFormError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -531,8 +530,13 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
     await doAction(target.id, "delete");
   }
 
+  const ACR_ACTION_MSGS: Record<"activate" | "pause", string> = {
+    activate: "Recovery campaign activated — it is now live for eligible visitors.",
+    pause:    "Recovery campaign paused — it will no longer trigger.",
+  };
+
   async function doAction(id: string, action: "activate" | "pause" | "delete") {
-    setActionError(null);
+    const name = items.find((p) => p.id === id)?.name ?? "Recovery campaign";
     try {
       if (action === "delete") {
         const res = await fetch(`/api/personalizations/abandoned-cart/${id}`, { method: "DELETE" });
@@ -541,6 +545,7 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
           throw new Error(d.error ?? "Delete failed");
         }
         setItems((prev) => prev.filter((p) => p.id !== id));
+        toast.success(`"${name}" deleted permanently.`);
         return;
       }
 
@@ -549,8 +554,9 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
       if (!res.ok) throw new Error(data.error ?? `${action} failed`);
 
       setItems((prev) => prev.map((p) => (p.id === id ? { ...p, status: data.status } : p)));
+      toast.success(ACR_ACTION_MSGS[action]);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Action failed");
+      toast.error(err instanceof Error ? err.message : `Could not ${action} "${name}". Please try again.`);
     }
   }
 
@@ -851,16 +857,6 @@ export function AbandonedCartClient({ initialItems, initialShowWizard = false, r
           </button>
         </div>
 
-        {/* Action error banner */}
-        {actionError && (
-          <div className="mb-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-            <div className="flex-1 text-sm text-red-700">{actionError}</div>
-            <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
 
         {/* How it works info box */}
         {items.length === 0 && (

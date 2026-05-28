@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { AlertTriangle, X } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface Variant {
   id: string;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function PriceRolloutModal({ experimentId, experimentName, variants, onClose, onSuccess }: Props) {
+  const toast = useToast();
   const [winnerVariantId, setWinnerVariantId] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,9 +42,12 @@ export function PriceRolloutModal({ experimentId, experimentName, variants, onCl
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Rollout failed");
+      toast.success(`"${experimentName}" winner rolled out — Shopify prices have been updated.`);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Rollout failed");
+      const msg = err instanceof Error ? err.message : "Rollout failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

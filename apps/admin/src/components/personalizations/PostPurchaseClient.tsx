@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import {
   Plus,
   Play,
@@ -37,6 +38,7 @@ const STATUS_FILTERS = ["All", "DRAFT", "ACTIVE", "SCHEDULED", "PAUSED", "ARCHIV
 const PAGE_SIZE = 50;
 
 export function PostPurchaseClient({ initialItems }: Props) {
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
   const [total, setTotal] = useState(initialItems.length);
@@ -68,10 +70,26 @@ export function PostPurchaseClient({ initialItems }: Props) {
     startTransition(() => { void fetchPage(statusFilter, p); });
   }
 
+  const PP_MSGS: Record<"activate" | "pause" | "archive", string> = {
+    activate: "Post-purchase upsell activated — it is now live.",
+    pause:    "Post-purchase upsell paused — it will no longer be shown.",
+    archive:  "Post-purchase upsell archived.",
+  };
+
   async function doAction(id: string, action: "activate" | "pause" | "archive") {
     setOpenMenuId(null);
-    const res = await fetch(`/api/personalizations/post-purchase/${id}/${action}`, { method: "POST" });
-    if (res.ok) startTransition(() => { void fetchPage(statusFilter, page); });
+    const name = items.find((p) => p.id === id)?.name ?? "Post-purchase upsell";
+    try {
+      const res = await fetch(`/api/personalizations/post-purchase/${id}/${action}`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Action failed");
+      }
+      toast.success(PP_MSGS[action]);
+      startTransition(() => { void fetchPage(statusFilter, page); });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not ${action} "${name}". Please try again.`);
+    }
   }
 
   function doDelete(id: string, name: string) {
@@ -81,9 +99,15 @@ export function PostPurchaseClient({ initialItems }: Props) {
 
   async function executeDelete() {
     if (!confirmDelete) return;
+    const name = confirmDelete.name;
     const res = await fetch(`/api/personalizations/post-purchase/${confirmDelete.id}`, { method: "DELETE" });
     setConfirmDelete(null);
-    if (res.ok) startTransition(() => { void fetchPage(statusFilter, page); });
+    if (res.ok) {
+      toast.success(`"${name}" deleted permanently.`);
+      startTransition(() => { void fetchPage(statusFilter, page); });
+    } else {
+      toast.error(`Could not delete "${name}". Please try again.`);
+    }
   }
 
   const activeCount = items.filter((i) => i.status === "ACTIVE").length;

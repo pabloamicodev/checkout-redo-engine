@@ -107,13 +107,13 @@ export function ExperimentTypeList({
   typeEmptyTitle,
   typeEmptyBody,
 }: Props) {
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
   const [total, setTotal] = useState(initialTotal);
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
-  const [actionError, setActionError] = useState<Record<string, string>>({});
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const runningCount = items.filter((i) => i.status === "RUNNING").length;
@@ -122,7 +122,10 @@ export function ExperimentTypeList({
     const params = new URLSearchParams({ page: String(p), limit: String(pageSize) });
     if (status !== "All") params.set("status", status);
     const res = await fetch(`${apiPath}?${params}`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      toast.error("Failed to load tests. Check your connection and try again.");
+      return;
+    }
     const data = (await res.json()) as { items: ExperimentRow[]; total: number };
     setItems(data.items);
     setTotal(data.total);
@@ -140,8 +143,8 @@ export function ExperimentTypeList({
   }
 
   async function doAction(id: string, action: ActionDef) {
+    const expName = items.find((i) => i.id === id)?.name ?? "Test";
     setActionLoading((prev) => ({ ...prev, [id]: action.route }));
-    setActionError((prev) => { const n = { ...prev }; delete n[id]; return n; });
     try {
       const res = await fetch(`${apiPath}/${id}/${action.route}`, { method: "POST" });
       if (!res.ok) {
@@ -151,11 +154,13 @@ export function ExperimentTypeList({
       setItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, status: action.nextStatus } : item))
       );
+      toast.success(action.successMsg(expName));
     } catch (err) {
-      setActionError((prev) => ({
-        ...prev,
-        [id]: err instanceof Error ? err.message : "Failed",
-      }));
+      toast.error(
+        err instanceof Error
+          ? `Could not ${action.label.toLowerCase()} "${expName}": ${err.message}`
+          : `Failed to ${action.label.toLowerCase()} test. Please try again.`
+      );
     } finally {
       setActionLoading((prev) => { const n = { ...prev }; delete n[id]; return n; });
     }
@@ -310,12 +315,6 @@ export function ExperimentTypeList({
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Inline error */}
-                          {actionError[exp.id] && (
-                            <span className="text-[10px] text-red-500 max-w-[120px] truncate">
-                              {actionError[exp.id]}
-                            </span>
-                          )}
                           {/* Status action buttons */}
                           {getActions(exp.status).map((action) => {
                             const isLoading = actionLoading[exp.id] === action.route;

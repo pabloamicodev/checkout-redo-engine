@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { AlertTriangle, X, Trophy, ChevronRight } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface Variant {
   id: string;
@@ -27,6 +28,7 @@ interface Props {
 type Step = "select" | "confirm" | "done";
 
 export function RolloutWizard({ experimentId, experimentName, experimentType, variants, suggestedWinnerId, onClose, onSuccess }: Props) {
+  const toast = useToast();
   const [step, setStep] = useState<Step>("select");
   const [winnerId, setWinnerId] = useState(suggestedWinnerId ?? "");
   const [action, setAction] = useState<"rollout" | "archive">("rollout");
@@ -66,9 +68,14 @@ export function RolloutWizard({ experimentId, experimentName, experimentType, va
         await fetch(`/api/experiments/${experimentId}/archive`, { method: "POST" });
       }
 
+      const msg = action === "rollout"
+        ? `"${experimentName}" winner rolled out — changes are now live.`
+        : `"${experimentName}" archived with no changes applied.`;
+      toast.success(msg);
       setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Operation failed");
+      toast.error(err instanceof Error ? err.message : "Operation failed. Please try again.");
     } finally {
       setLoading(false);
     }

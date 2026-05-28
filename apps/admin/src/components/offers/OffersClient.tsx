@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import {
   Plus,
@@ -49,6 +50,7 @@ const TYPE_LABEL: Record<string, string> = {
 const STATUS_FILTERS = ["All", "DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
 
 export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
+  const toast = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState<Offer[]>(initialItems);
@@ -85,13 +87,25 @@ export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
     });
   }
 
+  const OFFER_ACTION_MSGS: Record<"activate" | "pause" | "archive", string> = {
+    activate: "Offer activated — it is now live for visitors.",
+    pause:    "Offer paused — it will no longer be shown.",
+    archive:  "Offer archived.",
+  };
+
   async function doAction(offerId: string, action: "activate" | "pause" | "archive") {
     setOpenMenuId(null);
-    const res = await fetch(`/api/offers/${offerId}/${action}`, { method: "POST" });
-    if (res.ok) {
-      startTransition(() => {
-        fetchPage(statusFilter, page);
-      });
+    const offerName = items.find((o) => o.id === offerId)?.name ?? "Offer";
+    try {
+      const res = await fetch(`/api/offers/${offerId}/${action}`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Action failed");
+      }
+      toast.success(OFFER_ACTION_MSGS[action]);
+      startTransition(() => { fetchPage(statusFilter, page); });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not ${action} "${offerName}". Please try again.`);
     }
   }
 
@@ -102,9 +116,15 @@ export function OffersClient({ initialItems, initialTotal, pageSize }: Props) {
 
   async function executeDelete() {
     if (!confirmDelete) return;
+    const name = confirmDelete.name;
     const res = await fetch(`/api/offers/${confirmDelete.id}`, { method: "DELETE" });
     setConfirmDelete(null);
-    if (res.ok) startTransition(() => { fetchPage(statusFilter, page); });
+    if (res.ok) {
+      toast.success(`"${name}" deleted permanently.`);
+      startTransition(() => { fetchPage(statusFilter, page); });
+    } else {
+      toast.error(`Could not delete "${name}". Please try again.`);
+    }
   }
 
   return (
