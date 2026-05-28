@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
         // Build an allowed set to skip any unverified experimentId/variantId pairs
         const allowedPairs = new Set(
-          existing.map((r) => `${r.experimentId}:${r.variantId}`)
+          existing.map((r: { experimentId: string; variantId: string }) => `${r.experimentId}:${r.variantId}`)
         );
 
         // Update all assignments with this cart token for attribution

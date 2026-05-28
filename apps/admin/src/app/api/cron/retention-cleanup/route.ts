@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       });
       if (ids.length === 0) break;
       const { count } = await prisma.event.deleteMany({
-        where: { id: { in: ids.map((r) => r.id) } },
+        where: { id: { in: ids.map((r: { id: string }) => r.id) } },
       });
       eventsDeleted += count;
       if (ids.length < BATCH_SIZE) break;
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       });
       if (ids.length === 0) break;
       const { count } = await prisma.experimentAssignment.deleteMany({
-        where: { id: { in: ids.map((r) => r.id) } },
+        where: { id: { in: ids.map((r: { id: string }) => r.id) } },
       });
       assignmentsDeleted += count;
       if (ids.length < BATCH_SIZE) break;

@@ -143,7 +143,7 @@ async function exportCsv(
 
     // Batch-fetch all experiment analytics in parallel to avoid N+1 sequential queries
     const analyticsResults = await Promise.all(
-      experiments.map((exp) => analyticsService.getExperimentAnalytics(shop.id, exp.id))
+      experiments.map((exp: { id: string }) => analyticsService.getExperimentAnalytics(shop.id, exp.id))
     );
 
     for (let i = 0; i < experiments.length; i++) {
