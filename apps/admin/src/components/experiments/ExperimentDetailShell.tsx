@@ -24,7 +24,6 @@ export interface Variant {
   key: string;
   isControl: boolean;
   allocationPercent: number;
-  redirectUrl?: string | null;
   modifications?: unknown;
   priceOverrides?: unknown;
   discountConfig?: unknown;
@@ -58,12 +57,11 @@ interface Props {
   experiment: Experiment;
   analytics: ExperimentAnalytics | null;
   currencyCode: string;
-  shopDomain?: string;
   tab: string;
   breadcrumb: { href: string; label: string };
 }
 
-export function ExperimentDetailShell({ experiment, analytics, currencyCode, shopDomain, tab, breadcrumb }: Props) {
+export function ExperimentDetailShell({ experiment, analytics, currencyCode, tab, breadcrumb }: Props) {
   const st = getStatusTheme(experiment.status);
   const tt = getTestTypeTheme(experiment.type);
   const isRunning = experiment.status === "RUNNING";
@@ -211,7 +209,6 @@ export function ExperimentDetailShell({ experiment, analytics, currencyCode, sho
         experiment={experiment}
         analytics={analytics}
         currencyCode={currencyCode}
-        shopDomain={shopDomain}
       />
     </div>
   );
@@ -285,20 +282,18 @@ function buildSummaryCards(experiment: Experiment, analytics: ExperimentAnalytic
   }
 
   if (type === "SPLIT_URL_TEST") {
-    const splitCfg = experiment.splitUrlConfig as Record<string, unknown> | null | undefined;
-    const controlUrl = splitCfg?.baseUrl as string | undefined;
+    const controlV = experiment.variants.find(v => v.isControl);
+    const controlUrl = (controlV?.settings as Record<string, unknown> | null | undefined)?.url as string | undefined;
     const variantCount = experiment.variants.filter(v => !v.isControl).length;
 
-    const nonControlUrls = experiment.variants
-      .filter(v => !v.isControl)
-      .map(v => (v as unknown as { redirectUrl?: string }).redirectUrl)
+    const allUrls = experiment.variants
+      .map(v => (v.settings as Record<string, unknown> | null | undefined)?.url as string | undefined)
       .filter(Boolean) as string[];
-    const hasDuplicates = new Set(nonControlUrls).size !== nonControlUrls.length;
-    const hasAllUrls = !!controlUrl && experiment.variants.filter(v => !v.isControl).every(
-      v => !!(v as unknown as { redirectUrl?: string }).redirectUrl
-    );
+    const hasDuplicates = new Set(allUrls).size !== allUrls.length;
+    const hasAllUrls = experiment.variants.every(v => (v.settings as Record<string, unknown> | null | undefined)?.url);
     const redirectHealth = !hasAllUrls ? "⚠ URL Missing" : hasDuplicates ? "⚠ Duplicates" : "OK";
 
+    const splitCfg = experiment.splitUrlConfig as Record<string, unknown> | null | undefined;
     const loopProtection = splitCfg?.loopProtection as boolean | undefined;
 
     return [
@@ -513,9 +508,12 @@ function buildSummaryChips(experiment: Experiment): string[] {
 
   if (type === "SPLIT_URL_TEST") {
     const cfg = experiment.splitUrlConfig as Record<string, unknown> | null | undefined;
+    const controlVariant = experiment.variants.find((v) => v.isControl);
     const variantB = experiment.variants.find((v) => !v.isControl);
-    const controlUrl = cfg?.baseUrl as string | undefined;
-    const variantUrl = (variantB as unknown as { redirectUrl?: string })?.redirectUrl;
+    const controlUrl = (controlVariant?.settings as Record<string, unknown> | null | undefined)?.url as string | undefined
+      ?? (cfg?.controlUrl as string | undefined);
+    const variantUrl = (variantB?.settings as Record<string, unknown> | null | undefined)?.url as string | undefined
+      ?? (cfg?.variantUrl as string | undefined);
     const chips: string[] = [];
     if (controlUrl) chips.push(`Control: ${controlUrl}`);
     if (variantUrl) chips.push(`Variant: ${variantUrl}`);
