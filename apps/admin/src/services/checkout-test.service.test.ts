@@ -104,7 +104,7 @@ describe("CheckoutTestService", () => {
       ],
     });
 
-    await expect(service.create(SHOP_ID, input)).rejects.toThrow("must reference at least one checkout block");
+    await expect(service.create(SHOP_ID, input)).rejects.toThrow("must have either checkout block IDs or inline content configured");
   });
 
   it("throws when referenced block is missing", async () => {
