@@ -16,6 +16,7 @@ import { LaunchReadinessPanel, type ReadinessCheck } from "@/components/experime
 
 type CheckoutBlockType =
   | "TRUST_BADGES"
+  | "TRUST_BADGES_WITH_REVIEWS"
   | "SOCIAL_PROOF"
   | "GUARANTEE"
   | "SHIPPING_MESSAGE"
@@ -74,8 +75,9 @@ const BLOCK_TYPES: Array<{
   description: string;
   icon: string;
 }> = [
-  { value: "TRUST_BADGES",         label: "Trust Badges",           description: "Security and trust signals like secure checkout, free returns", icon: "🔒" },
-  { value: "SOCIAL_PROOF",         label: "Social Proof",           description: "Review counts, customer testimonials, or purchase activity",    icon: "⭐" },
+  { value: "TRUST_BADGES",              label: "Trust Badges",              description: "Security and trust signals like secure checkout, free returns", icon: "🔒" },
+  { value: "TRUST_BADGES_WITH_REVIEWS", label: "Trust Badges + Reviews",     description: "3 trust badges combined with a horizontal customer reviews carousel", icon: "🏅" },
+  { value: "SOCIAL_PROOF",             label: "Social Proof",               description: "Review counts, customer testimonials, or purchase activity",    icon: "⭐" },
   { value: "GUARANTEE",            label: "Guarantee",              description: "Money-back guarantee or satisfaction promise banner",            icon: "✅" },
   { value: "SHIPPING_MESSAGE",     label: "Shipping Message",       description: "Inform buyers about shipping speed, free shipping, or delivery", icon: "📦" },
   { value: "PAYMENT_ICONS",        label: "Payment Icons",          description: "Show accepted payment methods to reduce checkout anxiety",       icon: "💳" },
