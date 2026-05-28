@@ -58,11 +58,12 @@ interface Props {
   experiment: Experiment;
   analytics: ExperimentAnalytics | null;
   currencyCode: string;
+  shopDomain?: string;
   tab: string;
   breadcrumb: { href: string; label: string };
 }
 
-export function ExperimentDetailShell({ experiment, analytics, currencyCode, tab, breadcrumb }: Props) {
+export function ExperimentDetailShell({ experiment, analytics, currencyCode, shopDomain, tab, breadcrumb }: Props) {
   const st = getStatusTheme(experiment.status);
   const tt = getTestTypeTheme(experiment.type);
   const isRunning = experiment.status === "RUNNING";
@@ -210,6 +211,7 @@ export function ExperimentDetailShell({ experiment, analytics, currencyCode, tab
         experiment={experiment}
         analytics={analytics}
         currencyCode={currencyCode}
+        shopDomain={shopDomain}
       />
     </div>
   );

@@ -39,12 +39,13 @@ interface Props {
   experiment: ExperimentData;
   analytics: ExperimentAnalytics | null;
   currencyCode: string;
+  shopDomain?: string;
 }
 
 // MarginLab color palette
 const VARIANT_COLORS = ["#6366f1", "#6875f5", "#0e9f6e", "#f59e0b"];
 
-export function ExperimentTabs({ tab, experiment, analytics, currencyCode }: Props) {
+export function ExperimentTabs({ tab, experiment, analytics, currencyCode, shopDomain }: Props) {
   switch (tab) {
     case "groups":
       return <TestGroupsTab experiment={experiment} />;
@@ -53,7 +54,7 @@ export function ExperimentTabs({ tab, experiment, analytics, currencyCode }: Pro
     case "targeting":
       return <TargetingTab experiment={experiment} />;
     case "preview":
-      return <PreviewTab experiment={experiment} />;
+      return <PreviewTab experiment={experiment} shopDomain={shopDomain} />;
     case "analytics-config":
       return <AnalyticsConfigTab experiment={experiment} />;
     case "qa":
@@ -3492,32 +3493,71 @@ function TargetingTab({ experiment }: { experiment: ExperimentData }) {
 // ─────────────────────────────────────────────
 // PREVIEW TAB
 // ─────────────────────────────────────────────
-function PreviewTab({ experiment }: { experiment: ExperimentData }) {
+function PreviewTab({ experiment, shopDomain }: { experiment: ExperimentData; shopDomain?: string }) {
+  const splitCfg = experiment.splitUrlConfig as Record<string, unknown> | null | undefined;
+  const controlPath = splitCfg?.baseUrl as string | undefined;
+
+  // Build a storefront preview URL for a given variant.
+  // Uses the control URL as the entry point and appends the marginlab_preview param.
+  function previewHref(variantKey: string): string {
+    const param = `marginlab_preview=${experiment.id}:${variantKey}`;
+    if (!controlPath) return "#";
+    if (controlPath.startsWith("http")) {
+      const sep = controlPath.includes("?") ? "&" : "?";
+      return `${controlPath}${sep}${param}`;
+    }
+    const origin = shopDomain
+      ? `https://${shopDomain.replace(/^https?:\/\//, "")}`
+      : "";
+    const sep = controlPath.includes("?") ? "&" : "?";
+    return `${origin}${controlPath}${sep}${param}`;
+  }
+
+  const hasStore = !!(shopDomain && controlPath);
+
   return (
-    <div className="p-6  mx-auto">
-      <div className="bg-white rounded-xl border border-neutral-200 py-24 text-center">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-neutral-100">
-          <Eye className="w-6 h-6 text-neutral-400" />
-        </div>
-        <p className="text-sm font-semibold text-neutral-700 mb-1">
-          Please save your Test to access the preview
+    <div className="p-6 mx-auto space-y-4">
+      {/* Slug hint */}
+      <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
+        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-3">Preview links</p>
+        <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+          Each button opens your live store with a forced variant assignment so you can verify the redirect without affecting real visitors.
+          The link uses the experiment ID as the preview key — no changes to the test config needed.
         </p>
-        <p className="text-xs text-neutral-400 mb-6">
-          Save the test configuration to preview each variant on your store
-        </p>
-        <div className="flex items-center justify-center gap-2 flex-wrap">
-          {experiment.variants.map((v) => (
-            <a
-              key={v.id}
-              href={`?marginlab_preview=${experiment.id}:${v.key}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 text-xs font-medium text-white rounded-lg transition-colors bg-brand-600"
-            >
-              Preview {v.name}
-            </a>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          {experiment.variants.map((v) => {
+            const href = previewHref(v.key);
+            return (
+              <a
+                key={v.id}
+                href={hasStore ? href : undefined}
+                onClick={!hasStore ? (e) => { e.preventDefault(); alert("Shop domain not available — manually visit your store URL and append:\n?" + `marginlab_preview=${experiment.id}:${v.key}`); } : undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-all active:scale-95"
+                style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Preview {v.name}
+              </a>
+            );
+          })}
         </div>
+        {hasStore && controlPath && (
+          <p className="text-[11px] text-neutral-400 mt-3 font-mono break-all">
+            Entry point: {`https://${shopDomain!.replace(/^https?:\/\//, "")}${controlPath}`}
+          </p>
+        )}
+      </div>
+
+      {/* How it works */}
+      <div className="bg-neutral-50 rounded-xl border border-neutral-100 px-5 py-4 text-xs text-neutral-500 leading-relaxed space-y-1.5">
+        <p className="font-semibold text-neutral-700">How preview mode works</p>
+        <p>Preview forces a specific variant assignment for your browser session only. Real visitors are unaffected.</p>
+        <p>You can also append the preview param manually to any store URL:</p>
+        <code className="block bg-white border border-neutral-200 rounded px-3 py-2 text-[11px] font-mono text-neutral-700 break-all">
+          ?marginlab_preview={experiment.id}:variant_a
+        </code>
       </div>
     </div>
   );

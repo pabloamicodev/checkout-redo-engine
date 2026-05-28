@@ -49,6 +49,7 @@ export default async function SplitUrlTestDetailPage({
       experiment={experiment}
       analytics={analytics}
       currencyCode={shop.currencyCode}
+      shopDomain={shopDomain}
       tab={tab}
       breadcrumb={{ href: "/split-url-tests", label: "Split URL Tests" }}
     />
