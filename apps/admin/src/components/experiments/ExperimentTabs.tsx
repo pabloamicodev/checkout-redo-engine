@@ -630,7 +630,7 @@ function ContentAnalyticsTab({
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -818,7 +818,7 @@ function SplitUrlAnalyticsTab({
   });
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1008,7 +1008,7 @@ function OfferAnalyticsTab({
   });
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1182,7 +1182,7 @@ function CheckoutAnalyticsTab({
   });
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1376,7 +1376,7 @@ function DiscountAnalyticsTab({
   });
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Tag className="w-4 h-4" style={{ color: ACCENT }} />
@@ -1570,7 +1570,7 @@ function ShippingAnalyticsTab({
   });
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Truck className="w-4 h-4" style={{ color: ACCENT }} />
@@ -1757,7 +1757,7 @@ function PriceAnalyticsTab({
   const showElasticityHint = cvrDown && rpvUp;
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <DollarSign className="w-4 h-4" style={{ color: ACCENT }} />
@@ -1948,7 +1948,7 @@ function PersonalizationAnalyticsTab({
   });
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6 space-y-4  mx-auto bg-neutral-50/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users2 className="w-4 h-4" style={{ color: ACCENT }} />
@@ -2283,7 +2283,7 @@ function AudienceTable({
 // ─────────────────────────────────────────────
 function TestGroupsTab({ experiment }: { experiment: ExperimentData }) {
   return (
-    <div className="p-6 max-w-5xl mx-auto bg-neutral-50/50">
+    <div className="p-6  mx-auto bg-neutral-50/50">
       <TestGroupsEditor initialVariants={experiment.variants} />
     </div>
   );
@@ -2978,7 +2978,7 @@ function PriceMatrixTab({ experiment }: { experiment: ExperimentData }) {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-4">
+    <div className="p-6  mx-auto space-y-4">
       {/* Risk banner when running */}
       {isRunning && !riskConfirmed && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
