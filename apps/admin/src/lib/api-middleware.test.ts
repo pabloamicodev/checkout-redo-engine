@@ -332,13 +332,16 @@ describe("withRuntimeAuth", () => {
     expect(res.status).toBe(413);
   });
 
-  it("adds security headers to every response", async () => {
+  it("adds security and CORS headers to every response", async () => {
     mockShopFindUnique.mockResolvedValueOnce({ id: "shop-1" } as never);
     const handler = vi.fn().mockResolvedValue(new Response("ok"));
     const req = makeRequest("http://localhost/api/runtime/assign?shop=test-shop.myshopify.com");
     const res = await withRuntimeAuth(req, handler);
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
-    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+    // Runtime endpoints are called cross-origin from merchant storefronts — must allow *
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, OPTIONS");
+    // X-Frame-Options removed: not applicable to cross-origin storefront API calls
   });
 
   it("does not leak shop existence — returns 401 not 404 for unknown shop", async () => {
