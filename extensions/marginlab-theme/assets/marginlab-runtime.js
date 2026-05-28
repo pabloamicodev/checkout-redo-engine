@@ -30,6 +30,7 @@
   var FORCE_PARAM = "marginlab_force";
   var ANTI_FLICKER_TIMEOUT = 300; // ms
   var CONFIG_TTL = 30000; // 30 seconds
+  var PREVIEW_THEME_KEY = "_ml_preview_theme_id";
 
   // ---------------------------------------------------------------------------
   // Runtime state
@@ -69,6 +70,17 @@
 
     state.visitorId = getOrCreateVisitorId();
     state.sessionId = getOrCreateSessionId();
+
+    // If this page (or a prior page in the session) has a Shopify preview_theme_id,
+    // activate link-level persistence so the theme stays consistent as the visitor
+    // browses — but never injects into checkout so real purchases still work.
+    var _previewThemeId = getQueryParam("preview_theme_id");
+    if (!_previewThemeId) {
+      try { _previewThemeId = sessionStorage.getItem(PREVIEW_THEME_KEY) || ""; } catch (e) {}
+    }
+    if (_previewThemeId) {
+      activatePreviewThemePersistence(_previewThemeId);
+    }
 
     // Restore persisted assignments from localStorage
     try {
@@ -1756,6 +1768,95 @@
       localStorage.setItem(ML_RETURNING_KEY, "1");
     }
   } catch (e) {}
+
+  // ---------------------------------------------------------------------------
+  // Shopify preview theme persistence
+  //
+  // When a split URL test variant uses a ?preview_theme_id= URL, these helpers
+  // keep the param alive as the visitor navigates the store, without exposing
+  // the Shopify "Editing theme" bar that would reveal the test to the visitor.
+  // Checkout URLs are intentionally excluded so real purchases always work.
+  // ---------------------------------------------------------------------------
+
+  function isCheckoutUrl(url) {
+    return /\/checkout|\/checkouts\/|checkout\.shopify\.com/.test(url);
+  }
+
+  function injectPreviewThemeParam(url, themeId) {
+    if (!url || !themeId) return url;
+    if (isCheckoutUrl(url)) return url;
+    if (url.indexOf("preview_theme_id=") !== -1) return url;
+    return url + (url.indexOf("?") !== -1 ? "&" : "?") + "preview_theme_id=" + encodeURIComponent(themeId);
+  }
+
+  function hideShopifyPreviewBar() {
+    // Shopify injects a fixed-position iframe for the "Editing theme" bar.
+    // We hide it immediately via CSS and watch for it in case it mounts late.
+    injectCSS(
+      "#preview-bar-iframe, [id^='preview-bar'], .shopify-preview-bar, #shopify-preview-bar { display: none !important; height: 0 !important; }",
+      "ml-hide-preview-bar"
+    );
+    if (typeof MutationObserver === "undefined") return;
+    var obs = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType !== 1) return;
+          var id = node.id || "";
+          var cls = (typeof node.className === "string" ? node.className : "") || "";
+          if (/preview-bar/.test(id) || /preview-bar/.test(cls)) {
+            node.style.setProperty("display", "none", "important");
+          }
+        });
+      });
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function activatePreviewThemePersistence(themeId) {
+    try { sessionStorage.setItem(PREVIEW_THEME_KEY, themeId); } catch (e) {}
+
+    hideShopifyPreviewBar();
+
+    // Intercept link clicks (capture phase) and inject the param into same-store links.
+    document.addEventListener("click", function (e) {
+      var el = e.target;
+      while (el && el !== document) {
+        if (el.tagName === "A" && el.href) {
+          if (
+            !isCheckoutUrl(el.href) &&
+            el.href.indexOf("preview_theme_id=") === -1 &&
+            (el.href.startsWith(window.location.origin) || el.href.startsWith("/"))
+          ) {
+            el.href = injectPreviewThemeParam(el.href, themeId);
+          }
+          break;
+        }
+        el = el.parentNode;
+      }
+    }, true);
+
+    // Patch history.pushState for Shopify 2.0 / Instant Page navigation.
+    var origPush = window.history.pushState;
+    window.history.pushState = function (s, t, url) {
+      if (url && typeof url === "string" && !isCheckoutUrl(url)) {
+        url = injectPreviewThemeParam(url, themeId);
+      }
+      return origPush.apply(window.history, [s, t, url]);
+    };
+
+    // Ensure the current URL carries the param (visitor arrived without it,
+    // e.g. via browser back button or a link we couldn't intercept in time).
+    if (
+      window.location.search.indexOf("preview_theme_id=") === -1 &&
+      !isCheckoutUrl(window.location.href)
+    ) {
+      window.history.replaceState(
+        window.history.state,
+        document.title,
+        injectPreviewThemeParam(window.location.href, themeId)
+      );
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Boot
