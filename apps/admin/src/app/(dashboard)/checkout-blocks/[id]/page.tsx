@@ -9,13 +9,19 @@ import { getStatusTheme } from "@/lib/design/statusTheme";
 export const metadata = { title: "Checkout Block — MarginLab" };
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
-  TRUST_BADGES:        "Trust Badges",
-  SOCIAL_PROOF:        "Social Proof",
-  GUARANTEE_MESSAGE:   "Guarantee Message",
-  SHIPPING_MESSAGE:    "Shipping Message",
-  PRODUCT_UPSELL:      "Product Upsell",
-  FREE_SHIPPING_PROGRESS: "Free Shipping Progress",
-  CUSTOM_CONTENT:      "Custom Content",
+  TRUST_BADGES:             "Trust Badges",
+  TRUST_BADGES_WITH_REVIEWS: "Trust Badges + Reviews",
+  SOCIAL_PROOF:             "Social Proof",
+  GUARANTEE:                "Guarantee",
+  GUARANTEE_MESSAGE:        "Guarantee Message",
+  SHIPPING_MESSAGE:         "Shipping Message",
+  PAYMENT_ICONS:            "Payment Icons",
+  PRODUCT_UPSELL:           "Product Upsell",
+  CUSTOM_CONTENT:           "Custom Content",
+  IMAGE_WITH_TEXT:          "Image + Text",
+  URGENCY_MESSAGE:          "Urgency Message",
+  SECURITY_MESSAGE:         "Security Message",
+  FREE_SHIPPING_PROGRESS:   "Free Shipping Progress",
 };
 
 export default async function CheckoutBlockDetailPage({
@@ -96,7 +102,15 @@ export default async function CheckoutBlockDetailPage({
               {Object.entries(content).map(([k, v]) => (
                 <div key={k} className="flex gap-3">
                   <dt className="w-32 shrink-0 text-neutral-500 capitalize">{k.replace(/_/g, " ")}</dt>
-                  <dd className="text-neutral-800 break-all">{String(v)}</dd>
+                  <dd className="text-neutral-800 break-all min-w-0">
+                    {Array.isArray(v) || (typeof v === "object" && v !== null) ? (
+                      <pre className="text-xs bg-neutral-50 border border-neutral-100 rounded-lg p-2 overflow-auto max-h-48 whitespace-pre-wrap font-mono text-neutral-600">
+                        {JSON.stringify(v, null, 2)}
+                      </pre>
+                    ) : (
+                      String(v)
+                    )}
+                  </dd>
                 </div>
               ))}
             </dl>
