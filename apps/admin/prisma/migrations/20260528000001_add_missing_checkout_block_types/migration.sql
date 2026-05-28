@@ -1,0 +1,3 @@
+-- Add missing values to CheckoutBlockType enum
+ALTER TYPE "CheckoutBlockType" ADD VALUE IF NOT EXISTS 'TRUST_BADGES_WITH_REVIEWS';
+ALTER TYPE "CheckoutBlockType" ADD VALUE IF NOT EXISTS 'FREE_SHIPPING_PROGRESS';
