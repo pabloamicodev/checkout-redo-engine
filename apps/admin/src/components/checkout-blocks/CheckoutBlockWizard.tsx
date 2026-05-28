@@ -181,6 +181,57 @@ function BlockContentPreview({ state }: { state: WizardState }) {
       );
     }
 
+    case "TRUST_BADGES_WITH_REVIEWS": {
+      type CombinedBadge  = { id: string; label: string; sublabel: string; iconUrl: string; alt: string };
+      type CombinedReview = { id: string; quote: string; name: string; rating: number; label: string };
+      const badges  = (c["badges"]  as CombinedBadge[]  | undefined) ?? [];
+      const reviews = (c["reviews"] as CombinedReview[] | undefined) ?? [];
+      return (
+        <Wrapper>
+          {badges.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {badges.map((b, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-center"
+                >
+                  {b.iconUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={b.iconUrl} alt={b.alt || ""} className="w-6 h-6 object-contain" />
+                  ) : (
+                    <span className="text-base">🏅</span>
+                  )}
+                  <p className="text-[10px] font-semibold text-neutral-800 leading-tight">{b.label || "—"}</p>
+                  {b.sublabel && <p className="text-[9px] text-neutral-500 leading-tight">{b.sublabel}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+          {reviews.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 border-t border-neutral-100 pt-3">
+              {reviews.map((r, i) => (
+                <div key={i} className="shrink-0 w-44 rounded-lg bg-neutral-50 border border-neutral-100 px-3 py-2">
+                  <div className="flex items-center gap-0.5 mb-1">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <span key={s} className={`text-xs ${s < r.rating ? "text-amber-400" : "text-neutral-200"}`}>★</span>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-neutral-700 italic leading-snug line-clamp-3">
+                    {r.quote || <span className="text-neutral-300">No quote</span>}
+                  </p>
+                  {r.name && <p className="text-[10px] text-neutral-400 mt-1">{r.name}</p>}
+                  {r.label && <p className="text-[9px] text-neutral-300">{r.label}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+          {badges.length === 0 && reviews.length === 0 && (
+            <p className="text-xs text-neutral-400 italic">No content configured yet.</p>
+          )}
+        </Wrapper>
+      );
+    }
+
     case "SOCIAL_PROOF":
       return (
         <Wrapper>
@@ -648,6 +699,123 @@ function StepContent({ state, onChange }: { state: WizardState; onChange: (p: Pa
                       </select>
                     </FormField>
                   </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addReview}
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-xl border-2 border-dashed border-neutral-200 text-neutral-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add review
+              </button>
+            </div>
+          </FormSection>
+        </div>
+      );
+    }
+
+    case "TRUST_BADGES_WITH_REVIEWS": {
+      type CombinedBadge  = { id: string; iconUrl: string; label: string; sublabel: string; alt: string };
+      type CombinedReview = { id: string; quote: string; name: string; rating: number; label: string };
+
+      const DEFAULT_BADGES: CombinedBadge[] = [
+        { id: "guarantee", iconUrl: "", label: "30-Day Money Back",  sublabel: "Guarantee",     alt: "30-Day Money Back Guarantee" },
+        { id: "shipping",  iconUrl: "", label: "Fast Shipping",      sublabel: "2-5 days",       alt: "Fast Shipping"               },
+        { id: "secure",    iconUrl: "", label: "Safe & Secure",      sublabel: "Checkout",       alt: "Safe and Secure Checkout"    },
+      ];
+      const DEFAULT_REVIEWS: CombinedReview[] = [{ id: "r1", quote: "", name: "", rating: 5, label: "Verified Buyer" }];
+
+      const badges  = (c["badges"]  as CombinedBadge[]  | undefined) ?? DEFAULT_BADGES;
+      const reviews = (c["reviews"] as CombinedReview[] | undefined) ?? DEFAULT_REVIEWS;
+
+      function setBadgeField(i: number, field: keyof CombinedBadge, val: string) {
+        setContent("badges", badges.map((b, idx) => idx === i ? { ...b, [field]: val } : b));
+      }
+      function addBadge()             { setContent("badges",  [...badges,  { id: `badge-${Date.now()}`,  iconUrl: "", label: "", sublabel: "", alt: "" }]); }
+      function removeBadge(i: number) { setContent("badges",  badges.filter((_, idx) => idx !== i)); }
+
+      function setReviewField(i: number, field: keyof CombinedReview, val: string | number) {
+        setContent("reviews", reviews.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+      }
+      function addReview()             { setContent("reviews", [...reviews, { id: `review-${Date.now()}`, quote: "", name: "", rating: 5, label: "Verified Buyer" }]); }
+      function removeReview(i: number) { setContent("reviews", reviews.filter((_, idx) => idx !== i)); }
+
+      return (
+        <div className="space-y-5">
+          <FormSection
+            title="Trust badges"
+            description="3 badges shown in a row above the reviews. Each badge has an icon, a main label, and a sublabel."
+            accent={ACCENT}
+          >
+            <div className="space-y-3">
+              {badges.map((badge, i) => (
+                <div key={badge.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-neutral-500">Badge {i + 1}</span>
+                    <button type="button" onClick={() => removeBadge(i)} className="text-neutral-300 hover:text-red-400 transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Label (main)">
+                      <input type="text" value={badge.label} onChange={(e) => setBadgeField(i, "label", e.target.value)} className="input-base" placeholder="30-Day Money Back" />
+                    </FormField>
+                    <FormField label="Sublabel">
+                      <input type="text" value={badge.sublabel} onChange={(e) => setBadgeField(i, "sublabel", e.target.value)} className="input-base" placeholder="Guarantee" />
+                    </FormField>
+                  </div>
+                  <FormField label="Icon URL" hint="Optional. Leave blank to use the default badge icon.">
+                    <input type="text" value={badge.iconUrl} onChange={(e) => setBadgeField(i, "iconUrl", e.target.value)} className="input-base" placeholder="https://cdn.shopify.com/…/icon.svg" />
+                  </FormField>
+                  <FormField label="Alt text" hint="Describes the badge icon for screen readers.">
+                    <input type="text" value={badge.alt} onChange={(e) => setBadgeField(i, "alt", e.target.value)} className="input-base" placeholder="30-Day Money Back Guarantee" />
+                  </FormField>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addBadge}
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-xl border-2 border-dashed border-neutral-200 text-neutral-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add badge
+              </button>
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Customer reviews"
+            description="Shown as a horizontal scroll carousel below the badges."
+            accent={ACCENT}
+          >
+            <div className="space-y-3">
+              {reviews.map((review, i) => (
+                <div key={review.id} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-neutral-500">Review {i + 1}</span>
+                    <button type="button" onClick={() => removeReview(i)} className="text-neutral-300 hover:text-red-400 transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <FormField label="Quote">
+                    <textarea rows={2} value={review.quote} onChange={(e) => setReviewField(i, "quote", e.target.value)} className="input-base resize-none" placeholder="Amazing product, super fast shipping!" />
+                  </FormField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Customer name">
+                      <input type="text" value={review.name} onChange={(e) => setReviewField(i, "name", e.target.value)} className="input-base" placeholder="P.J." />
+                    </FormField>
+                    <FormField label="Rating">
+                      <select value={review.rating} onChange={(e) => setReviewField(i, "rating", parseInt(e.target.value))} className="input-base">
+                        {[5, 4, 3, 2, 1].map((n) => (
+                          <option key={n} value={n}>{n} star{n !== 1 ? "s" : ""} {"★".repeat(n)}</option>
+                        ))}
+                      </select>
+                    </FormField>
+                  </div>
+                  <FormField label="Badge label" hint='e.g. "Verified Buyer", "Verified Purchase"'>
+                    <input type="text" value={review.label} onChange={(e) => setReviewField(i, "label", e.target.value)} className="input-base" placeholder="Verified Buyer" />
+                  </FormField>
                 </div>
               ))}
               <button
