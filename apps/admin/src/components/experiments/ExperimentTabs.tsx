@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import {
   Eye, BarChart3, Check, ChevronDown, RefreshCw,
@@ -50,7 +51,7 @@ export function ExperimentTabs({ tab, experiment, analytics, currencyCode, shopD
     case "groups":
       return <TestGroupsTab experiment={experiment} />;
     case "modifications":
-      return <ModificationsTab experiment={experiment} />;
+      return <ModificationsTab experiment={experiment} shopDomain={shopDomain} />;
     case "targeting":
       return <TargetingTab experiment={experiment} />;
     case "preview":
@@ -129,22 +130,17 @@ function ResultsTab({
     <div className="p-6 space-y-4 max-w-6xl mx-auto bg-neutral-50/50">
       {/* Top controls */}
       <div className="flex items-center justify-between">
-        <button
-          className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 border border-neutral-200 rounded-lg px-3 py-1.5 hover:bg-neutral-50 bg-white"
-        >
+        <button className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 border border-neutral-200 rounded-lg px-3 py-1.5 bg-white cursor-not-allowed" title="Coming soon" disabled>
           View: <span className="text-neutral-900 font-semibold">Key Metrics</span>
           <ChevronDown className="w-3 h-3 text-neutral-400 ml-0.5" />
         </button>
         <div className="flex items-center gap-2">
-          <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-            <Filter className="w-3.5 h-3.5" />
+          <button className="p-1.5 text-neutral-300 border border-neutral-200 rounded-lg bg-white cursor-not-allowed" title="Filter — coming soon" disabled><Filter className="w-3.5 h-3.5" /></button>
+          <button className="flex items-center gap-1.5 text-xs text-neutral-400 border border-neutral-200 rounded-lg px-3 py-1.5 bg-white cursor-not-allowed" title="Date range selection — coming soon" disabled>
+              {/* Date range selection coming soon */}
+              Range: <span className="font-medium text-neutral-800">All (May 13 - Now)</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg px-3 py-1.5 hover:bg-neutral-50 bg-white">
-            Range: <span className="font-medium text-neutral-800">All (May 13 - Now)</span>
-          </button>
-          <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <RefreshButton />
         </div>
       </div>
 
@@ -638,12 +634,11 @@ function ContentAnalyticsTab({
           <span className="text-sm font-semibold text-neutral-800">Content Test Results</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg px-3 py-1.5 hover:bg-neutral-50 bg-white">
-            Range: <span className="font-medium text-neutral-800">All time</span>
+          <button className="flex items-center gap-1.5 text-xs text-neutral-400 border border-neutral-200 rounded-lg px-3 py-1.5 bg-white cursor-not-allowed" title="Date range selection — coming soon" disabled>
+              {/* Date range selection coming soon */}
+              Range: <span className="font-medium text-neutral-800">All time</span>
           </button>
-          <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <RefreshButton />
         </div>
       </div>
 
@@ -826,12 +821,11 @@ function SplitUrlAnalyticsTab({
           <span className="text-sm font-semibold text-neutral-800">Split URL Results</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg px-3 py-1.5 hover:bg-neutral-50 bg-white">
-            Range: <span className="font-medium text-neutral-800">All time</span>
+          <button className="flex items-center gap-1.5 text-xs text-neutral-400 border border-neutral-200 rounded-lg px-3 py-1.5 bg-white cursor-not-allowed" title="Date range selection — coming soon" disabled>
+              {/* Date range selection coming soon */}
+              Range: <span className="font-medium text-neutral-800">All time</span>
           </button>
-          <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <RefreshButton />
         </div>
       </div>
 
@@ -1016,12 +1010,11 @@ function OfferAnalyticsTab({
           <span className="text-sm font-semibold text-neutral-800">Offer Test Results</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg px-3 py-1.5 hover:bg-neutral-50 bg-white">
-            Range: <span className="font-medium text-neutral-800">All time</span>
+          <button className="flex items-center gap-1.5 text-xs text-neutral-400 border border-neutral-200 rounded-lg px-3 py-1.5 bg-white cursor-not-allowed" title="Date range selection — coming soon" disabled>
+              {/* Date range selection coming soon */}
+              Range: <span className="font-medium text-neutral-800">All time</span>
           </button>
-          <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <RefreshButton />
         </div>
       </div>
 
@@ -1190,12 +1183,11 @@ function CheckoutAnalyticsTab({
           <span className="text-sm font-semibold text-neutral-800">Checkout Block Results</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 text-xs text-neutral-600 border border-neutral-200 rounded-lg px-3 py-1.5 hover:bg-neutral-50 bg-white">
-            Range: <span className="font-medium text-neutral-800">All time</span>
+          <button className="flex items-center gap-1.5 text-xs text-neutral-400 border border-neutral-200 rounded-lg px-3 py-1.5 bg-white cursor-not-allowed" title="Date range selection — coming soon" disabled>
+              {/* Date range selection coming soon */}
+              Range: <span className="font-medium text-neutral-800">All time</span>
           </button>
-          <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+          <RefreshButton />
         </div>
       </div>
 
@@ -1382,9 +1374,7 @@ function DiscountAnalyticsTab({
           <Tag className="w-4 h-4" style={{ color: ACCENT }} />
           <span className="text-sm font-semibold text-neutral-800">Discount Test Results</span>
         </div>
-        <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <RefreshButton />
       </div>
 
       <div className="bg-white rounded-xl border border-neutral-200 px-5 py-3 flex items-center gap-8 flex-wrap">
@@ -1576,9 +1566,7 @@ function ShippingAnalyticsTab({
           <Truck className="w-4 h-4" style={{ color: ACCENT }} />
           <span className="text-sm font-semibold text-neutral-800">Shipping Test Results</span>
         </div>
-        <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <RefreshButton />
       </div>
 
       <div className="bg-white rounded-xl border border-neutral-200 px-5 py-3 flex items-center gap-8 flex-wrap">
@@ -1763,9 +1751,7 @@ function PriceAnalyticsTab({
           <DollarSign className="w-4 h-4" style={{ color: ACCENT }} />
           <span className="text-sm font-semibold text-neutral-800">Price Test Results</span>
         </div>
-        <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <RefreshButton />
       </div>
 
       {showElasticityHint && (
@@ -1954,9 +1940,7 @@ function PersonalizationAnalyticsTab({
           <Users2 className="w-4 h-4" style={{ color: ACCENT }} />
           <span className="text-sm font-semibold text-neutral-800">Personalization Results</span>
         </div>
-        <button className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <RefreshButton />
       </div>
 
       <div className="bg-white rounded-xl border border-neutral-200 px-5 py-3 flex items-center gap-8 flex-wrap">
@@ -2292,12 +2276,12 @@ function TestGroupsTab({ experiment }: { experiment: ExperimentData }) {
 // ─────────────────────────────────────────────
 // MODIFICATIONS TAB — type-aware router
 // ─────────────────────────────────────────────
-function ModificationsTab({ experiment }: { experiment: ExperimentData }) {
+function ModificationsTab({ experiment, shopDomain }: { experiment: ExperimentData; shopDomain?: string }) {
   switch (experiment.type) {
     case "CONTENT_TEST":
       return <ContentModificationsTab experiment={experiment} />;
     case "SPLIT_URL_TEST":
-      return <SplitUrlRoutesTab experiment={experiment} />;
+      return <SplitUrlRoutesTab experiment={experiment} shopDomain={shopDomain} />;
     case "CHECKOUT_TEST":
       return <CheckoutBlockConfigTab experiment={experiment} />;
     case "DISCOUNT_TEST":
@@ -2496,8 +2480,16 @@ function resolveSplitUrl(v: Variant, splitUrlConfig: unknown): string | undefine
 }
 
 // ── SPLIT URL TEST: list variants with URLs ──
-function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
+function SplitUrlRoutesTab({ experiment, shopDomain }: { experiment: ExperimentData; shopDomain?: string }) {
   const ACCENT = "#0284c7";
+
+  // Build full storefront URL from a relative path or absolute URL
+  function toStoreHref(url: string): string {
+    if (!url) return "#";
+    if (url.startsWith("http")) return url;
+    const origin = shopDomain ? `https://${shopDomain.replace(/^https?:\/\//, "")}` : "";
+    return `${origin}${url}`;
+  }
 
   // Detect duplicate and missing URLs
   const urlMap = new Map<string, string[]>();
@@ -2574,7 +2566,7 @@ function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
                   </div>
                   {url ? (
                     <a
-                      href={url}
+                      href={toStoreHref(url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-mono text-neutral-600 bg-neutral-50 px-2 py-1 rounded border border-neutral-100 max-w-lg truncate hover:text-blue-600 hover:border-blue-100 transition-colors"
@@ -4004,6 +3996,23 @@ function ConfigField({ label, value, accent }: { label: string; value: string | 
         <p className="text-sm text-neutral-300">—</p>
       )}
     </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────
+// SHARED: Refresh button that reloads server data
+// ─────────────────────────────────────────────
+function RefreshButton() {
+  const router = useRouter();
+  return (
+    <button
+      onClick={() => router.refresh()}
+      className="p-1.5 text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg bg-white transition-colors"
+      title="Refresh data"
+    >
+      <RefreshCw className="w-3.5 h-3.5" />
+    </button>
   );
 }
 
