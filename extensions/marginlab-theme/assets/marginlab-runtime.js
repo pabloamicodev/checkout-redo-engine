@@ -71,6 +71,18 @@
     state.visitorId = getOrCreateVisitorId();
     state.sessionId = getOrCreateSessionId();
 
+    // Clean up ml_redirected param from the visible URL (loop guard already served its purpose)
+    if (getQueryParam("ml_redirected") === "1" && window.history && window.history.replaceState) {
+      try {
+        var cleanSearch = window.location.search
+          .replace(/[?&]ml_redirected=1/g, "")
+          .replace(/^\?&/, "?")
+          .replace(/\?$/, "");
+        var cleanUrl = window.location.pathname + cleanSearch + window.location.hash;
+        window.history.replaceState(null, "", cleanUrl);
+      } catch (e) {}
+    }
+
     // If this page (or a prior page in the session) has a Shopify preview_theme_id,
     // activate link-level persistence so the theme stays consistent as the visitor
     // browses — but never injects into checkout so real purchases still work.
@@ -630,6 +642,28 @@
               return e.status === "RUNNING" && e.type === "CONTENT_TEST";
             });
           if (hasContentTest) shouldHide = true;
+        }
+
+        // Also hide for SPLIT_URL_TEST if visitor has a non-control assignment with a redirectUrl
+        // AND they are currently on the control (base) URL — redirect is about to fire.
+        if (!shouldHide && Array.isArray(cachedConfig.experiments)) {
+          var assignments = {};
+          try { assignments = JSON.parse(localStorage.getItem("_ml_assignments") || "{}"); } catch (e2) {}
+          cachedConfig.experiments.forEach(function (e) {
+            if (shouldHide) return;
+            if (e.status !== "RUNNING" || e.type !== "SPLIT_URL_TEST") return;
+            var assignment = assignments[e.id];
+            if (!assignment || assignment.isControl || !assignment.redirectUrl) return;
+            // Only hide if currently on the control page
+            var cfg = e.splitUrlConfig || {};
+            if (!cfg.baseUrl) return;
+            var controlPath = cfg.baseUrl.startsWith("http")
+              ? new URL(cfg.baseUrl).pathname
+              : cfg.baseUrl;
+            controlPath = controlPath.replace(/\/$/, "");
+            var currentPath = window.location.pathname.replace(/\/$/, "");
+            if (currentPath === controlPath) shouldHide = true;
+          });
         }
       }
     } catch (e) {}

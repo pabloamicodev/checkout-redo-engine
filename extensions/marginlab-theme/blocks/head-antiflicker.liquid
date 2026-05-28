@@ -1,0 +1,78 @@
+{% comment %}
+  MarginLab Head Anti-Flicker Block
+  ─────────────────────────────────
+  Runs in <head> before any paint. For returning visitors already assigned to a
+  SPLIT_URL_TEST variant, this hides the body and redirects instantly — eliminating
+  the "flash of control page" that a body-level script cannot avoid.
+
+  New visitors (no localStorage assignment yet) will still experience a brief hide
+  while the config is fetched; the main runtime's removeAntiFlicker() will reveal
+  the body once the config arrives (within the antiFlickerTimeout, default 300ms).
+{% endcomment %}
+
+<style id="ml-afs">body{opacity:0!important;transition:none!important}</style>
+<script>
+(function(){
+  var TIMEOUT = 400; // max ms to hide body; main runtime also calls removeAntiFlicker()
+  function show(){
+    var s=document.getElementById('ml-afs');
+    if(s&&s.parentNode)s.parentNode.removeChild(s);
+    if(document.body)document.body.style.opacity='';
+    clearTimeout(t);
+  }
+  var t = setTimeout(show, TIMEOUT);
+
+  // Only redirect for returning visitors who already have an assignment
+  try {
+    var assignments = JSON.parse(localStorage.getItem('_ml_assignments')||'{}');
+    var config = JSON.parse(localStorage.getItem('_ml_config')||'{}');
+    var experiments = (config && config.experiments) || [];
+
+    var redirected = false;
+    for(var i=0;i<experiments.length;i++){
+      var exp = experiments[i];
+      if(exp.status!=='RUNNING'||exp.type!=='SPLIT_URL_TEST') continue;
+      var asgn = assignments[exp.id];
+      if(!asgn||asgn.isControl||!asgn.redirectUrl) continue;
+
+      // Check loop guard
+      var search = window.location.search;
+      if(search.indexOf('ml_redirected=1')!==-1){ show(); return; }
+
+      // Only redirect if on the control (base) URL
+      var cfg = exp.splitUrlConfig||{};
+      if(!cfg.baseUrl) continue;
+      var ctrlPath = cfg.baseUrl.startsWith('http')
+        ? new URL(cfg.baseUrl).pathname
+        : cfg.baseUrl;
+      ctrlPath = ctrlPath.replace(/\/$/,'');
+      var currPath = window.location.pathname.replace(/\/$/,'');
+      if(currPath!==ctrlPath) continue;
+
+      // Already on target?
+      var targetPath = asgn.redirectUrl.split('?')[0].replace(/\/$/,'');
+      if(currPath===targetPath){ show(); return; }
+
+      // Redirect now — body is hidden, user sees nothing
+      var targetUrl = asgn.redirectUrl;
+      targetUrl += (targetUrl.indexOf('?')!==-1?'&':'?')+'ml_redirected=1';
+      redirected = true;
+      window.location.replace(targetUrl);
+      break;
+    }
+
+    // No redirect needed — reveal body immediately
+    if(!redirected) show();
+  } catch(e){
+    show();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "MarginLab Anti-Flicker",
+  "target": "head",
+  "settings": []
+}
+{% endschema %}
