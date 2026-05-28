@@ -136,21 +136,62 @@ export class EventIngestionService {
     }
 
     // -------------------------------------------------------------------
-    // 3. Update assignment lastSeenAt
+    // 3. Upsert ExperimentAssignment for experiment_assigned events.
+    //    The client runtime assigns visitors locally (no server call), so
+    //    this is the only place we can create the DB record that the
+    //    analytics dashboard uses to count sessions and assignments.
     // -------------------------------------------------------------------
-    const experimentIds = [
+    const assignmentEvents = batch.events.filter(
+      (e) => e.eventName === "experiment_assigned" && e.experimentId && e.variantId
+    );
+
+    if (assignmentEvents.length > 0) {
+      await Promise.all(
+        assignmentEvents.map((e) =>
+          prisma.experimentAssignment.upsert({
+            where: {
+              experimentId_visitorId: {
+                experimentId: e.experimentId!,
+                visitorId: batch.visitorId,
+              },
+            },
+            update: {
+              lastSeenAt: new Date(),
+              ...(batch.sessionId ? { sessionId: batch.sessionId } : {}),
+            },
+            create: {
+              shopId,
+              experimentId: e.experimentId!,
+              variantId: e.variantId!,
+              visitorId: batch.visitorId,
+              sessionId: batch.sessionId ?? null,
+              source: "SERVER_SIDE",
+              landingPage: e.url ? e.url.split("?")[0] ?? null : null,
+              country: e.country ?? null,
+              deviceType: e.deviceType ?? null,
+              utmSource: e.utmSource ?? null,
+              utmMedium: e.utmMedium ?? null,
+              utmCampaign: e.utmCampaign ?? null,
+            },
+          })
+        )
+      );
+    }
+
+    // Update lastSeenAt for any other events that reference an existing assignment
+    const allExperimentIds = [
       ...new Set(
         batch.events
-          .filter((e) => e.experimentId)
+          .filter((e) => e.experimentId && e.eventName !== "experiment_assigned")
           .map((e) => e.experimentId!)
       ),
     ];
 
-    if (experimentIds.length > 0) {
+    if (allExperimentIds.length > 0) {
       await prisma.experimentAssignment.updateMany({
         where: {
           shopId,
-          experimentId: { in: experimentIds },
+          experimentId: { in: allExperimentIds },
           visitorId: batch.visitorId,
         },
         data: {
