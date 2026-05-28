@@ -23,6 +23,7 @@ interface Variant {
   key: string;
   isControl: boolean;
   allocationPercent: number;
+  redirectUrl?: string | null;
   modifications?: unknown;
   priceOverrides?: unknown;
   discountConfig?: unknown;
@@ -837,7 +838,7 @@ function SplitUrlAnalyticsTab({
       <div className={cn("grid gap-2", experiment.variants.length <= 2 ? "grid-cols-2" : "grid-cols-3")}>
         {experiment.variants.map((v) => {
           const s = v.settings as Record<string, unknown> | null | undefined;
-          const url = (s?.url ?? s?.redirectUrl) as string | undefined;
+          const url = (v.redirectUrl) ?? (s?.url ?? s?.redirectUrl) as string | undefined;
           const av = analytics?.variants.find((a) => a.variantId === v.id);
           return (
             <div key={v.id} className="bg-white rounded-xl border border-neutral-200 px-4 py-3">
@@ -891,7 +892,7 @@ function SplitUrlAnalyticsTab({
                 analytics.variants.map((av) => {
                   const v = experiment.variants.find((vv) => vv.id === av.variantId);
                   const s = v?.settings as Record<string, unknown> | null | undefined;
-                  const url = (s?.url ?? s?.redirectUrl) as string | undefined;
+                  const url = (v?.redirectUrl) ?? (s?.url ?? s?.redirectUrl) as string | undefined;
                   const cvLift = av.conversionRateTest?.relativeLift;
                   const rpvLift = av.revenuePerVisitorTest?.relativeLift;
                   return (
@@ -921,7 +922,7 @@ function SplitUrlAnalyticsTab({
               ) : (
                 experiment.variants.map((v) => {
                   const s = v.settings as Record<string, unknown> | null | undefined;
-                  const url = (s?.url ?? s?.redirectUrl) as string | undefined;
+                  const url = (v.redirectUrl) ?? (s?.url ?? s?.redirectUrl) as string | undefined;
                   return (
                     <tr key={v.id} className="border-b border-neutral-50">
                       <td className="px-4 py-3">
@@ -2483,6 +2484,16 @@ function ContentModificationsTab({ experiment }: { experiment: ExperimentData })
   );
 }
 
+// Helper: resolve the display URL for a split-URL variant.
+// Control → splitUrlConfig.baseUrl; non-control → variant.redirectUrl
+function resolveSplitUrl(v: Variant, splitUrlConfig: unknown): string | undefined {
+  if (v.isControl) {
+    const cfg = splitUrlConfig as Record<string, unknown> | null | undefined;
+    return (cfg?.baseUrl as string | undefined) || undefined;
+  }
+  return v.redirectUrl || undefined;
+}
+
 // ── SPLIT URL TEST: list variants with URLs ──
 function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
   const ACCENT = "#0284c7";
@@ -2490,8 +2501,7 @@ function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
   // Detect duplicate and missing URLs
   const urlMap = new Map<string, string[]>();
   for (const v of experiment.variants) {
-    const s = v.settings as Record<string, unknown> | null | undefined;
-    const url = (s?.url ?? s?.redirectUrl) as string | undefined;
+    const url = resolveSplitUrl(v, experiment.splitUrlConfig);
     if (url) {
       const existing = urlMap.get(url) ?? [];
       existing.push(v.name);
@@ -2499,10 +2509,7 @@ function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
     }
   }
   const duplicateEntries = [...urlMap.entries()].filter(([, names]) => names.length > 1);
-  const missingUrlVariants = experiment.variants.filter(v => {
-    const s = v.settings as Record<string, unknown> | null | undefined;
-    return !s?.url && !(s?.redirectUrl);
-  });
+  const missingUrlVariants = experiment.variants.filter(v => !resolveSplitUrl(v, experiment.splitUrlConfig));
 
   return (
     <div className="p-6  mx-auto space-y-4">
@@ -2541,8 +2548,7 @@ function SplitUrlRoutesTab({ experiment }: { experiment: ExperimentData }) {
         </div>
         <div className="divide-y divide-neutral-50">
           {experiment.variants.map((v) => {
-            const settings = v.settings as Record<string, unknown> | null | undefined;
-            const url = (settings?.url ?? settings?.redirectUrl) as string | undefined;
+            const url = resolveSplitUrl(v, experiment.splitUrlConfig);
             const isDuplicate = url ? (urlMap.get(url)?.length ?? 0) > 1 : false;
             return (
               <div key={v.id} className={cn("px-5 py-4 flex items-center gap-4", isDuplicate && "bg-red-50/40")}>
@@ -3719,12 +3725,9 @@ function buildQAChecks(experiment: ExperimentData): QACheck[] {
   }
 
   if (type === "SPLIT_URL_TEST") {
-    const allHaveUrls = experiment.variants.every(v => {
-      const s = v.settings as Record<string, unknown> | null | undefined;
-      return s?.url;
-    });
+    const allHaveUrls = experiment.variants.every(v => !!resolveSplitUrl(v, experiment.splitUrlConfig));
     const urls = experiment.variants
-      .map(v => (v.settings as Record<string, unknown> | null | undefined)?.url as string | undefined)
+      .map(v => resolveSplitUrl(v, experiment.splitUrlConfig))
       .filter(Boolean) as string[];
     const hasDuplicates = new Set(urls).size !== urls.length;
     const splitCfg = experiment.splitUrlConfig as Record<string, unknown> | null | undefined;
