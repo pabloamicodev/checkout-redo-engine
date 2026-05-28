@@ -117,11 +117,11 @@ beforeEach(() => {
 // ─── GET /api/price-tests/[id] ────────────────────────────────────────────────
 
 describe("GET /api/price-tests/[id]", () => {
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockGetShopId.mockResolvedValueOnce(null);
     const req = new NextRequest("http://localhost/api/price-tests/exp-1");
     const res = await GET(req, PARAMS);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("returns 200 with experiment when found", async () => {
@@ -147,7 +147,7 @@ describe("GET /api/price-tests/[id]", () => {
 // ─── PATCH /api/price-tests/[id] ─────────────────────────────────────────────
 
 describe("PATCH /api/price-tests/[id]", () => {
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockGetShopId.mockResolvedValueOnce(null);
     const req = new NextRequest("http://localhost/api/price-tests/exp-1", {
       method: "PATCH",
@@ -155,7 +155,7 @@ describe("PATCH /api/price-tests/[id]", () => {
       headers: { "content-type": "application/json" },
     });
     const res = await PATCH(req, PARAMS);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("returns 200 with updated experiment", async () => {
@@ -206,11 +206,11 @@ describe("PATCH /api/price-tests/[id]", () => {
 // ─── DELETE /api/price-tests/[id] ────────────────────────────────────────────
 
 describe("DELETE /api/price-tests/[id]", () => {
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockGetShopId.mockResolvedValueOnce(null);
     const req = new NextRequest("http://localhost/api/price-tests/exp-1", { method: "DELETE" });
     const res = await DELETE(req, PARAMS);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("returns 204 on successful delete", async () => {
@@ -237,11 +237,11 @@ describe("DELETE /api/price-tests/[id]", () => {
 // ─── POST /api/price-tests/[id]/activate ─────────────────────────────────────
 
 describe("POST /api/price-tests/[id]/activate", () => {
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockGetShopId.mockResolvedValueOnce(null);
     const req = new NextRequest("http://localhost/api/price-tests/exp-1/activate", { method: "POST" });
     const res = await POSTActivate(req, PARAMS);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("returns 200 with running experiment on success", async () => {
@@ -279,11 +279,11 @@ describe("POST /api/price-tests/[id]/activate", () => {
 // ─── POST /api/price-tests/[id]/pause ────────────────────────────────────────
 
 describe("POST /api/price-tests/[id]/pause", () => {
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockGetShopId.mockResolvedValueOnce(null);
     const req = new NextRequest("http://localhost/api/price-tests/exp-1/pause", { method: "POST" });
     const res = await POSTPause(req, PARAMS);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("returns 200 with paused experiment on success", async () => {

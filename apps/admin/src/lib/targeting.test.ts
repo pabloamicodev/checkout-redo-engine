@@ -177,14 +177,14 @@ describe("evaluateTargetingRules", () => {
   });
 
   describe("unknown condition type", () => {
-    it("passes by default for unknown condition types", () => {
+    it("fails by default for unknown condition types (fail-safe)", () => {
       const rule: TargetingGroup[] = [
         {
           operator: "AND",
           conditions: [{ type: "js_api" as never, operator: "eq", value: "custom" }],
         },
       ];
-      expect(evaluateTargetingRules(rule, {})).toBe(true);
+      expect(evaluateTargetingRules(rule, {})).toBe(false);
     });
   });
 

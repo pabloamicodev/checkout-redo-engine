@@ -107,14 +107,14 @@ describe("GET /api/offers", () => {
     );
   });
 
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockShopFindUnique.mockResolvedValue(null);
 
     const req = new NextRequest("http://localhost/api/offers", {
       headers: authHeaders(),
     });
     const res = await GET(req);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 });
 

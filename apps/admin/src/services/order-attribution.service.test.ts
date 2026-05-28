@@ -300,8 +300,8 @@ describe("OrderAttributionService.processOrder — revenue calculations", () => 
     await service.processOrder(SHOP_ID, order);
 
     const createCall = mockAttributionCreate.mock.calls[0]![0]! as { data: Record<string, unknown> };
-    // transactionFee = 100 * 2.9% = 2.9
-    expect(createCall.data.transactionFee).toBeCloseTo(2.9, 2);
+    // transactionFee = 100 * 2.9% + $0.30 fixed = 2.9 + 0.30 = 3.20
+    expect(createCall.data.transactionFee).toBeCloseTo(3.2, 1);
   });
 });
 

@@ -344,7 +344,7 @@ describe("TargetingRulesSchema", () => {
     const rules = [
       {
         operator: "AND",
-        conditions: [{ type: "is_new_visitor", operator: "eq", value: true }],
+        conditions: [{ type: "new_visitor", operator: "eq", value: true }],
       },
     ];
     expect(TargetingRulesSchema.safeParse(rules).success).toBe(true);

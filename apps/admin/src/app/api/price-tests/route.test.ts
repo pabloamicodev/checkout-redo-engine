@@ -110,18 +110,22 @@ beforeEach(() => {
 // ─── GET /api/price-tests ─────────────────────────────────────────────────────
 
 describe("GET /api/price-tests", () => {
-  it("returns 404 when shop is not found", async () => {
-    mockGetShopId.mockResolvedValueOnce(null);
-    const req = new NextRequest("http://localhost/api/price-tests");
+  it("returns 401 when shop is not found", async () => {
+    mockShopFindUnique.mockResolvedValueOnce(null);
+    const req = new NextRequest("http://localhost/api/price-tests", {
+      headers: authHeaders(),
+    });
     const res = await GET(req);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("returns list with 200", async () => {
     const created = { id: "exp-1", name: "Price Test" };
     mockList.mockResolvedValueOnce({ items: [created], total: 1 });
 
-    const req = new NextRequest("http://localhost/api/price-tests");
+    const req = new NextRequest("http://localhost/api/price-tests", {
+      headers: authHeaders(),
+    });
     const res = await GET(req);
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
@@ -130,7 +134,9 @@ describe("GET /api/price-tests", () => {
   });
 
   it("passes status filter to service.list", async () => {
-    const req = new NextRequest("http://localhost/api/price-tests?status=RUNNING");
+    const req = new NextRequest("http://localhost/api/price-tests?status=RUNNING", {
+      headers: authHeaders(),
+    });
     await GET(req);
     expect(mockList).toHaveBeenCalledWith(
       "shop-1",
@@ -139,7 +145,9 @@ describe("GET /api/price-tests", () => {
   });
 
   it("passes page parameter to service.list", async () => {
-    const req = new NextRequest("http://localhost/api/price-tests?page=3");
+    const req = new NextRequest("http://localhost/api/price-tests?page=3", {
+      headers: authHeaders(),
+    });
     await GET(req);
     expect(mockList).toHaveBeenCalledWith(
       "shop-1",
@@ -147,10 +155,12 @@ describe("GET /api/price-tests", () => {
     );
   });
 
-  it("calls getShopId with the request object", async () => {
-    const req = new NextRequest("http://localhost/api/price-tests");
+  it("resolves shop from JWT and calls service.list", async () => {
+    const req = new NextRequest("http://localhost/api/price-tests", {
+      headers: authHeaders(),
+    });
     await GET(req);
-    expect(mockGetShopId).toHaveBeenCalledWith(req);
+    expect(mockList).toHaveBeenCalledWith("shop-1", expect.any(Object));
   });
 });
 

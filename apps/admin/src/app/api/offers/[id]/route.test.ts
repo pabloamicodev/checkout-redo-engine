@@ -89,14 +89,14 @@ describe("GET /api/offers/[id]", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockShopFindUnique.mockResolvedValue(null);
 
     const req = new NextRequest("http://localhost/api/offers/offer-1", {
       headers: authHeaders(),
     });
     const res = await GET(req, { params: PARAMS });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 });
 
@@ -142,7 +142,7 @@ describe("PATCH /api/offers/[id]", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 404 when shop not found", async () => {
+  it("returns 401 when shop not found", async () => {
     mockShopFindUnique.mockResolvedValue(null);
 
     const req = new NextRequest("http://localhost/api/offers/offer-1", {
@@ -151,7 +151,7 @@ describe("PATCH /api/offers/[id]", () => {
       headers: { "content-type": "application/json", ...authHeaders() },
     });
     const res = await PATCH(req, { params: PARAMS });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 });
 
