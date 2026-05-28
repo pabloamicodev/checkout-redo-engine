@@ -2,9 +2,70 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Plus, ExternalLink, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react";
+import { Plus, ExternalLink, ChevronLeft, ChevronRight, FlaskConical, Loader2 } from "lucide-react";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/Toast";
+
+// ---------------------------------------------------------------------------
+// Status action definitions
+// ---------------------------------------------------------------------------
+interface ActionDef {
+  label: string;
+  route: string; // POST /{apiPath}/{id}/{route}
+  nextStatus: string;
+  variant: "primary" | "ghost" | "danger";
+  successMsg: (name: string) => string;
+}
+
+function getActions(status: string): ActionDef[] {
+  switch (status) {
+    case "DRAFT":
+      return [{
+        label: "Launch",
+        route: "launch",
+        nextStatus: "RUNNING",
+        variant: "primary",
+        successMsg: (name) => `"${name}" is now live — visitors are being enrolled.`,
+      }];
+    case "RUNNING":
+      return [
+        {
+          label: "Pause",
+          route: "pause",
+          nextStatus: "PAUSED",
+          variant: "ghost",
+          successMsg: (name) => `"${name}" paused — no new assignments will be made.`,
+        },
+        {
+          label: "Complete",
+          route: "complete",
+          nextStatus: "COMPLETED",
+          variant: "ghost",
+          successMsg: (name) => `"${name}" has been marked as complete.`,
+        },
+      ];
+    case "PAUSED":
+      return [
+        {
+          label: "Resume",
+          route: "activate",
+          nextStatus: "RUNNING",
+          variant: "primary",
+          successMsg: (name) => `"${name}" resumed — visitor enrollments are active again.`,
+        },
+        {
+          label: "Complete",
+          route: "complete",
+          nextStatus: "COMPLETED",
+          variant: "ghost",
+          successMsg: (name) => `"${name}" has been marked as complete.`,
+        },
+      ];
+    default:
+      return [];
+  }
+}
 
 export interface ExperimentRow {
   id: string;
@@ -51,6 +112,8 @@ export function ExperimentTypeList({
   const [total, setTotal] = useState(initialTotal);
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
+  const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
+  const [actionError, setActionError] = useState<Record<string, string>>({});
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const runningCount = items.filter((i) => i.status === "RUNNING").length;
@@ -74,6 +137,28 @@ export function ExperimentTypeList({
   function handlePage(p: number) {
     setPage(p);
     startTransition(() => { fetchPage(statusFilter, p); });
+  }
+
+  async function doAction(id: string, action: ActionDef) {
+    setActionLoading((prev) => ({ ...prev, [id]: action.route }));
+    setActionError((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    try {
+      const res = await fetch(`${apiPath}/${id}/${action.route}`, { method: "POST" });
+      if (!res.ok) {
+        const d = (await res.json()) as { error?: string };
+        throw new Error(d.error || "Action failed");
+      }
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: action.nextStatus } : item))
+      );
+    } catch (err) {
+      setActionError((prev) => ({
+        ...prev,
+        [id]: err instanceof Error ? err.message : "Failed",
+      }));
+    } finally {
+      setActionLoading((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    }
   }
 
   return (
@@ -223,13 +308,50 @@ export function ExperimentTypeList({
                       <td className="px-4 py-3.5 text-xs text-neutral-400">
                         {new Date(exp.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <Link
-                          href={`${detailBasePath}/${exp.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-neutral-300 group-hover:text-neutral-600 transition-colors"
-                        >
-                          View <ExternalLink className="w-3 h-3" />
-                        </Link>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Inline error */}
+                          {actionError[exp.id] && (
+                            <span className="text-[10px] text-red-500 max-w-[120px] truncate">
+                              {actionError[exp.id]}
+                            </span>
+                          )}
+                          {/* Status action buttons */}
+                          {getActions(exp.status).map((action) => {
+                            const isLoading = actionLoading[exp.id] === action.route;
+                            const anyLoading = !!actionLoading[exp.id];
+                            return (
+                              <button
+                                key={action.route}
+                                onClick={() => doAction(exp.id, action)}
+                                disabled={anyLoading}
+                                className={cn(
+                                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                                  action.variant === "primary"
+                                    ? "text-white shadow-sm"
+                                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                                )}
+                                style={
+                                  action.variant === "primary"
+                                    ? { background: `linear-gradient(135deg, ${accentHex} 0%, ${accentHex}dd 100%)` }
+                                    : undefined
+                                }
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : null}
+                                {action.label}
+                              </button>
+                            );
+                          })}
+                          {/* View link */}
+                          <Link
+                            href={`${detailBasePath}/${exp.id}`}
+                            className="inline-flex items-center gap-1 text-xs text-neutral-300 group-hover:text-neutral-500 transition-colors"
+                          >
+                            View <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

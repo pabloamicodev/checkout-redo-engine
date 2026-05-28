@@ -694,10 +694,10 @@ function StepSettings({
         accent={ACCENT}
       >
         <div className="space-y-3">
-          <InlineAlert variant="warning" title="Search engine indexing">
-            Redirected URLs may be indexed by search engines. Consider adding{" "}
-            <code className="font-mono text-xs">noindex</code> to test variant pages if you
-            don&apos;t want them indexed during the experiment.
+          <InlineAlert variant="info" title="Noindex applied automatically">
+            MarginLab automatically injects{" "}
+            <code className="font-mono text-xs">noindex, nofollow</code> on variant pages while
+            the test is active. The control URL is never touched and keeps its organic ranking.
           </InlineAlert>
           <InlineAlert variant="info" title="Canonical URL">
             The control URL remains canonical. Variant pages should use{" "}

@@ -97,6 +97,7 @@
       runExperiments(config);
       runPersonalizations(config);
       runOffers(config);
+      applyVariantPageNoindex(config);
       state.initialized = true;
       removeAntiFlicker();
       flushReadyCallbacks();
@@ -1777,6 +1778,48 @@
   // the Shopify "Editing theme" bar that would reveal the test to the visitor.
   // Checkout URLs are intentionally excluded so real purchases always work.
   // ---------------------------------------------------------------------------
+
+  // Inject <meta name="robots" content="noindex, nofollow"> when the current page
+  // is a non-control variant redirect URL in an active split URL test.
+  // Control pages are never touched so their organic ranking is preserved.
+  function injectNoindex() {
+    if (document.querySelector('meta[name="robots"]')) {
+      document.querySelector('meta[name="robots"]').setAttribute("content", "noindex, nofollow");
+    } else {
+      var meta = document.createElement("meta");
+      meta.name = "robots";
+      meta.content = "noindex, nofollow";
+      document.head && document.head.appendChild(meta);
+    }
+  }
+
+  function applyVariantPageNoindex(config) {
+    if (!config || !config.experiments) return;
+    var currentPath = window.location.pathname;
+
+    for (var i = 0; i < config.experiments.length; i++) {
+      var exp = config.experiments[i];
+      if (exp.type !== "SPLIT_URL_TEST") continue;
+      if (["RUNNING", "PREVIEW", "QA"].indexOf(exp.status) === -1) continue;
+
+      for (var j = 0; j < exp.variants.length; j++) {
+        var v = exp.variants[j];
+        if (v.isControl || !v.redirectUrl) continue;
+
+        var variantPath;
+        if (v.redirectUrl.startsWith("/")) {
+          variantPath = v.redirectUrl.split("?")[0];
+        } else {
+          try { variantPath = new URL(v.redirectUrl).pathname; } catch (e) { continue; }
+        }
+
+        if (currentPath === variantPath) {
+          injectNoindex();
+          return;
+        }
+      }
+    }
+  }
 
   function isCheckoutUrl(url) {
     return /\/checkout|\/checkouts\/|checkout\.shopify\.com/.test(url);
