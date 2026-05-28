@@ -352,9 +352,12 @@ export async function withRuntimeAuth(
 
     const response = await handler(shopDomain);
 
+    // CORS — runtime endpoints are called cross-origin from the merchant storefront
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, X-Shop-Domain");
     // Defensive security headers on every runtime response
     response.headers.set("X-Content-Type-Options", "nosniff");
-    response.headers.set("X-Frame-Options", "DENY");
 
     return response;
   } catch (error) {

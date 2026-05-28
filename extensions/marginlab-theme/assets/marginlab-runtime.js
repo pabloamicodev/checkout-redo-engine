@@ -833,9 +833,12 @@
     if (state.customerId) payloadObj.customerId = state.customerId;
     var payload = JSON.stringify(payloadObj);
 
-    // On unload/hide we can only use sendBeacon (no retry possible)
+    // On unload/hide we can only use sendBeacon (no retry possible).
+    // sendBeacon does NOT support custom headers, so the shop domain must be
+    // passed as a query param — the server reads it from there as fallback.
     if (attempt === 0 && navigator.sendBeacon) {
-      var sent = navigator.sendBeacon(state.apiBase + "/api/runtime/events", new Blob([payload], { type: "application/json" }));
+      var eventsUrl = state.apiBase + "/api/runtime/events?shop=" + encodeURIComponent(state.shopDomain);
+      var sent = navigator.sendBeacon(eventsUrl, new Blob([payload], { type: "application/json" }));
       if (sent) return;
       // sendBeacon returns false if the queue is full — fall through to fetch
     }
