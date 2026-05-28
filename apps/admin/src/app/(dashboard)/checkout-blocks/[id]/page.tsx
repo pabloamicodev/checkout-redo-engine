@@ -85,7 +85,7 @@ export default async function CheckoutBlockDetailPage({
       </div>
 
       {/* Content grid */}
-      <div className="max-w-5xl mx-auto px-6 pb-8 grid grid-cols-2 gap-6 mt-6">
+      <div className=" mx-auto px-6 pb-8 grid grid-cols-2 gap-6 mt-6">
         {/* Block content */}
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-neutral-800 border-b border-neutral-100 pb-1">Content</h2>
