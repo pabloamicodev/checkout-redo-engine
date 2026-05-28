@@ -60,13 +60,17 @@ const STEP_DESCS = [
 
 type BlockTypeKey =
   | "trust_badges"
+  | "trust_badges_with_reviews"
   | "guarantee"
   | "shipping_message"
   | "social_proof"
   | "payment_icons"
   | "urgency_message"
   | "custom_content"
-  | "image_with_text";
+  | "image_with_text"
+  | "product_upsell"
+  | "security_message"
+  | "free_shipping_progress";
 
 interface BlockTypeOption {
   key: BlockTypeKey;
@@ -168,6 +172,63 @@ const BLOCK_TYPES: BlockTypeOption[] = [
           <span className="text-[9px] text-neutral-400">img</span>
         </div>
         <p className="text-[10px] text-neutral-500 font-medium">Trusted by 50,000+</p>
+      </div>
+    ),
+  },
+  {
+    key: "trust_badges_with_reviews",
+    icon: "🏅",
+    title: "Trust Badges + Reviews",
+    description: "Trust badges combined with a customer reviews carousel",
+    preview: (
+      <div className="space-y-1 mt-1.5">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[10px] bg-green-50 text-green-700 border border-green-100 px-1.5 py-0.5 rounded font-medium">🔒 SSL</span>
+          <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded font-medium">✓ Returns</span>
+        </div>
+        <p className="text-[10px] text-amber-500">★★★★★ <span className="text-neutral-500">"Great product!"</span></p>
+      </div>
+    ),
+  },
+  {
+    key: "product_upsell",
+    icon: "🛒",
+    title: "Product Upsell",
+    description: "Offer an add-on product buyers can add in one click",
+    preview: (
+      <div className="flex items-center gap-1.5 mt-1.5">
+        <div className="w-7 h-7 rounded bg-neutral-100 border border-neutral-200 flex items-center justify-center">
+          <span className="text-[9px] text-neutral-400">img</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-medium text-neutral-700 truncate">Add Creatine — $19</p>
+          <p className="text-[9px] text-neutral-400">Save 15% with this order</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "security_message",
+    icon: "🛡",
+    title: "Security Message",
+    description: "SSL, encryption, and data privacy reassurance block",
+    preview: (
+      <p className="text-[10px] text-neutral-500 mt-1.5 italic leading-relaxed">
+        🔒 Your information is encrypted and secure.
+      </p>
+    ),
+  },
+  {
+    key: "free_shipping_progress",
+    icon: "📶",
+    title: "Free Shipping Progress",
+    description: "Progress bar showing how close the buyer is to free shipping",
+    preview: (
+      <div className="mt-1.5 space-y-1">
+        <p className="text-[10px] text-neutral-500">Add $15 more for free shipping</p>
+        <div className="h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+          <div className="h-full rounded-full bg-indigo-400" style={{ width: "60%" }} />
+        </div>
       </div>
     ),
   },
@@ -286,9 +347,11 @@ function emptyVariant(isControl: boolean, idx: number): VariantConfig {
 function isContentEmpty(v: VariantConfig, blockType: BlockTypeKey | null): boolean {
   if (!blockType) return false;
   const c = v.inlineContent;
-  if (blockType === "trust_badges" || blockType === "payment_icons") return c.selectedBadges.length === 0;
+  if (blockType === "trust_badges" || blockType === "payment_icons" || blockType === "trust_badges_with_reviews") return c.selectedBadges.length === 0;
   if (blockType === "social_proof") return c.customerCount === 0;
   if (blockType === "image_with_text") return !c.headline.trim();
+  if (blockType === "product_upsell") return !c.headline.trim();
+  if (blockType === "free_shipping_progress") return c.customerCount === 0;
   return !c.textContent.trim();
 }
 
@@ -1010,16 +1073,103 @@ function ContentEditor({
     );
   }
 
-  // guarantee / shipping_message / urgency_message / custom_content
+  if (blockType === "trust_badges_with_reviews") {
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-neutral-600 mb-1">Select trust badges to display</p>
+        <div className="grid grid-cols-2 gap-2">
+          {BADGE_OPTIONS.map((badge) => {
+            const checked = c.selectedBadges.includes(badge);
+            return (
+              <label key={badge} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    onChange({
+                      selectedBadges: checked
+                        ? c.selectedBadges.filter((b) => b !== badge)
+                        : [...c.selectedBadges, badge],
+                    })
+                  }
+                  style={{ accentColor: ACCENT }}
+                />
+                <span className="text-sm text-neutral-700">{badge}</span>
+              </label>
+            );
+          })}
+        </div>
+        <p className="text-xs text-neutral-400 mt-2">Customer reviews will be pulled from your Shopify reviews metafields.</p>
+      </div>
+    );
+  }
+
+  if (blockType === "product_upsell") {
+    return (
+      <div className="space-y-3">
+        <FormField label="Product handle or variant ID" required>
+          <input
+            type="text"
+            value={c.headline}
+            onChange={(e) => onChange({ headline: e.target.value })}
+            className="input-base"
+            placeholder="creatine-monohydrate or gid://shopify/ProductVariant/..."
+          />
+        </FormField>
+        <FormField label="Offer label">
+          <input
+            type="text"
+            value={c.bodyText}
+            onChange={(e) => onChange({ bodyText: e.target.value })}
+            className="input-base"
+            placeholder="Add to your order and save 15%"
+          />
+        </FormField>
+      </div>
+    );
+  }
+
+  if (blockType === "free_shipping_progress") {
+    return (
+      <div className="space-y-3">
+        <FormField label="Free shipping threshold ($)" required>
+          <input
+            type="number"
+            min={1}
+            value={c.customerCount || ""}
+            onChange={(e) => onChange({ customerCount: parseFloat(e.target.value) || 0 })}
+            className="input-base w-40"
+            placeholder="50"
+          />
+        </FormField>
+        <FormField label="Progress message">
+          <input
+            type="text"
+            value={c.textContent}
+            onChange={(e) => onChange({ textContent: e.target.value })}
+            className="input-base"
+            placeholder="Add {amount} more for free shipping!"
+          />
+        </FormField>
+        <p className="text-[11px] text-neutral-400">Use <code className="bg-neutral-100 px-1 rounded">{"{amount}"}</code> to show the remaining amount dynamically.</p>
+      </div>
+    );
+  }
+
+  // guarantee / shipping_message / urgency_message / custom_content / security_message
   const placeholders: Record<BlockTypeKey, string> = {
-    guarantee:        "30-day money-back guarantee, no questions asked.",
-    shipping_message: "Free standard shipping · Delivered in 3–5 business days.",
-    urgency_message:  "Only 3 left in stock — order in the next 2 hours for same-day dispatch.",
-    custom_content:   "Enter your custom message here.",
-    trust_badges:     "",
-    payment_icons:    "",
-    social_proof:     "",
-    image_with_text:  "",
+    guarantee:                  "30-day money-back guarantee, no questions asked.",
+    shipping_message:           "Free standard shipping · Delivered in 3–5 business days.",
+    urgency_message:            "Only 3 left in stock — order in the next 2 hours for same-day dispatch.",
+    custom_content:             "Enter your custom message here.",
+    security_message:           "Your information is encrypted and 100% secure.",
+    free_shipping_progress:     "Add $15 more to unlock free shipping.",
+    trust_badges:               "",
+    trust_badges_with_reviews:  "",
+    payment_icons:              "",
+    social_proof:               "",
+    image_with_text:            "",
+    product_upsell:             "",
   };
 
   return (
