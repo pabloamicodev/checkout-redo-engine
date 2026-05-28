@@ -75,6 +75,7 @@ enum OfferType {
 
 enum CheckoutBlockType {
   TRUST_BADGES
+  TRUST_BADGES_WITH_REVIEWS
   SOCIAL_PROOF
   GUARANTEE
   SHIPPING_MESSAGE
@@ -84,6 +85,7 @@ enum CheckoutBlockType {
   IMAGE_WITH_TEXT
   URGENCY_MESSAGE
   SECURITY_MESSAGE
+  FREE_SHIPPING_PROGRESS
 }
 
 enum EventType {
