@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { chunk } from "@/lib/utils";
-import { redis } from "@/lib/redis";
+import { redis, cacheDelPattern } from "@/lib/redis";
 import { DailyMetricService } from "./daily-metric.service";
 import type { z } from "zod";
 import type { RuntimeEventSchema } from "@/lib/zod-schemas";
@@ -278,6 +278,10 @@ export class EventIngestionService {
         addToCart: flags.addToCart,
         checkoutStarted: flags.checkoutStarted,
       });
+
+      // Invalidate the analytics cache for this experiment so the dashboard
+      // reflects the new data immediately instead of waiting 5 minutes.
+      cacheDelPattern(`analytics:experiment:${experimentId}:*`).catch(() => {});
     }
 
     return warnings.length > 0 ? { warnings } : {};

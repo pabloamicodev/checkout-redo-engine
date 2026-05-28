@@ -97,7 +97,12 @@ export class AnalyticsService {
 
     if (!experiment) return null;
 
-    const startDate = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    // Normalize to midnight UTC so the date range aligns with DailyMetric.date,
+    // which is always stored as midnight UTC. Without this, a start timestamp of
+    // e.g. 14:23 UTC would exclude the midnight row from the same day.
+    const rawStart = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const startDate = new Date(rawStart);
+    startDate.setUTCHours(0, 0, 0, 0);
     const endDate = dateRange?.end ?? new Date();
 
     const metrics = await prisma.dailyMetric.findMany({
@@ -295,7 +300,9 @@ export class AnalyticsService {
     });
     if (!experiment) return null;
 
-    const startDate = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const rawStart2 = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const startDate = new Date(rawStart2);
+    startDate.setUTCHours(0, 0, 0, 0);
     const endDate = dateRange?.end ?? new Date();
 
     const metrics = await prisma.dailyMetric.findMany({
@@ -347,7 +354,9 @@ export class AnalyticsService {
     const col = SEGMENT_COLUMN_MAP[dimension];
     if (!col) return null;
 
-    const startDate = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const rawStart3 = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const startDate = new Date(rawStart3);
+    startDate.setUTCHours(0, 0, 0, 0);
     const endDate = dateRange?.end ?? new Date();
 
     const rows = (await prisma.$queryRawUnsafe(`
@@ -411,7 +420,9 @@ export class AnalyticsService {
     });
     if (!experiment) return null;
 
-    const startDate = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const rawStart4 = dateRange?.start ?? experiment.launchedAt ?? experiment.createdAt;
+    const startDate = new Date(rawStart4);
+    startDate.setUTCHours(0, 0, 0, 0);
     const endDate = dateRange?.end ?? new Date();
 
     // Total visitors per variant (from assignments, same date window)
