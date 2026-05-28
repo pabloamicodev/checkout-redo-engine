@@ -328,6 +328,7 @@ export const CreateCheckoutBlockSchema = z.object({
   name: z.string().min(1).max(200),
   type: z.enum([
     "TRUST_BADGES",
+    "TRUST_BADGES_WITH_REVIEWS",
     "SOCIAL_PROOF",
     "GUARANTEE",
     "SHIPPING_MESSAGE",
@@ -337,6 +338,7 @@ export const CreateCheckoutBlockSchema = z.object({
     "IMAGE_WITH_TEXT",
     "URGENCY_MESSAGE",
     "SECURITY_MESSAGE",
+    "FREE_SHIPPING_PROGRESS",
   ]),
   content: z.record(z.unknown()).default({}),
   styles: z.record(z.unknown()).default({}),
