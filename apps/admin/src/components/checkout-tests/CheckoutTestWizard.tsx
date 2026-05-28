@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
@@ -647,35 +647,63 @@ function CheckoutPreviewPanel({
   variantContents: VariantConfig[];
   qaItems: QAState;
 }) {
+  const [previewMode, setPreviewMode] = React.useState<"control" | "variant">("variant");
+
   const firstVariant = variantContents.find((v) => !v.isControl);
   const configuredVariants = variantContents.filter(
     (v) => !v.isControl && !isContentEmpty(v, blockType)
   ).length;
 
-  const showBlockZone = step >= 1 && blockType !== null;
+  const showBlockZone = step >= 1 && blockType !== null && previewMode === "variant";
   const blockTypeLabel = BLOCK_TYPES.find((b) => b.key === blockType)?.title ?? null;
   const placementLabel = PLACEMENTS.find((p) => p.key === placement)?.label ?? null;
 
   return (
     <div className="space-y-3">
-      {/* Preview label */}
+      {/* Preview label + toggle */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
           Live Preview
         </p>
-        {firstVariant && !firstVariant.isControl && (
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 font-medium">Control</span>
-            <span className="text-[9px] text-neutral-400">/</span>
-            <span
-              className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-              style={{ background: "#eef2ff", color: INDIGO }}
+        {firstVariant && step >= 1 && (
+          <div className="flex items-center rounded-lg overflow-hidden border border-neutral-200 text-[9px] font-medium">
+            <button
+              type="button"
+              onClick={() => setPreviewMode("control")}
+              className="px-2 py-1 transition-colors"
+              style={
+                previewMode === "control"
+                  ? { background: "#f3f4f6", color: "#374151" }
+                  : { background: "#fff", color: "#9ca3af" }
+              }
+            >
+              Control
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("variant")}
+              className="px-2 py-1 transition-colors"
+              style={
+                previewMode === "variant"
+                  ? { background: INDIGO, color: "#fff" }
+                  : { background: "#fff", color: "#9ca3af" }
+              }
             >
               Variant A
-            </span>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Control = no block callout */}
+      {previewMode === "control" && step >= 1 && (
+        <div className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2 flex items-start gap-2">
+          <span className="text-sm mt-0.5">🚫</span>
+          <p className="text-[10px] text-neutral-500 leading-relaxed">
+            <span className="font-semibold text-neutral-700">Control:</span> No block is shown. Visitors see the standard checkout experience.
+          </p>
+        </div>
+      )}
 
       {/* Checkout frame */}
       <CheckoutFrameMockup

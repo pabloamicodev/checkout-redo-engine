@@ -188,6 +188,7 @@ export const CreateVariantSchema = z.object({
   redirectUrl: z.string().url().optional().nullable(),
   checkoutBlockIds: z.array(z.string()).default([]),
   offerIds: z.array(z.string()).default([]),
+  inlineContent: z.record(z.unknown()).optional(),
   settings: z.record(z.unknown()).default({}),
 });
 

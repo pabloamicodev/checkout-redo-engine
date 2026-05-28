@@ -139,6 +139,7 @@ export class ExperimentService {
             discountConfig: v.discountConfig as never,
             redirectUrl: v.redirectUrl,
             checkoutBlockIds: v.checkoutBlockIds,
+            inlineContent: (v as { inlineContent?: unknown }).inlineContent ?? undefined,
             offerIds: v.offerIds,
             settings: v.settings as never,
           })),

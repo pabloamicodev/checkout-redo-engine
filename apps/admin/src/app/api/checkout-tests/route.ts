@@ -11,6 +11,7 @@ const VariantSchema = z.object({
   isControl: z.boolean(),
   allocationPercent: z.number().min(0).max(100),
   checkoutBlockIds: z.array(z.string()).default([]),
+  inlineContent: z.record(z.unknown()).optional(),
 });
 
 const CreateSchema = z.object({

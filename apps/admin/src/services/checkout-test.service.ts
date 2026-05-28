@@ -25,6 +25,7 @@ export interface CheckoutVariantConfig {
   isControl: boolean;
   allocationPercent: number;
   checkoutBlockIds: string[];
+  inlineContent?: Record<string, unknown>;
 }
 
 export interface CreateCheckoutTestInput {
@@ -114,6 +115,7 @@ export class CheckoutTestService {
         modifications: [],
         priceOverrides: [],
         checkoutBlockIds: v.checkoutBlockIds,
+        inlineContent: v.isControl ? undefined : (v.inlineContent ?? undefined),
         offerIds: [],
         settings: {},
         redirectUrl: null,
@@ -181,8 +183,12 @@ export class CheckoutTestService {
     }
 
     for (const v of input.variants.filter((v) => !v.isControl)) {
-      if (v.checkoutBlockIds.length === 0) {
-        throw new Error(`Variant "${v.name}": must reference at least one checkout block`);
+      const hasBlockIds = v.checkoutBlockIds.length > 0;
+      const hasInlineContent = v.inlineContent && Object.keys(v.inlineContent).length > 0;
+      if (!hasBlockIds && !hasInlineContent) {
+        throw new Error(
+          `Variant "${v.name}": must have either checkout block IDs or inline content configured`
+        );
       }
     }
 

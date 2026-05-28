@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +279,9 @@ model ExperimentVariant {
 
   // Checkout block assignment
   checkoutBlockIds String[] @default([])
+
+  // Inline block content (wizard-configured, no external block record needed)
+  inlineContent  Json?
 
   // Offer assignments
   offerIds       String[]   @default([])
