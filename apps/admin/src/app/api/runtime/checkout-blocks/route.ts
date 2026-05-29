@@ -36,9 +36,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Look up the experiment and find the variant's block content.
-    // Checkout tests are stored in the generic Experiment model with type CHECKOUT_TEST.
-    const experiment = await prisma.experiment.findUnique({
-      where: { id: experimentId, shopId: shop.id },
+    // The extension stores only the first 8 chars of the experiment ID in cart
+    // attributes (to stay within Shopify's 255-char cart attribute limit), so we
+    // use startsWith to find the full ID.
+    const experiment = await prisma.experiment.findFirst({
+      where: {
+        id: { startsWith: experimentId },
+        shopId: shop.id,
+      },
       select: {
         id: true,
         status: true,

@@ -10,3 +10,10 @@ type = "ui_extension"
 module = "./src/Checkout.jsx"
 target = "purchase.checkout.block.render"
 
+
+[extensions.settings]
+  [[extensions.settings.fields]]
+  key = "apiBase"
+  type = "single_line_text_field"
+  name = "MarginLab API Base URL"
+  description = "Base URL of your MarginLab app (e.g. https://checkout-redo-engine.vercel.app)"

@@ -31,6 +31,7 @@ import {
   useShippingAddress,
   useCurrency,
   useSettings,
+  useShop,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect } from "react";
 
@@ -77,6 +78,7 @@ function MarginLabCheckoutBlock() {
   const cartLines = useCartLines();
   const attributes = useAttributes();
   const settings = useSettings();
+  const shop = useShop();
 
   const [blockContent, setBlockContent] = useState<CheckoutBlockContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,14 +92,15 @@ function MarginLabCheckoutBlock() {
       return;
     }
 
-    // Fetch block content from MarginLab runtime API
-    const apiBase = (settings as Record<string, string>).apiBase ?? "";
-    if (!apiBase) {
-      setLoading(false);
-      return;
-    }
+    // Fetch block content from MarginLab runtime API.
+    // Falls back to the production URL if the setting is not configured.
+    const apiBase = (settings as Record<string, string>).apiBase?.trim()
+      || "https://checkout-redo-engine.vercel.app";
 
-    fetchBlockContent(apiBase, assignment)
+
+    // Pass shop domain so the API can resolve the correct shop record.
+    const shopDomain = shop?.myshopifyDomain ?? "";
+    fetchBlockContent(apiBase, assignment, shopDomain)
       .then((content) => {
         setBlockContent(content);
         setLoading(false);
@@ -132,6 +135,7 @@ function BlockRenderer({
 }) {
   switch (content.type) {
     case "TRUST_BADGES":
+    case "TRUST_BADGES_WITH_REVIEWS":
       return <TrustBadgesBlock content={content} />;
     case "SOCIAL_PROOF":
       return <SocialProofBlock content={content} />;
@@ -413,14 +417,18 @@ function readAssignmentFromAttributes(
 
 async function fetchBlockContent(
   apiBase: string,
-  assignment: ExperimentAssignment
+  assignment: ExperimentAssignment,
+  shopDomain: string
 ): Promise<CheckoutBlockContent | null> {
   try {
     // Uses the public runtime endpoint — no admin auth required.
     const res = await fetch(
       `${apiBase}/api/runtime/checkout-blocks?experimentId=${assignment.experimentId}&variantKey=${assignment.variantKey}`,
       {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(shopDomain ? { "X-Shop-Domain": shopDomain } : {}),
+        },
       }
     );
     if (!res.ok) return null;
