@@ -7,13 +7,12 @@ uid = "da0ac1b9-1ccf-3812-dcec-4623c5c153ab0ebbe27e"
 type = "ui_extension"
 
 [[extensions.targeting]]
-module = "./src/Checkout.jsx"
+module = "./src/Checkout.tsx"
 target = "purchase.checkout.block.render"
-
 
 [extensions.settings]
   [[extensions.settings.fields]]
-  key = "previewBlockId"
+  key = "ml_app_url"
   type = "single_line_text_field"
-  name = "Preview Block ID"
-  description = "Paste the ID of any checkout block from your MarginLab dashboard to preview it here."
+  name = "MarginLab App URL"
+  description = "Your MarginLab app URL (e.g. https://checkout-redo-engine.vercel.app)"
