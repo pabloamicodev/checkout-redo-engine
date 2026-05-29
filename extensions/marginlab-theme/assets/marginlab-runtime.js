@@ -252,6 +252,12 @@
         } else {
           applyVariantModifications(exp, alreadyAssigned);
         }
+        // For checkout tests: re-sync cart attributes on every page so they
+        // are always present when the visitor reaches checkout, even if they
+        // navigated away from the page where the assignment was first made.
+        if (exp.type === "CHECKOUT_TEST") {
+          syncCartAttributesOnly();
+        }
         return;
       }
 

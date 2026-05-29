@@ -13,13 +13,7 @@ target = "purchase.checkout.block.render"
 
 [extensions.settings]
   [[extensions.settings.fields]]
-  key = "apiBase"
-  type = "single_line_text_field"
-  name = "MarginLab API Base URL"
-  description = "Base URL of your MarginLab app (e.g. https://checkout-redo-engine.vercel.app)"
-
-  [[extensions.settings.fields]]
   key = "previewBlockId"
   type = "single_line_text_field"
   name = "Preview Block ID"
-  description = "ID of a checkout block to preview in the editor. Find it in your MarginLab dashboard → Checkout Blocks."
+  description = "Paste the ID of any checkout block from your MarginLab dashboard to preview it here."

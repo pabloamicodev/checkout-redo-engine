@@ -75,6 +75,8 @@ export default reactExtension(
   () => <MarginLabCheckoutBlock />
 );
 
+interface BlockOption { id: string; name: string; type: string; }
+
 function MarginLabCheckoutBlock() {
   const cartLines = useCartLines();
   const attributes = useAttributes();
@@ -85,48 +87,64 @@ function MarginLabCheckoutBlock() {
 
   const [blockContent, setBlockContent] = useState<CheckoutBlockContent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string>("");
+  const [availableBlocks, setAvailableBlocks] = useState<BlockOption[]>([]);
+  const [selectedPreviewId, setSelectedPreviewId] = useState<string>("");
 
   const cartAssignment = readAssignmentFromAttributes(attributes);
-  const apiBase = settings.apiBase?.trim() || "https://checkout-redo-engine.vercel.app";
+  const API_BASE = "https://checkout-redo-engine.vercel.app";
   const shopDomain = shop?.myshopifyDomain ?? "";
-  const previewBlockId = settings.previewBlockId?.trim();
+  const previewBlockId = settings.previewBlockId?.trim() || selectedPreviewId;
+
+  // In editor mode, fetch list of available blocks for the picker
+  useEffect(() => {
+    if (!isEditorMode || !shopDomain) return;
+    fetch(`${API_BASE}/api/runtime/checkout-blocks/list`, {
+      headers: { "X-Shop-Domain": shopDomain },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { blocks?: BlockOption[] } | null) => { if (d?.blocks) setAvailableBlocks(d.blocks); })
+      .catch(() => {});
+  }, [isEditorMode, shopDomain]);
 
   useEffect(() => {
-    // Editor mode with a previewBlockId configured → fetch that specific block for preview
     if (isEditorMode && previewBlockId) {
-      fetchBlockById(apiBase, previewBlockId, shopDomain)
+      setLoading(true);
+      fetchBlockById(API_BASE, previewBlockId, shopDomain)
         .then((content) => { setBlockContent(content); setLoading(false); })
         .catch(() => setLoading(false));
       return;
     }
-
-    // Production mode → use cart attributes
-    if (!cartAssignment) {
-      setLoading(false);
-      return;
-    }
-
-    fetchBlockContent(apiBase, cartAssignment, shopDomain)
+    if (!cartAssignment) { setLoading(false); return; }
+    setLoading(true);
+    fetchBlockContent(API_BASE, cartAssignment, shopDomain)
       .then((content) => { setBlockContent(content); setLoading(false); })
       .catch(() => setLoading(false));
   }, [isEditorMode, previewBlockId, cartAssignment?.experimentId, cartAssignment?.variantKey]);
 
-  // Editor with no previewBlockId → show instructional placeholder
+  // Editor picker — no block selected yet
   if (isEditorMode && !previewBlockId) {
     return (
       <BlockStack spacing="base">
-        <Banner status="info">
-          <Text size="small" emphasis="bold">MarginLab A/B Checkout Block</Text>
-        </Banner>
+        <Text size="small" emphasis="bold">MarginLab A/B Checkout Block</Text>
         <Text size="small" appearance="subdued">
-          En producción este bloque mostrará contenido dinámico basado en el test A/B activo del visitante.
-          Para previsualizar, ingresá un Block ID en los ajustes de este bloque (ícono de engranaje).
+          En producción muestra el bloque del test A/B activo. Elegí uno para previsualizar:
         </Text>
-        <InlineStack spacing="base" blockAlignment="center">
-          <Badge tone="success">✓ Secure Checkout</Badge>
-          <Badge tone="success">✓ Free Returns</Badge>
-          <Badge tone="success">✓ Fast Shipping</Badge>
-        </InlineStack>
+        {availableBlocks.length > 0 ? (
+          <BlockStack spacing="extraTight">
+            {availableBlocks.map((b) => (
+              <Button key={b.id} kind="secondary" onPress={() => setSelectedPreviewId(b.id)}>
+                {b.name} ({b.type.replace(/_/g, " ").toLowerCase()})
+              </Button>
+            ))}
+          </BlockStack>
+        ) : (
+          <InlineStack spacing="base" blockAlignment="center">
+            <Badge tone="success">Secure Checkout</Badge>
+            <Badge tone="success">Free Returns</Badge>
+            <Badge tone="success">Fast Shipping</Badge>
+          </InlineStack>
+        )}
       </BlockStack>
     );
   }
