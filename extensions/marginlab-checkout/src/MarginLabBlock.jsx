@@ -9,9 +9,10 @@ const DEFAULT_BADGES = [
   { id: "secure",    line1: "Safe & Secure", line2: "Checkout",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_2_dsnu9m.webp?v=1778721307", accessibilityLabel: "Safe and Secure Checkout" },
 ];
 
+var APP_URL = "https://checkout-redo-engine.vercel.app";
+
 export function MarginLabBlock() {
-  const s = (() => { try { return shopify.settings?.current ?? {}; } catch (_) { return {}; } })();
-  const appUrl = String(s["ml_app_url"] ?? "").trim().replace(/\/$/, "");
+  var appUrl = APP_URL;
   const shopDomain = (() => { try { return shopify.shop?.myshopifyDomain ?? ""; } catch (_) { return ""; } })();
 
   const [content, setContent] = useState(/** @type {{ badges?: any[], reviews?: any[] } | null} */ (null));
