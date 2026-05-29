@@ -31,10 +31,7 @@ api_version = "2026-04"
   topics = [ "themes/publish" ]
   uri = "/api/webhooks/shopify"
 
-  [[webhooks.subscriptions]]
-  # GDPR mandatory webhooks — required for App Store submission
-  topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
-  uri = "/api/webhooks/shopify"
+
 
 [access_scopes]
 # Scopes required by MarginLab — see SCOPES.md for full audit.
