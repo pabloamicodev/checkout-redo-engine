@@ -161,7 +161,17 @@ function MarginLabCheckoutBlock() {
     );
   }
 
-  if (!blockContent) return null;
+  if (!blockContent) {
+    // DEBUG: show what attributes the extension sees
+    const mlAttrs = attributes.filter((a) => a.key.startsWith("_ml"));
+    return (
+      <Text size="extraSmall" appearance="subdued">
+        {mlAttrs.length > 0
+          ? `[ML debug] assignment: ${mlAttrs.find(a => a.key.startsWith("_ml_exp_"))?.value ?? "none"}`
+          : "[ML debug] no _ml_* attributes in checkout"}
+      </Text>
+    );
+  }
 
   return <BlockRenderer content={blockContent} assignment={cartAssignment} />;
 }
