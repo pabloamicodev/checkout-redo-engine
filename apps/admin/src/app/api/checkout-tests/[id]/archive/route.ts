@@ -12,7 +12,7 @@ export async function POST(
     const { id } = await params;
     try {
       const experiment = await service.archive(shopId, id, actorId);
-      return NextResponse.json({ experiment });
+      return NextResponse.json(experiment);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Archive failed";
       return NextResponse.json({ error: msg }, { status: msg.includes("not found") ? 404 : 422 });

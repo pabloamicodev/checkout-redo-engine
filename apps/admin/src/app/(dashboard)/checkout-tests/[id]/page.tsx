@@ -34,7 +34,7 @@ export default async function CheckoutTestDetailPage({
       shippingConfig: true, targetingRules: true, settings: true,
       variants: {
         orderBy: { isControl: "desc" },
-        select: { id: true, name: true, key: true, isControl: true, allocationPercent: true, modifications: true, priceOverrides: true, discountConfig: true, settings: true },
+        select: { id: true, name: true, key: true, isControl: true, allocationPercent: true, redirectUrl: true, modifications: true, priceOverrides: true, discountConfig: true, settings: true, checkoutBlockIds: true, offerIds: true },
       },
       mutuallyExclusiveGroup: { select: { name: true } },
       _count: { select: { assignments: true, orderAttributions: true, events: true } },
@@ -49,6 +49,7 @@ export default async function CheckoutTestDetailPage({
       experiment={experiment}
       analytics={analytics}
       currencyCode={shop.currencyCode}
+      shopDomain={shopDomain}
       tab={tab}
       breadcrumb={{ href: "/checkout-tests", label: "Checkout Tests" }}
     />

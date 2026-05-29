@@ -289,7 +289,38 @@
       } else {
         applyVariantModifications(exp, variant);
       }
+
+      // For checkout tests: proactively write assignment to cart attributes so the
+      // Shopify checkout extension can read the variant before the cart is modified.
+      if (exp.type === "CHECKOUT_TEST") {
+        syncCartAttributesOnly();
+      }
     });
+  }
+
+  // Writes current assignments to Shopify cart attributes without needing a cart token.
+  // Used proactively for checkout tests so the checkout extension has the variant before
+  // the customer reaches checkout (rather than waiting for a cart add/change event).
+  function syncCartAttributesOnly() {
+    if (!Object.keys(state.assignments).length) return;
+    var assignmentList = Object.entries(state.assignments).map(function (entry) {
+      var expId = entry[0];
+      var variant = entry[1];
+      return { experimentId: expId, variantId: variant.id, experimentSlug: variant.slug || expId, variantKey: variant.key };
+    });
+    var attributes = { "_ml_visitor_id": state.visitorId };
+    var experimentsMap = {};
+    assignmentList.forEach(function (a) {
+      var shortId = a.experimentId.slice(0, 8);
+      attributes["_ml_exp_" + shortId] = a.variantKey;
+      experimentsMap[shortId] = a.variantKey;
+    });
+    attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
+    fetch("/cart/update.js", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attributes: attributes }),
+    }).catch(function () {});
   }
 
   // ---------------------------------------------------------------------------

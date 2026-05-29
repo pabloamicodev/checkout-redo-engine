@@ -3486,44 +3486,103 @@ function TargetingTab({ experiment }: { experiment: ExperimentData }) {
 // PREVIEW TAB
 // ─────────────────────────────────────────────
 function PreviewTab({ experiment, shopDomain }: { experiment: ExperimentData; shopDomain?: string }) {
+  const isCheckoutTest = experiment.type === "CHECKOUT_TEST";
   const splitCfg = experiment.splitUrlConfig as Record<string, unknown> | null | undefined;
   const controlPath = splitCfg?.baseUrl as string | undefined;
+  const storeOrigin = shopDomain ? `https://${shopDomain.replace(/^https?:\/\//, "")}` : "";
 
-  // Build a storefront preview URL for a given variant.
-  // Uses the control URL as the entry point and appends the marginlab_preview param.
-  function previewHref(variantKey: string): string {
+  // Build a storefront preview URL for URL-based tests (split URL, content, etc.)
+  function previewHref(variantKey: string, basePath?: string): string {
     const param = `marginlab_preview=${experiment.id}:${variantKey}`;
-    if (!controlPath) return "#";
-    if (controlPath.startsWith("http")) {
-      const sep = controlPath.includes("?") ? "&" : "?";
-      return `${controlPath}${sep}${param}`;
+    const path = basePath || "/";
+    if (path.startsWith("http")) {
+      return `${path}${path.includes("?") ? "&" : "?"}${param}`;
     }
-    const origin = shopDomain
-      ? `https://${shopDomain.replace(/^https?:\/\//, "")}`
-      : "";
-    const sep = controlPath.includes("?") ? "&" : "?";
-    return `${origin}${controlPath}${sep}${param}`;
+    return `${storeOrigin}${path}${path.includes("?") ? "&" : "?"}${param}`;
   }
 
+  // ── Checkout test preview ──────────────────
+  if (isCheckoutTest) {
+    const cartUrl = `${storeOrigin}/cart`;
+    return (
+      <div className="p-6 mx-auto space-y-4">
+        <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-3">Preview checkout blocks</p>
+          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+            Checkout blocks are rendered by the Shopify checkout extension — not by a page URL redirect.
+            To preview a specific variant, force the assignment on any store page, add an item to cart,
+            then proceed to checkout to see the block.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {experiment.variants.map((v) => {
+              const href = storeOrigin
+                ? `${storeOrigin}/?marginlab_preview=${experiment.id}:${v.key}`
+                : undefined;
+              return (
+                <a
+                  key={v.id}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-all active:scale-95"
+                  style={{ background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)" }}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Force {v.name}
+                </a>
+              );
+            })}
+            {storeOrigin && (
+              <a
+                href={cartUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition-all"
+              >
+                Open cart →
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-neutral-50 rounded-xl border border-neutral-100 px-5 py-4 text-xs text-neutral-500 leading-relaxed space-y-2">
+          <p className="font-semibold text-neutral-700">How to verify a checkout block variant</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Click <strong>Force [Variant Name]</strong> above — this forces the assignment in your browser session.</li>
+            <li>Add any product to your cart on the store.</li>
+            <li>Proceed to checkout — the MarginLab checkout extension will render the block for the forced variant.</li>
+            <li>Verify the block appears correctly at the configured placement.</li>
+          </ol>
+          <p className="mt-2">
+            Or append the preview param manually to any store page:
+          </p>
+          <code className="block bg-white border border-neutral-200 rounded px-3 py-2 text-[11px] font-mono text-neutral-700 break-all">
+            ?marginlab_preview={experiment.id}:variant_a
+          </code>
+        </div>
+      </div>
+    );
+  }
+
+  // ── URL-based / content test preview ──────
   const hasStore = !!(shopDomain && controlPath);
 
   return (
     <div className="p-6 mx-auto space-y-4">
-      {/* Slug hint */}
       <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
         <p className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-3">Preview links</p>
         <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
-          Each button opens your live store with a forced variant assignment so you can verify the redirect without affecting real visitors.
-          The link uses the experiment ID as the preview key — no changes to the test config needed.
+          Each button opens your live store with a forced variant assignment so you can verify changes without
+          affecting real visitors. The link uses the experiment ID as the preview key.
         </p>
         <div className="flex items-center gap-2 flex-wrap">
           {experiment.variants.map((v) => {
-            const href = previewHref(v.key);
+            const href = previewHref(v.key, controlPath);
             return (
               <a
                 key={v.id}
-                href={hasStore ? href : undefined}
-                onClick={!hasStore ? (e) => { e.preventDefault(); alert("Shop domain not available — manually visit your store URL and append:\n?" + `marginlab_preview=${experiment.id}:${v.key}`); } : undefined}
+                href={hasStore || storeOrigin ? href : undefined}
+                onClick={!hasStore && !storeOrigin ? (e) => { e.preventDefault(); alert(`Add to any store URL:\n?marginlab_preview=${experiment.id}:${v.key}`); } : undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-all active:scale-95"
@@ -3535,14 +3594,13 @@ function PreviewTab({ experiment, shopDomain }: { experiment: ExperimentData; sh
             );
           })}
         </div>
-        {hasStore && controlPath && (
+        {controlPath && storeOrigin && (
           <p className="text-[11px] text-neutral-400 mt-3 font-mono break-all">
-            Entry point: {`https://${shopDomain!.replace(/^https?:\/\//, "")}${controlPath}`}
+            Entry point: {`${storeOrigin}${controlPath}`}
           </p>
         )}
       </div>
 
-      {/* How it works */}
       <div className="bg-neutral-50 rounded-xl border border-neutral-100 px-5 py-4 text-xs text-neutral-500 leading-relaxed space-y-1.5">
         <p className="font-semibold text-neutral-700">How preview mode works</p>
         <p>Preview forces a specific variant assignment for your browser session only. Real visitors are unaffected.</p>

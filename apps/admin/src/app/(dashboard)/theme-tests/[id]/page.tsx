@@ -37,7 +37,7 @@ export default async function ThemeTestDetailPage({
         orderBy: { isControl: "desc" },
         select: {
           id: true, name: true, key: true, isControl: true, allocationPercent: true,
-          modifications: true, priceOverrides: true, discountConfig: true, settings: true,
+          redirectUrl: true, modifications: true, priceOverrides: true, discountConfig: true, settings: true, checkoutBlockIds: true, offerIds: true,
         },
       },
       mutuallyExclusiveGroup: { select: { name: true } },
@@ -70,6 +70,7 @@ export default async function ThemeTestDetailPage({
         experiment={experiment}
         analytics={analytics}
         currencyCode={shop.currencyCode}
+      shopDomain={shopDomain}
         tab={tab}
         breadcrumb={{ href: "/theme-tests", label: "Theme Tests" }}
       />

@@ -140,18 +140,28 @@ export class EventIngestionService {
     //    The client runtime assigns visitors locally (no server call), so
     //    this is the only place we can create the DB record that the
     //    analytics dashboard uses to count sessions and assignments.
+    //
+    //    The runtime's trackEvent() sets top-level experimentId/variantId to
+    //    state.assignments[0] (the first active assignment), which is wrong
+    //    when multiple experiments run concurrently. The correct IDs are in
+    //    the metadata payload passed directly to trackEvent().
     // -------------------------------------------------------------------
     const assignmentEvents = batch.events.filter(
-      (e) => e.eventName === "experiment_assigned" && e.experimentId && e.variantId
+      (e) => e.eventName === "experiment_assigned"
     );
 
     if (assignmentEvents.length > 0) {
-      await Promise.all(
-        assignmentEvents.map((e) =>
+      const upserts = assignmentEvents.flatMap((e) => {
+        const meta = (e.metadata ?? {}) as Record<string, unknown>;
+        // Prefer metadata fields (exact match); fall back to top-level fields
+        const experimentId = (meta.experimentId as string | undefined) || e.experimentId;
+        const variantId = (meta.variantId as string | undefined) || e.variantId;
+        if (!experimentId || !variantId) return [];
+        return [
           prisma.experimentAssignment.upsert({
             where: {
               experimentId_visitorId: {
-                experimentId: e.experimentId!,
+                experimentId,
                 visitorId: batch.visitorId,
               },
             },
@@ -161,8 +171,8 @@ export class EventIngestionService {
             },
             create: {
               shopId,
-              experimentId: e.experimentId!,
-              variantId: e.variantId!,
+              experimentId,
+              variantId,
               visitorId: batch.visitorId,
               sessionId: batch.sessionId ?? null,
               source: "SERVER_SIDE",
@@ -173,9 +183,10 @@ export class EventIngestionService {
               utmMedium: e.utmMedium ?? null,
               utmCampaign: e.utmCampaign ?? null,
             },
-          })
-        )
-      );
+          }),
+        ];
+      });
+      if (upserts.length > 0) await Promise.all(upserts);
     }
 
     // Update lastSeenAt for any other events that reference an existing assignment

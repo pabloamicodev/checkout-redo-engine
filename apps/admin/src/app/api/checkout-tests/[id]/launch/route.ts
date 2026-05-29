@@ -12,7 +12,7 @@ export async function POST(
     const { id } = await params;
     try {
       const exp = await service.activate(shopId, id);
-      return NextResponse.json({ experiment: exp });
+      return NextResponse.json(exp);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Launch failed";
       return NextResponse.json({ error: msg }, { status: msg.includes("not found") ? 404 : 422 });
