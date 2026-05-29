@@ -24,6 +24,9 @@ export interface Variant {
   key: string;
   isControl: boolean;
   allocationPercent: number;
+  redirectUrl?: string | null;
+  checkoutBlockIds?: string[];
+  offerIds?: string[];
   modifications?: unknown;
   priceOverrides?: unknown;
   discountConfig?: unknown;
@@ -57,14 +60,19 @@ interface Props {
   experiment: Experiment;
   analytics: ExperimentAnalytics | null;
   currencyCode: string;
+  shopDomain?: string;
   tab: string;
   breadcrumb: { href: string; label: string };
 }
 
-export function ExperimentDetailShell({ experiment, analytics, currencyCode, tab, breadcrumb }: Props) {
+export function ExperimentDetailShell({ experiment, analytics, currencyCode, shopDomain, tab, breadcrumb }: Props) {
   const st = getStatusTheme(experiment.status);
   const tt = getTestTypeTheme(experiment.type);
   const isRunning = experiment.status === "RUNNING";
+
+  // Route action buttons to the correct API base per experiment type
+  const actionsApiBase =
+    experiment.type === "CHECKOUT_TEST" ? "/api/checkout-tests" : "/api/experiments";
 
   return (
     <div className="flex-1 overflow-auto bg-neutral-50">
@@ -123,7 +131,7 @@ export function ExperimentDetailShell({ experiment, analytics, currencyCode, tab
             </div>
           </div>
           <div className="shrink-0">
-            <ExperimentActions experimentId={experiment.id} status={experiment.status} accentHex={tt.hex} />
+            <ExperimentActions experimentId={experiment.id} status={experiment.status} accentHex={tt.hex} apiBase={actionsApiBase} />
           </div>
         </div>
 
@@ -209,6 +217,7 @@ export function ExperimentDetailShell({ experiment, analytics, currencyCode, tab
         experiment={experiment}
         analytics={analytics}
         currencyCode={currencyCode}
+        shopDomain={shopDomain}
       />
     </div>
   );

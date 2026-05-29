@@ -11,6 +11,8 @@ interface Props {
   experimentId: string;
   status: string;
   accentHex?: string;
+  /** Base API path for action endpoints. Defaults to /api/experiments */
+  apiBase?: string;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -21,7 +23,7 @@ const ACTION_LABELS: Record<string, string> = {
   duplicate: "Test duplicated",
 };
 
-export function ExperimentActions({ experimentId, status, accentHex }: Props) {
+export function ExperimentActions({ experimentId, status, accentHex, apiBase = "/api/experiments" }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [loading, setLoading] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function ExperimentActions({ experimentId, status, accentHex }: Props) {
   async function doAction(action: "launch" | "pause" | "complete" | "archive" | "duplicate") {
     setLoading(action);
     try {
-      const res = await fetch(`/api/experiments/${experimentId}/${action}`, { method: "POST" });
+      const res = await fetch(`${apiBase}/${experimentId}/${action}`, { method: "POST" });
       const data = await res.json() as { error?: string; experiment?: { id: string } };
       if (!res.ok) throw new Error(data.error ?? "Action failed");
       toast.success(ACTION_LABELS[action] ?? "Done");
