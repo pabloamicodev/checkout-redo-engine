@@ -108,18 +108,21 @@ function MarginLabCheckoutBlock() {
   }, [isEditorMode, shopDomain]);
 
   useEffect(() => {
+    console.log("[MarginLab][Checkout] attributes:", JSON.stringify(attributes));
+    console.log("[MarginLab][Checkout] cartAssignment:", JSON.stringify(cartAssignment));
+    console.log("[MarginLab][Checkout] shopDomain:", shopDomain);
     if (isEditorMode && previewBlockId) {
       setLoading(true);
       fetchBlockById(API_BASE, previewBlockId, shopDomain)
         .then((content) => { setBlockContent(content); setLoading(false); })
-        .catch(() => setLoading(false));
+        .catch((err) => { console.error("[MarginLab][Checkout] fetchBlockById error:", err); setLoading(false); });
       return;
     }
     if (!cartAssignment) { setLoading(false); return; }
     setLoading(true);
     fetchBlockContent(API_BASE, cartAssignment, shopDomain)
-      .then((content) => { setBlockContent(content); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((content) => { console.log("[MarginLab][Checkout] blockContent:", JSON.stringify(content)); setBlockContent(content); setLoading(false); })
+      .catch((err) => { console.error("[MarginLab][Checkout] fetchBlockContent error:", err); setLoading(false); });
   }, [isEditorMode, previewBlockId, cartAssignment?.experimentId, cartAssignment?.variantKey]);
 
   // Editor picker — no block selected yet
