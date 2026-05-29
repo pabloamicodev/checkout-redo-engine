@@ -18,12 +18,6 @@
 (function () {
   "use strict";
 
-  // Capture native fetch BEFORE any third-party app (e.g. BOGOS gift.min.js) patches
-  // window.fetch.  We use this reference exclusively for our own /cart/update.js writes
-  // so that BOGOS never intercepts them and cannot react with its own add.js / update.js
-  // calls that would re-trigger our cart-change listener and create an infinite loop.
-  var _mlRawFetch = window.fetch.bind(window);
-
   // ---------------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------------
@@ -338,28 +332,26 @@
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
     console.log("[MarginLab][syncCart] writing cart attributes:", JSON.stringify(attributes));
     _mlSyncingCart = true;
-    // Use _mlRawFetch (captured before any third-party patches) so BOGOS never
+    // Use XHR instead of fetch so BOGOS (which only wraps window.fetch) never
     // intercepts this write and cannot react with add.js/update.js calls that
     // would re-trigger our cart-change listener → infinite loop.
-    _mlRawFetch("/cart/update.js", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attributes: attributes }),
-    })
-      .then(function (res) {
-        _mlSyncingCart = false;
-        return res.json().then(function (data) {
-          if (data && data.attributes) {
-            console.log("[MarginLab][syncCart] ✅ cart attributes written:", JSON.stringify(data.attributes));
-          } else {
-            console.warn("[MarginLab][syncCart] ⚠️ unexpected cart response:", JSON.stringify(data));
-          }
-        });
-      })
-      .catch(function (err) {
-        _mlSyncingCart = false;
-        console.error("[MarginLab][syncCart] ❌ fetch failed:", err);
-      });
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/cart/update.js");
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onload = function () {
+      _mlSyncingCart = false;
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data && data.attributes) {
+          console.log("[MarginLab][syncCart] ✅ cart attributes written:", JSON.stringify(data.attributes));
+        }
+      } catch (e) {}
+    };
+    xhr.onerror = function () {
+      _mlSyncingCart = false;
+      console.error("[MarginLab][syncCart] ❌ XHR failed");
+    };
+    xhr.send(JSON.stringify({ attributes: attributes }));
   }
 
   // ---------------------------------------------------------------------------
@@ -850,18 +842,15 @@
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
 
     _mlSyncingCart = true;
-    // Use _mlRawFetch (captured before any third-party patches) so BOGOS never
+    // Use XHR instead of fetch so BOGOS (which only wraps window.fetch) never
     // intercepts this write and cannot react with add.js/update.js calls that
     // would re-trigger our cart-change listener → infinite loop.
-    _mlRawFetch("/cart/update.js", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attributes: attributes }),
-    }).then(function () {
-      _mlSyncingCart = false;
-    }).catch(function () {
-      _mlSyncingCart = false;
-    });
+    var xhrSync = new XMLHttpRequest();
+    xhrSync.open("POST", "/cart/update.js");
+    xhrSync.setRequestHeader("Content-Type", "application/json");
+    xhrSync.onload = function () { _mlSyncingCart = false; };
+    xhrSync.onerror = function () { _mlSyncingCart = false; };
+    xhrSync.send(JSON.stringify({ attributes: attributes }));
   }
 
   // ---------------------------------------------------------------------------
