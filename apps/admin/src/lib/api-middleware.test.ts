@@ -288,7 +288,7 @@ describe("withRuntimeAuth", () => {
     const handler = vi.fn().mockResolvedValue(new Response("ok"));
     const req = makeRequest("http://localhost/api/runtime/assign?shop=test-shop.myshopify.com");
     await withRuntimeAuth(req, handler);
-    expect(handler).toHaveBeenCalledWith("test-shop.myshopify.com");
+    expect(handler).toHaveBeenCalledWith("test-shop.myshopify.com", "shop-1");
   });
 
   it("returns 400 when shop domain is missing", async () => {
