@@ -759,6 +759,8 @@
   // Cart sync
   // ---------------------------------------------------------------------------
   var _mlSyncingCart = false; // reentrance guard — prevents our own /cart/update.js from re-triggering sync
+  var _mlLastSyncTime = 0;    // throttle — prevents BOGOS-mediated re-trigger loops
+  var ML_SYNC_THROTTLE_MS = 2000; // minimum ms between syncAssignmentsToCart calls
 
   function listenForCartChanges() {
     // Listen for fetch/XHR calls to /cart/add.js, /cart/change.js, /cart/update.js
@@ -793,6 +795,11 @@
 
   function syncAssignmentsToCart(cartToken) {
     if (!cartToken || !Object.keys(state.assignments).length) return;
+
+    // Throttle: if we synced less than 2s ago, skip — breaks BOGOS-mediated re-trigger loops
+    var now = Date.now();
+    if (now - _mlLastSyncTime < ML_SYNC_THROTTLE_MS) return;
+    _mlLastSyncTime = now;
 
     var assignmentList = Object.entries(state.assignments).map(function (entry) {
       var expId = entry[0];
