@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Shop domain mismatch" }, { status: 403 });
     }
 
-    const { visitorId, sessionId, cartToken, assignments } = parsed.data;
+    const { visitorId, sessionId, assignments } = parsed.data;
+
+    // Shopify sometimes appends ?key=<hex> to cart tokens (e.g. draft-order carts).
+    // Strip the query string before validation so only the base token is checked.
+    const cartToken = parsed.data.cartToken.split("?")[0] ?? "";
 
     // GUARD: cartToken must match Shopify's token format (alphanumeric + hyphens, ≤64 chars).
     // Prevents arbitrary strings being stored for order attribution.
