@@ -2692,6 +2692,7 @@ function CheckoutBlockConfigTab({ experiment }: { experiment: ExperimentData }) 
             const body = (vs?.body ?? vs?.content ?? vs?.text) as string | undefined;
             const ctaText = (vs?.ctaText ?? vs?.buttonText) as string | undefined;
             const imageUrl = (vs?.imageUrl ?? vs?.image) as string | undefined;
+            const blockIds = (v.checkoutBlockIds ?? []) as string[];
             const hasKnownFields = title || body || ctaText || imageUrl;
             return (
               <div key={v.id} className="px-5 py-4">
@@ -2701,7 +2702,16 @@ function CheckoutBlockConfigTab({ experiment }: { experiment: ExperimentData }) 
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${ACCENT}15`, color: ACCENT }}>Control</span>
                   )}
                 </div>
-                {hasKnownFields ? (
+                {blockIds.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {blockIds.map((bid) => (
+                      <div key={bid} className="flex items-center gap-2 text-xs">
+                        <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide w-14 shrink-0">Block</span>
+                        <a href={`/checkout-blocks/${bid}`} className="font-mono text-indigo-600 hover:underline truncate">{bid}</a>
+                      </div>
+                    ))}
+                  </div>
+                ) : hasKnownFields ? (
                   <div className="space-y-1.5">
                     {title && (
                       <div className="flex items-start gap-2 text-xs">
