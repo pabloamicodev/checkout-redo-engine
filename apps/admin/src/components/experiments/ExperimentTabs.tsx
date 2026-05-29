@@ -25,6 +25,8 @@ interface Variant {
   isControl: boolean;
   allocationPercent: number;
   redirectUrl?: string | null;
+  checkoutBlockIds?: string[];
+  offerIds?: string[];
   modifications?: unknown;
   priceOverrides?: unknown;
   discountConfig?: unknown;
