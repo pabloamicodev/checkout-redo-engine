@@ -21,7 +21,6 @@
   // ---------------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------------
-  var APP_KEY = "__marginlab";
   var VISITOR_KEY = "_ml_vid";
   var SESSION_KEY = "_ml_sid";
   var ASSIGNMENT_KEY = "_ml_assignments";
