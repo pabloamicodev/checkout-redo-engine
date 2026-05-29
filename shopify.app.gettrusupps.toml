@@ -1,6 +1,6 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "ef05a2cf8735057b2c9e043d26225eb0"
+client_id = "c6f5826368ce8cc82561c106c8ccc9b4"
 name = "checkout redo engine"
 application_url = "https://checkout-redo-engine.vercel.app"
 embedded = true
@@ -12,8 +12,7 @@ automatically_update_urls_on_dev = true
 api_version = "2026-07"
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_products"
+scopes = "read_products,write_products,read_orders,read_customers,read_discounts,write_discounts,read_price_rules,write_price_rules,read_metaobjects,write_metaobjects,read_themes,read_delivery_customizations,write_delivery_customizations"
 
 [auth]
-redirect_urls = [ "https://checkout-redo-engine.vercel.app/api/auth/callback", "https://localhost/api/auth/callback" ]
+redirect_urls = [ "https://checkout-redo-engine.vercel.app/api/auth/callback", "https://checkout-redo-engine.vercel.app/api/auth", "https://localhost/api/auth/callback" ]
