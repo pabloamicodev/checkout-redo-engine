@@ -19,7 +19,9 @@ export async function GET(request: NextRequest) {
     const experimentId = searchParams.get("experimentId");
     const variantKey = searchParams.get("variantKey");
 
-    if (!experimentId || !variantKey) {
+    const blockId = searchParams.get("blockId");
+
+    if (!blockId && (!experimentId || !variantKey)) {
       return NextResponse.json(
         { error: "experimentId and variantKey are required" },
         { status: 400 }
@@ -35,19 +37,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
     }
 
+    // Direct block fetch by ID — used by checkout editor preview
+    if (blockId) {
+      const checkoutBlock = await prisma.checkoutBlock.findFirst({
+        where: { id: blockId, shopId: shop.id },
+        select: { type: true, content: true },
+      });
+      if (!checkoutBlock) return NextResponse.json({ block: null });
+      const response = NextResponse.json({
+        block: { type: checkoutBlock.type, content: checkoutBlock.content ?? {} },
+      });
+      response.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+      return response;
+    }
+
     // Look up the experiment and find the variant's block content.
     // The extension stores only the first 8 chars of the experiment ID in cart
     // attributes (to stay within Shopify's 255-char cart attribute limit), so we
     // use startsWith to find the full ID.
     const experiment = await prisma.experiment.findFirst({
       where: {
-        id: { startsWith: experimentId },
+        id: { startsWith: experimentId! },
         shopId: shop.id,
       },
-      select: {
-        id: true,
-        status: true,
-        type: true,
+      include: {
         variants: {
           select: {
             key: true,
@@ -63,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the variant matching variantKey
-    const variant = experiment.variants.find((v: (typeof experiment.variants)[number]) => v.key === variantKey);
+    const variant = experiment.variants.find((v) => v.key === variantKey);
     if (!variant) {
       return NextResponse.json({ block: null });
     }

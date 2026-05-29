@@ -32,6 +32,7 @@ import {
   useCurrency,
   useSettings,
   useShop,
+  useExtensionEditor,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect } from "react";
 
@@ -77,36 +78,58 @@ export default reactExtension(
 function MarginLabCheckoutBlock() {
   const cartLines = useCartLines();
   const attributes = useAttributes();
-  const settings = useSettings();
+  const settings = useSettings() as Record<string, string>;
   const shop = useShop();
+  const editor = useExtensionEditor();
+  const isEditorMode = !!editor;
 
   const [blockContent, setBlockContent] = useState<CheckoutBlockContent | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Read experiment assignment from cart attributes
-  const assignment = readAssignmentFromAttributes(attributes);
+  const cartAssignment = readAssignmentFromAttributes(attributes);
+  const apiBase = settings.apiBase?.trim() || "https://checkout-redo-engine.vercel.app";
+  const shopDomain = shop?.myshopifyDomain ?? "";
+  const previewBlockId = settings.previewBlockId?.trim();
 
   useEffect(() => {
-    if (!assignment) {
+    // Editor mode with a previewBlockId configured → fetch that specific block for preview
+    if (isEditorMode && previewBlockId) {
+      fetchBlockById(apiBase, previewBlockId, shopDomain)
+        .then((content) => { setBlockContent(content); setLoading(false); })
+        .catch(() => setLoading(false));
+      return;
+    }
+
+    // Production mode → use cart attributes
+    if (!cartAssignment) {
       setLoading(false);
       return;
     }
 
-    // Fetch block content from MarginLab runtime API.
-    // Falls back to the production URL if the setting is not configured.
-    const apiBase = (settings as Record<string, string>).apiBase?.trim()
-      || "https://checkout-redo-engine.vercel.app";
-
-
-    // Pass shop domain so the API can resolve the correct shop record.
-    const shopDomain = shop?.myshopifyDomain ?? "";
-    fetchBlockContent(apiBase, assignment, shopDomain)
-      .then((content) => {
-        setBlockContent(content);
-        setLoading(false);
-      })
+    fetchBlockContent(apiBase, cartAssignment, shopDomain)
+      .then((content) => { setBlockContent(content); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [assignment?.experimentId]);
+  }, [isEditorMode, previewBlockId, cartAssignment?.experimentId, cartAssignment?.variantKey]);
+
+  // Editor with no previewBlockId → show instructional placeholder
+  if (isEditorMode && !previewBlockId) {
+    return (
+      <BlockStack spacing="base">
+        <Banner status="info">
+          <Text size="small" emphasis="bold">MarginLab A/B Checkout Block</Text>
+        </Banner>
+        <Text size="small" appearance="subdued">
+          En producción este bloque mostrará contenido dinámico basado en el test A/B activo del visitante.
+          Para previsualizar, ingresá un Block ID en los ajustes de este bloque (ícono de engranaje).
+        </Text>
+        <InlineStack spacing="base" blockAlignment="center">
+          <Badge tone="success">✓ Secure Checkout</Badge>
+          <Badge tone="success">✓ Free Returns</Badge>
+          <Badge tone="success">✓ Fast Shipping</Badge>
+        </InlineStack>
+      </BlockStack>
+    );
+  }
 
   if (loading) {
     return (
@@ -468,9 +491,33 @@ async function fetchBlockContent(
   shopDomain: string
 ): Promise<CheckoutBlockContent | null> {
   try {
-    // Uses the public runtime endpoint — no admin auth required.
     const res = await fetch(
       `${apiBase}/api/runtime/checkout-blocks?experimentId=${assignment.experimentId}&variantKey=${assignment.variantKey}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(shopDomain ? { "X-Shop-Domain": shopDomain } : {}),
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as { block?: { content?: CheckoutBlockContent; type?: string } };
+    if (!data.block) return null;
+    return { ...data.block.content, type: data.block.type } as CheckoutBlockContent;
+  } catch {
+    return null;
+  }
+}
+
+// Fetch a checkout block directly by ID — used for editor preview.
+async function fetchBlockById(
+  apiBase: string,
+  blockId: string,
+  shopDomain: string
+): Promise<CheckoutBlockContent | null> {
+  try {
+    const res = await fetch(
+      `${apiBase}/api/runtime/checkout-blocks?blockId=${blockId}`,
       {
         headers: {
           "Content-Type": "application/json",
