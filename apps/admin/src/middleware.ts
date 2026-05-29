@@ -37,17 +37,55 @@ export function middleware(request: NextRequest) {
 
   void requestWithId; // available for future use; requestId flows via x-request-id header
 
+  // Check if Shopify provided shop/host/embedded params in the URL
+  const shopParam = searchParams.get("shop")?.toLowerCase().trim();
+  const isEmbedded = searchParams.get("embedded") === "1";
+  const hostParam = searchParams.get("host")?.trim();
+
+  /**
+   * Multi-tenant isolation — forward the active shop via an x-shop request header.
+   *
+   * PROBLEM: The `shopify_session_shop` cookie is shared across all stores on the
+   * same Vercel domain.  When a merchant has the app installed in 4 stores and
+   * opens them all in the same browser, the LAST OAuth flow overwrites the cookie,
+   * making every store render data for that last shop.
+   *
+   * SOLUTION: When Shopify loads the embedded app it always passes ?shop=&host=&embedded=1.
+   * We inject an `x-shop` REQUEST header so that server components can read it via
+   * `headers()` in the SAME request — regardless of the stale cookie value.
+   * The cookie is still updated for the next request (non-embedded navigations).
+   *
+   * Note: `NextResponse.next({ request: { headers } })` forwards modified headers
+   * to the origin — server components see them via `import { headers } from "next/headers"`.
+   */
+  if (shopParam && SHOPIFY_SHOP_REGEX.test(shopParam) && isEmbedded && hostParam) {
+    const reqHeaders = new Headers(request.headers);
+    reqHeaders.set("x-request-id", requestId);
+    reqHeaders.set("x-shop", shopParam);
+
+    const res = NextResponse.next({ request: { headers: reqHeaders } });
+    res.headers.set("x-request-id", requestId);
+
+    // Also keep the cookie up-to-date for subsequent non-embedded navigations
+    if (shopParam !== sessionShop) {
+      res.cookies.set("shopify_session_shop", shopParam, {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        maxAge: 60 * 60 * 24 * 30,
+        path: "/",
+      });
+    }
+
+    return res;
+  }
+
   // Already authenticated via cookie → allow through
   if (sessionShop && SHOPIFY_SHOP_REGEX.test(sessionShop)) {
     const res = NextResponse.next();
     res.headers.set("x-request-id", requestId);
     return res;
   }
-
-  // No session — check if Shopify provided a shop param
-  const shopParam = searchParams.get("shop")?.toLowerCase().trim();
-  const isEmbedded = searchParams.get("embedded") === "1";
-  const hostParam = searchParams.get("host")?.trim();
 
   if (shopParam && SHOPIFY_SHOP_REGEX.test(shopParam)) {
     // Embedded load with valid Shopify context but no session cookie.
