@@ -12,8 +12,11 @@ export default function () {
   render(<Extension />, document.body);
 }
 
+const API_BASE = "https://checkout-redo-engine.vercel.app";
+
 function Extension() {
-  const { lines, attributes, settings, applyCartLinesChange, localization } = shopify;
+  const { lines, attributes, applyCartLinesChange, localization } = shopify;
+  const shopDomain = shopify.shop?.myshopifyDomain ?? "";
 
   const [cartLines, setCartLines] = useState(lines.current);
   const [cartAttributes, setCartAttributes] = useState(attributes.current);
@@ -32,11 +35,9 @@ function Extension() {
 
   useEffect(() => {
     if (!assignment) { setLoading(false); return; }
-    const apiBase = String(settings.current?.apiBase ?? "");
-    if (!apiBase) { setLoading(false); return; }
 
     setLoading(true);
-    fetchBlockContent(apiBase, assignment)
+    fetchBlockContent(API_BASE, assignment, shopDomain)
       .then((c) => { setBlockContent(c); setLoading(false); })
       .catch(() => setLoading(false));
   }, [assignment?.experimentId]);
@@ -413,11 +414,16 @@ function readAssignment(attrs) {
   };
 }
 
-async function fetchBlockContent(apiBase, assignment) {
+async function fetchBlockContent(apiBase, assignment, shopDomain) {
   try {
     const res = await fetch(
       `${apiBase}/api/runtime/checkout-blocks?experimentId=${assignment.experimentId}&variantKey=${assignment.variantKey}`,
-      { headers: { "Content-Type": "application/json" } }
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(shopDomain ? { "X-Shop-Domain": shopDomain } : {}),
+        },
+      }
     );
     if (!res.ok) return null;
     const data = await res.json();

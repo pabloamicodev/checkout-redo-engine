@@ -14,6 +14,12 @@ export const shopify = shopifyApi({
 });
 
 function createSessionStorage() {
+  // During `next build` (NEXT_PHASE=phase-production-build) or CI environments
+  // without a real database, skip initialization to prevent connection errors.
+  // At runtime the storage is always available via the Vercel DATABASE_URL env var.
+  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+  const hasDatabase = !!process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith("postgresql://user:");
+  if (isBuildPhase || !hasDatabase) return null;
   try {
     return new PrismaSessionStorage(prisma);
   } catch {
