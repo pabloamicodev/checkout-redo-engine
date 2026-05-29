@@ -308,7 +308,10 @@
   // Used proactively for checkout tests so the checkout extension has the variant before
   // the customer reaches checkout (rather than waiting for a cart add/change event).
   function syncCartAttributesOnly() {
-    if (!Object.keys(state.assignments).length) return;
+    if (!Object.keys(state.assignments).length) {
+      console.warn("[MarginLab][syncCart] no assignments — skipping");
+      return;
+    }
     var assignmentList = Object.entries(state.assignments).map(function (entry) {
       var expId = entry[0];
       var variant = entry[1];
@@ -322,11 +325,36 @@
       experimentsMap[shortId] = a.variantKey;
     });
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
+    console.log("[MarginLab][syncCart] writing cart attributes:", JSON.stringify(attributes));
     fetch("/cart/update.js", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attributes: attributes }),
-    }).catch(function () {});
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (data && data.attributes) {
+            console.log("[MarginLab][syncCart] ✅ cart attributes written:", JSON.stringify(data.attributes));
+          } else {
+            console.warn("[MarginLab][syncCart] ⚠️ unexpected cart response:", JSON.stringify(data));
+          }
+        });
+      })
+      .catch(function (err) {
+        console.error("[MarginLab][syncCart] ❌ fetch failed:", err);
+        // Retry once after 2s (e.g. if cart session not yet established)
+        setTimeout(function () {
+          console.log("[MarginLab][syncCart] retrying...");
+          fetch("/cart/update.js", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ attributes: attributes }),
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) { console.log("[MarginLab][syncCart] retry result:", JSON.stringify(data && data.attributes)); })
+            .catch(function (err2) { console.error("[MarginLab][syncCart] retry also failed:", err2); });
+        }, 2000);
+      });
   }
 
   // ---------------------------------------------------------------------------
@@ -1023,6 +1051,9 @@
             variant: state.assignments[expId],
           };
         });
+      },
+      syncCart: function () {
+        syncCartAttributesOnly();
       },
       track: function (eventName, metadata) {
         trackEvent(eventName, "CUSTOM", metadata || {});
