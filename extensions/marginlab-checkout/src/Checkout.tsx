@@ -440,33 +440,62 @@ function FreeShippingProgressBlock({ content }: { content: CheckoutBlockContent 
   );
 }
 
+interface ReviewItem { id?: string; name?: string; label?: string; quote?: string; rating?: number; }
+interface BadgeItem { id?: string; label: string; sublabel?: string; iconUrl?: string; alt?: string; }
+
 function TrustBadgesWithReviewsBlock({ content }: { content: CheckoutBlockContent }) {
-  const badges = content.badges ?? [
+  const raw = content as unknown as Record<string, unknown>;
+  const badges = (raw.badges as BadgeItem[]) ?? content.badges ?? [
     { label: "Secure Checkout" },
     { label: "Free Returns" },
     { label: "Fast Shipping" },
   ];
-  const reviewCount = (content as unknown as Record<string, unknown>).reviewCount as number | undefined;
-  const rating = (content as unknown as Record<string, unknown>).rating as number | undefined;
+  const reviews = (raw.reviews as ReviewItem[]) ?? [];
 
   return (
-    <BlockStack spacing="tight">
+    <BlockStack spacing="base">
       {content.heading && (
         <Text size="small" emphasis="bold">{content.heading}</Text>
       )}
-      {rating != null && (
-        <InlineStack spacing="extraTight" blockAlignment="center">
-          <Text size="small">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</Text>
-          {reviewCount != null && (
-            <Text size="small" appearance="subdued">({reviewCount.toLocaleString()} reviews)</Text>
-          )}
-        </InlineStack>
-      )}
+
+      {/* Trust badges */}
       <InlineStack spacing="base" blockAlignment="center">
         {badges.map((badge, i) => (
-          <Badge key={i} tone="success">{badge.label}</Badge>
+          <BlockStack key={i} spacing="extraTight">
+            {badge.iconUrl && (
+              <Image source={badge.iconUrl} alt={badge.alt ?? badge.label} />
+            )}
+            <Text size="small" emphasis="bold">{badge.label}</Text>
+            {badge.sublabel && (
+              <Text size="extraSmall" appearance="subdued">{badge.sublabel}</Text>
+            )}
+          </BlockStack>
         ))}
       </InlineStack>
+
+      {/* Customer reviews */}
+      {reviews.length > 0 && (
+        <BlockStack spacing="tight">
+          {reviews.map((review, i) => (
+            <BlockStack key={review.id ?? i} spacing="extraTight">
+              <InlineStack spacing="extraTight" blockAlignment="center">
+                {review.rating != null && (
+                  <Text size="small">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</Text>
+                )}
+                {review.name && (
+                  <Text size="small" emphasis="bold">{review.name}</Text>
+                )}
+                {review.label && (
+                  <Text size="extraSmall" appearance="subdued">{review.label}</Text>
+                )}
+              </InlineStack>
+              {review.quote && (
+                <Text size="small" appearance="subdued">"{review.quote}"</Text>
+              )}
+            </BlockStack>
+          ))}
+        </BlockStack>
+      )}
     </BlockStack>
   );
 }
