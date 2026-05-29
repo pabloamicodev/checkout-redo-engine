@@ -135,8 +135,9 @@ function BlockRenderer({
 }) {
   switch (content.type) {
     case "TRUST_BADGES":
-    case "TRUST_BADGES_WITH_REVIEWS":
       return <TrustBadgesBlock content={content} />;
+    case "TRUST_BADGES_WITH_REVIEWS":
+      return <TrustBadgesWithReviewsBlock content={content} />;
     case "SOCIAL_PROOF":
       return <SocialProofBlock content={content} />;
     case "GUARANTEE":
@@ -155,6 +156,8 @@ function BlockRenderer({
       return <ProductUpsellBlock content={content} />;
     case "FREE_SHIPPING_PROGRESS":
       return <FreeShippingProgressBlock content={content} />;
+    case "SECURITY_MESSAGE":
+      return <SecurityMessageBlock content={content} />;
     default:
       return null;
   }
@@ -392,6 +395,50 @@ function FreeShippingProgressBlock({ content }: { content: CheckoutBlockContent 
           />
         ))}
       </InlineStack>
+    </BlockStack>
+  );
+}
+
+function TrustBadgesWithReviewsBlock({ content }: { content: CheckoutBlockContent }) {
+  const badges = content.badges ?? [
+    { label: "Secure Checkout" },
+    { label: "Free Returns" },
+    { label: "Fast Shipping" },
+  ];
+  const reviewCount = (content as unknown as Record<string, unknown>).reviewCount as number | undefined;
+  const rating = (content as unknown as Record<string, unknown>).rating as number | undefined;
+
+  return (
+    <BlockStack spacing="tight">
+      {content.heading && (
+        <Text size="small" emphasis="bold">{content.heading}</Text>
+      )}
+      {rating != null && (
+        <InlineStack spacing="extraTight" blockAlignment="center">
+          <Text size="small">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</Text>
+          {reviewCount != null && (
+            <Text size="small" appearance="subdued">({reviewCount.toLocaleString()} reviews)</Text>
+          )}
+        </InlineStack>
+      )}
+      <InlineStack spacing="base" blockAlignment="center">
+        {badges.map((badge, i) => (
+          <Badge key={i} tone="success">{badge.label}</Badge>
+        ))}
+      </InlineStack>
+    </BlockStack>
+  );
+}
+
+function SecurityMessageBlock({ content }: { content: CheckoutBlockContent }) {
+  return (
+    <BlockStack spacing="tight">
+      {content.heading && (
+        <Text size="small" emphasis="bold">{content.heading}</Text>
+      )}
+      {content.body && (
+        <Text size="small" appearance="subdued">{content.body}</Text>
+      )}
     </BlockStack>
   );
 }
