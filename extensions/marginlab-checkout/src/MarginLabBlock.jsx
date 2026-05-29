@@ -10,13 +10,9 @@ const DEFAULT_BADGES = [
 ];
 
 export function MarginLabBlock() {
-  const s = /** @type {Record<string, unknown>} */ (shopify.settings.current) ?? {};
+  const s = (() => { try { return shopify.settings?.current ?? {}; } catch (_) { return {}; } })();
   const appUrl = String(s["ml_app_url"] ?? "").trim().replace(/\/$/, "");
-
-  const shopDomain = (() => {
-    try { return shopify.shop?.myshopifyDomain ?? ""; }
-    catch (_) { return ""; }
-  })();
+  const shopDomain = (() => { try { return shopify.shop?.myshopifyDomain ?? ""; } catch (_) { return ""; } })();
 
   const [content, setContent] = useState(/** @type {{ badges?: any[], reviews?: any[] } | null} */ (null));
 
