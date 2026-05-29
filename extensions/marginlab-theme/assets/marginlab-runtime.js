@@ -758,6 +758,8 @@
   // ---------------------------------------------------------------------------
   // Cart sync
   // ---------------------------------------------------------------------------
+  var _mlSyncingCart = false; // reentrance guard — prevents our own /cart/update.js from re-triggering sync
+
   function listenForCartChanges() {
     // Listen for fetch/XHR calls to /cart/add.js, /cart/change.js, /cart/update.js
     var originalFetch = window.fetch;
@@ -767,7 +769,7 @@
 
       if (/\/cart\/(add|change|update)/.test(url)) {
         promise.then(function (response) {
-          if (response.ok) {
+          if (response.ok && !_mlSyncingCart) {
             response.clone().json().then(function (cartData) {
               syncAssignmentsToCart(cartData.token);
               // Update cached item count for offer/personalization signals
@@ -830,11 +832,16 @@
     // (Cart.attributes plural is unavailable in that function API)
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
 
+    _mlSyncingCart = true;
     fetch("/cart/update.js", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attributes: attributes }),
-    }).catch(function () {});
+    }).then(function () {
+      _mlSyncingCart = false;
+    }).catch(function () {
+      _mlSyncingCart = false;
+    });
   }
 
   // ---------------------------------------------------------------------------
