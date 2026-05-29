@@ -18,6 +18,12 @@
 (function () {
   "use strict";
 
+  // Capture native fetch BEFORE any third-party app (e.g. BOGOS gift.min.js) patches
+  // window.fetch.  We use this reference exclusively for our own /cart/update.js writes
+  // so that BOGOS never intercepts them and cannot react with its own add.js / update.js
+  // calls that would re-trigger our cart-change listener and create an infinite loop.
+  var _mlRawFetch = window.fetch.bind(window);
+
   // ---------------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------------
@@ -312,6 +318,11 @@
       console.warn("[MarginLab][syncCart] no assignments — skipping");
       return;
     }
+    // Throttle + reentrance guard shared with syncAssignmentsToCart — prevents BOGOS-mediated loops
+    var now = Date.now();
+    if (_mlSyncingCart || now - _mlLastSyncTime < ML_SYNC_THROTTLE_MS) return;
+    _mlLastSyncTime = now;
+
     var assignmentList = Object.entries(state.assignments).map(function (entry) {
       var expId = entry[0];
       var variant = entry[1];
@@ -326,12 +337,17 @@
     });
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
     console.log("[MarginLab][syncCart] writing cart attributes:", JSON.stringify(attributes));
-    fetch("/cart/update.js", {
+    _mlSyncingCart = true;
+    // Use _mlRawFetch (captured before any third-party patches) so BOGOS never
+    // intercepts this write and cannot react with add.js/update.js calls that
+    // would re-trigger our cart-change listener → infinite loop.
+    _mlRawFetch("/cart/update.js", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attributes: attributes }),
     })
       .then(function (res) {
+        _mlSyncingCart = false;
         return res.json().then(function (data) {
           if (data && data.attributes) {
             console.log("[MarginLab][syncCart] ✅ cart attributes written:", JSON.stringify(data.attributes));
@@ -341,19 +357,8 @@
         });
       })
       .catch(function (err) {
+        _mlSyncingCart = false;
         console.error("[MarginLab][syncCart] ❌ fetch failed:", err);
-        // Retry once after 2s (e.g. if cart session not yet established)
-        setTimeout(function () {
-          console.log("[MarginLab][syncCart] retrying...");
-          fetch("/cart/update.js", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ attributes: attributes }),
-          })
-            .then(function (res) { return res.json(); })
-            .then(function (data) { console.log("[MarginLab][syncCart] retry result:", JSON.stringify(data && data.attributes)); })
-            .catch(function (err2) { console.error("[MarginLab][syncCart] retry also failed:", err2); });
-        }, 2000);
       });
   }
 
@@ -774,7 +779,7 @@
       var url = typeof input === "string" ? input : (input && input.url) || "";
       var promise = originalFetch.apply(this, arguments);
 
-      if (/\/cart\/(add|change)\.js/.test(url)) {
+      if (/\/cart\/(add|change)\.js/.test(url) && !_mlSyncingCart) {
         promise.then(function (response) {
           if (response.ok) {
             response.clone().json().then(function (cartData) {
@@ -845,7 +850,10 @@
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
 
     _mlSyncingCart = true;
-    fetch("/cart/update.js", {
+    // Use _mlRawFetch (captured before any third-party patches) so BOGOS never
+    // intercepts this write and cannot react with add.js/update.js calls that
+    // would re-trigger our cart-change listener → infinite loop.
+    _mlRawFetch("/cart/update.js", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attributes: attributes }),
