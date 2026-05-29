@@ -78,23 +78,36 @@ export default reactExtension(
 interface BlockOption { id: string; name: string; type: string; }
 
 function MarginLabCheckoutBlock() {
-  const cartLines = useCartLines();
   const attributes = useAttributes();
-  const settings = useSettings() as Record<string, string>;
   const shop = useShop();
   const editor = useExtensionEditor();
   const isEditorMode = !!editor;
 
   const [blockContent, setBlockContent] = useState<CheckoutBlockContent | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string>("");
   const [availableBlocks, setAvailableBlocks] = useState<BlockOption[]>([]);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string>("");
 
   const cartAssignment = readAssignmentFromAttributes(attributes);
   const API_BASE = "https://checkout-redo-engine.vercel.app";
   const shopDomain = shop?.myshopifyDomain ?? "";
+  const settings = useSettings() as Record<string, string>;
   const previewBlockId = settings.previewBlockId?.trim() || selectedPreviewId;
+
+  // STATIC TEST — always render to confirm extension renders at all
+  return (
+    <BlockStack spacing="tight">
+      <Text size="small" emphasis="bold">MarginLab ✓</Text>
+      <InlineStack spacing="base">
+        <Badge tone="success">30-Day Guarantee</Badge>
+        <Badge tone="success">Fast Shipping</Badge>
+        <Badge tone="success">Secure Checkout</Badge>
+      </InlineStack>
+      <Text size="extraSmall" appearance="subdued">
+        attrs: {attributes.filter(a => a.key.startsWith("_ml")).map(a => `${a.key}=${a.value}`).join(", ") || "none"}
+      </Text>
+    </BlockStack>
+  );
 
   // In editor mode, fetch list of available blocks for the picker
   useEffect(() => {
