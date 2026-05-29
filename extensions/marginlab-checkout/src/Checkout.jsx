@@ -34,12 +34,23 @@ function Extension() {
   const assignment = readAssignment(cartAttributes);
 
   useEffect(() => {
+    console.log("[MarginLab] cartAttributes:", JSON.stringify(cartAttributes));
+    console.log("[MarginLab] assignment:", JSON.stringify(assignment));
+    console.log("[MarginLab] shopDomain:", shopDomain);
+
     if (!assignment) { setLoading(false); return; }
 
     setLoading(true);
     fetchBlockContent(API_BASE, assignment, shopDomain)
-      .then((c) => { setBlockContent(c); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((c) => {
+        console.log("[MarginLab] blockContent:", JSON.stringify(c));
+        setBlockContent(c);
+        setLoading(false);
+      })
+      .catch((e) => {
+        console.error("[MarginLab] fetchBlockContent error:", e);
+        setLoading(false);
+      });
   }, [assignment?.experimentId]);
 
   if (loading) {
@@ -416,8 +427,11 @@ function readAssignment(attrs) {
 
 async function fetchBlockContent(apiBase, assignment, shopDomain) {
   try {
+    // Pass shop domain both as a header AND as a query param (?shop=) so the
+    // API can find it even if the header is stripped by the checkout sandbox.
+    const shopParam = shopDomain ? `&shop=${encodeURIComponent(shopDomain)}` : "";
     const res = await fetch(
-      `${apiBase}/api/runtime/checkout-blocks?experimentId=${assignment.experimentId}&variantKey=${assignment.variantKey}`,
+      `${apiBase}/api/runtime/checkout-blocks?experimentId=${assignment.experimentId}&variantKey=${assignment.variantKey}${shopParam}`,
       {
         headers: {
           "Content-Type": "application/json",
