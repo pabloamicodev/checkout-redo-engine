@@ -36,7 +36,9 @@ scopes = "read_products,write_products,read_orders,read_customers,read_discounts
 
 [auth]
 redirect_urls = [
+  "https://checkout-redo-engine.vercel.app/api/auth/callback",
   "https://checkout-redo-engine.vercel.app/api/auth",
+  "https://localhost/api/auth/callback",
   "https://localhost/api/auth",
 ]
 

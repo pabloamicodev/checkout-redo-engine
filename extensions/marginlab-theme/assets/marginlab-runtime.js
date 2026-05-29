@@ -231,18 +231,7 @@
     config.experiments.forEach(function (exp) {
       if (!["RUNNING", "PREVIEW", "QA"].includes(exp.status)) return;
 
-      // Skip if already assigned
-      if (state.assignments[exp.id]) {
-        var alreadyAssigned = state.assignments[exp.id];
-        if (exp.type === "SPLIT_URL_TEST") {
-          handleSplitUrlRedirect(exp, alreadyAssigned, config);
-        } else {
-          applyVariantModifications(exp, alreadyAssigned);
-        }
-        return;
-      }
-
-      // Handle force/preview overrides
+      // Resolve preview/force overrides FIRST — they must override any stored assignment.
       var forcedKey = null;
       if (previewParam) {
         var parts = previewParam.split(":");
@@ -253,6 +242,17 @@
       if (forceParam) {
         var fp = forceParam.split(":");
         if (fp[0] === exp.slug) forcedKey = fp[1];
+      }
+
+      // Skip if already assigned AND no preview/force override is active for this experiment
+      if (!forcedKey && state.assignments[exp.id]) {
+        var alreadyAssigned = state.assignments[exp.id];
+        if (exp.type === "SPLIT_URL_TEST") {
+          handleSplitUrlRedirect(exp, alreadyAssigned, config);
+        } else {
+          applyVariantModifications(exp, alreadyAssigned);
+        }
+        return;
       }
 
       // Evaluate targeting
