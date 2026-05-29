@@ -475,9 +475,6 @@ function TrustBadgesWithReviewsBlock({ content }: { content: CheckoutBlockConten
       <InlineStack spacing="base" blockAlignment="center">
         {badges.map((badge, i) => (
           <BlockStack key={i} spacing="extraTight">
-            {badge.iconUrl && (
-              <Image source={badge.iconUrl} alt={badge.alt ?? badge.label} />
-            )}
             <Text size="small" emphasis="bold">{badge.label}</Text>
             {badge.sublabel && (
               <Text size="extraSmall" appearance="subdued">{badge.sublabel}</Text>
