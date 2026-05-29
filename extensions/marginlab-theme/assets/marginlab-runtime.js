@@ -763,15 +763,20 @@
   var ML_SYNC_THROTTLE_MS = 2000; // minimum ms between syncAssignmentsToCart calls
 
   function listenForCartChanges() {
-    // Listen for fetch/XHR calls to /cart/add.js, /cart/change.js, /cart/update.js
+    // Listen for fetch/XHR calls to /cart/add.js and /cart/change.js ONLY.
+    // Intentionally excluded: /cart/update.js — that endpoint is used by third-party apps
+    // (e.g. BOGOS) to write cart attributes and does NOT represent a real user cart change.
+    // Intercepting update.js caused an infinite loop: our own attribute write → BOGOS reacts
+    // → BOGOS writes update.js → we intercept → loop. add.js / change.js are safe because
+    // only the user (or theme) calls those, never as a reaction to our own cart attribute write.
     var originalFetch = window.fetch;
     window.fetch = function (input, init) {
       var url = typeof input === "string" ? input : (input && input.url) || "";
       var promise = originalFetch.apply(this, arguments);
 
-      if (/\/cart\/(add|change|update)/.test(url)) {
+      if (/\/cart\/(add|change)\.js/.test(url)) {
         promise.then(function (response) {
-          if (response.ok && !_mlSyncingCart) {
+          if (response.ok) {
             response.clone().json().then(function (cartData) {
               syncAssignmentsToCart(cartData.token);
               // Update cached item count for offer/personalization signals
