@@ -11,7 +11,7 @@ import type { TargetingGroup } from "@/lib/targeting";
 const configService = new RuntimeConfigService();
 
 export async function POST(request: NextRequest) {
-  return withRuntimeAuth(request, async (shopDomain) => {
+  return withRuntimeAuth(request, async (shopDomain, shopId) => {
     const body = await request.json() as unknown;
 
     const parsed = AssignmentRequestSchema.safeParse(body);
@@ -36,15 +36,6 @@ export async function POST(request: NextRequest) {
       "runtime_assign",
       async () => {
 
-    const shop = await prisma.shop.findUnique({
-      where: { shopDomain },
-      select: { id: true },
-    });
-
-    if (!shop) {
-      return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-    }
-
     const config = await configService.get(shopDomain);
     if (!config) {
       return NextResponse.json({ assignments: [] });
@@ -53,7 +44,7 @@ export async function POST(request: NextRequest) {
     // Check for existing assignments first
     const existingAssignments = await prisma.experimentAssignment.findMany({
       where: {
-        shopId: shop.id,
+        shopId: shopId,
         visitorId,
         experiment: { status: { in: ["RUNNING", "PREVIEW", "QA"] } },
       },
@@ -166,7 +157,7 @@ export async function POST(request: NextRequest) {
       };
 
       newAssignments.push({
-        shopId: shop.id,
+        shopId: shopId,
         experimentId: exp.id,
         variantId: assignedVariant.id,
         visitorId,

@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { EventIngestionService } from "@/services/event-ingestion.service";
 import { RuntimeEventSchema } from "@/lib/zod-schemas";
 import { withRuntimeAuth, withRuntimeRateLimit } from "@/lib/api-middleware";
-import { prisma } from "@/lib/prisma";
 import { recordRuntimeSignal } from "@/lib/runtime-health";
 
 const service = new EventIngestionService();
 
 // Public endpoint — called by storefront runtime (no admin auth required)
 export async function POST(request: NextRequest) {
-  return withRuntimeAuth(request, async (shopDomain) => {
+  return withRuntimeAuth(request, async (shopDomain, shopId) => {
     return withRuntimeRateLimit(
       `runtime_event:${shopDomain}`,
       "runtime_event",
@@ -28,16 +27,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Shop domain mismatch" }, { status: 403 });
         }
 
-        const shop = await prisma.shop.findUnique({
-          where: { shopDomain },
-          select: { id: true },
-        });
-
-        if (!shop) {
-          return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-        }
-
-        const result = await service.ingest(shop.id, parsed.data);
+        const result = await service.ingest(shopId, parsed.data);
 
         // Fire-and-forget: record that events are flowing for this shop
         recordRuntimeSignal(shopDomain, "event_ingested");

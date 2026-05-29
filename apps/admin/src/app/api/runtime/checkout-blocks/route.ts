@@ -14,7 +14,7 @@ import { withRuntimeAuth } from "@/lib/api-middleware";
  *   Header: X-Shop-Domain: shop.myshopify.com
  */
 export async function GET(request: NextRequest) {
-  return withRuntimeAuth(request, async (shopDomain) => {
+  return withRuntimeAuth(request, async (_shopDomain, shopId) => {
     const { searchParams } = new URL(request.url);
     const experimentId = searchParams.get("experimentId");
     const variantKey = searchParams.get("variantKey");
@@ -28,19 +28,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const shop = await prisma.shop.findUnique({
-      where: { shopDomain },
-      select: { id: true },
-    });
-
-    if (!shop) {
-      return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-    }
-
     // Direct block fetch by ID — used by checkout editor preview
     if (blockId) {
       const checkoutBlock = await prisma.checkoutBlock.findFirst({
-        where: { id: blockId, shopId: shop.id },
+        where: { id: blockId, shopId },
         select: { type: true, content: true },
       });
       if (!checkoutBlock) return NextResponse.json({ block: null });
@@ -58,7 +49,7 @@ export async function GET(request: NextRequest) {
     const experiment = await prisma.experiment.findFirst({
       where: {
         id: { startsWith: experimentId! },
-        shopId: shop.id,
+        shopId: shopId,
       },
       include: {
         variants: {
@@ -89,7 +80,7 @@ export async function GET(request: NextRequest) {
     const blockIds = (variant.checkoutBlockIds ?? []) as string[];
     if (blockIds.length > 0) {
       const checkoutBlock = await prisma.checkoutBlock.findFirst({
-        where: { id: blockIds[0], shopId: shop.id },
+        where: { id: blockIds[0], shopId: shopId },
         select: { type: true, content: true },
       });
       if (checkoutBlock) {

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { recordRuntimeSignal } from "@/lib/runtime-health";
 
 export async function POST(request: NextRequest) {
-  return withRuntimeAuth(request, async (shopDomain) => {
+  return withRuntimeAuth(request, async (shopDomain, shopId) => {
     const body = await request.json() as unknown;
 
     const parsed = CartSyncSchema.safeParse(body);
@@ -36,15 +36,6 @@ export async function POST(request: NextRequest) {
       `runtime_cart_sync:${visitorId}`,
       "runtime_cart_sync",
       async () => {
-        const shop = await prisma.shop.findUnique({
-          where: { shopDomain },
-          select: { id: true },
-        });
-
-        if (!shop) {
-          return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-        }
-
         const experimentIds = assignments.map((a) => a.experimentId);
         const variantIds = assignments.map((a) => a.variantId);
 
@@ -53,7 +44,7 @@ export async function POST(request: NextRequest) {
         // another visitor's attribution data via a known experimentId/variantId pair.
         const existing = await prisma.experimentAssignment.findMany({
           where: {
-            shopId: shop.id,
+            shopId: shopId,
             visitorId,
             experimentId: { in: experimentIds },
             variantId: { in: variantIds },
@@ -77,7 +68,7 @@ export async function POST(request: NextRequest) {
 
           await prisma.experimentAssignment.updateMany({
             where: {
-              shopId: shop.id,
+              shopId: shopId,
               experimentId: assignment.experimentId,
               variantId: assignment.variantId,
               visitorId,

@@ -311,7 +311,7 @@ export async function withAdminRateLimit(
 
 export async function withRuntimeAuth(
   request: NextRequest,
-  handler: (shopDomain: string) => Promise<NextResponse>
+  handler: (shopDomain: string, shopId: string) => Promise<NextResponse>
 ): Promise<NextResponse> {
   try {
     // Bot filter — crawlers and scrapers should not receive runtime experiment data.
@@ -344,6 +344,7 @@ export async function withRuntimeAuth(
 
     // GUARD: shop must exist in our database — prevents enumeration / SSRF by unknown domains.
     // Return 401 (not 404) to avoid leaking whether a shop domain exists.
+    // shopId is passed to the handler so routes don't need a second findUnique.
     const shop = await prisma.shop.findUnique({
       where: { shopDomain },
       select: { id: true },
@@ -352,7 +353,7 @@ export async function withRuntimeAuth(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const response = await handler(shopDomain);
+    const response = await handler(shopDomain, shop.id);
 
     // CORS — runtime endpoints are called cross-origin from the merchant storefront
     response.headers.set("Access-Control-Allow-Origin", "*");
