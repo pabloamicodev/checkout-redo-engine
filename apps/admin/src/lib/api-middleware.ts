@@ -16,6 +16,7 @@ import { BillingService } from "@/services/billing.service";
 import { LimitType } from "@/lib/plans";
 import { checkRateLimit, applyRateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { getAllShopifyCredentials } from "@/lib/shopify-apps";
 
 const billingService = new BillingService();
 
@@ -42,41 +43,45 @@ interface ShopifyJwtPayload {
 /**
  * Validates a Shopify App Bridge JWT (HS256) and returns the payload.
  *
+ * Tries all configured Shopify apps (primary + secondary) because the JWT's
+ * `aud` field identifies which app issued it, and each app has its own secret.
+ *
  * Algorithm: HMAC-SHA256 with the API secret as the key.
  * Reference: https://shopify.dev/docs/apps/auth/session-tokens/getting-started
  *
- * Returns null if the token is invalid, expired, or not issued for this app.
+ * Returns null if the token is invalid, expired, or not issued for any known app.
  */
 function verifyShopifyJwt(token: string): ShopifyJwtPayload | null {
-  const apiSecret = process.env.SHOPIFY_API_SECRET;
-  const apiKey = process.env.SHOPIFY_API_KEY;
-  if (!apiSecret || !apiKey) return null;
+  const allApps = getAllShopifyCredentials();
 
   const parts = token.split(".");
   if (parts.length !== 3) return null;
 
   const [headerB64, payloadB64, signatureB64] = parts as [string, string, string];
 
-  // Re-compute signature
+  // Decode payload first to get `aud` — then find the matching app
+  let payload: ShopifyJwtPayload;
+  try {
+    payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf-8")) as ShopifyJwtPayload;
+  } catch {
+    return null;
+  }
+
+  // Find the app whose apiKey matches the JWT's `aud` field
+  const matchingApp = allApps.find((app) => app.apiKey && app.apiKey === payload.aud);
+  if (!matchingApp) return null;
+
+  // Verify signature using that app's secret
   const signingInput = `${headerB64}.${payloadB64}`;
-  const expected = createHmac("sha256", apiSecret)
+  const expected = createHmac("sha256", matchingApp.apiSecret)
     .update(signingInput)
     .digest("base64url");
 
-  // Timing-safe compare
   try {
     const expectedBuf = Buffer.from(expected);
     const actualBuf = Buffer.from(signatureB64);
     if (expectedBuf.length !== actualBuf.length) return null;
     if (!timingSafeEqual(expectedBuf, actualBuf)) return null;
-  } catch {
-    return null;
-  }
-
-  // Decode payload
-  let payload: ShopifyJwtPayload;
-  try {
-    payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf-8")) as ShopifyJwtPayload;
   } catch {
     return null;
   }
@@ -88,9 +93,6 @@ function verifyShopifyJwt(token: string): ShopifyJwtPayload | null {
 
   // Token must not be used before it becomes valid (allow 30s clock skew)
   if (payload.nbf > nowSeconds + 30) return null;
-
-  // Token must be for this app
-  if (payload.aud !== apiKey) return null;
 
   // dest must be a valid myshopify.com domain
   if (!payload.dest?.includes(".myshopify.com")) return null;

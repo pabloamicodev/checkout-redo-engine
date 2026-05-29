@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { getShopifyCredentials } from "@/lib/shopify-apps";
 
 const SHOPIFY_SHOP_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/;
 
@@ -32,8 +33,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid shop domain" }, { status: 400 });
   }
 
-  const apiKey = process.env.SHOPIFY_API_KEY?.trim();
-  const scopes = (process.env.SHOPIFY_APP_SCOPES ?? "").trim();
+  const { apiKey, scopes } = getShopifyCredentials(shop);
   const host = process.env.HOST?.trim().replace(/[\r\n]+$/, "");
 
   if (!apiKey || !host) {

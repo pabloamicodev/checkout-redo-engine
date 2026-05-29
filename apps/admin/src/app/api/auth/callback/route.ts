@@ -25,6 +25,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/crypto";
 import { BillingService } from "@/services/billing.service";
+import { getShopifyCredentials } from "@/lib/shopify-apps";
 import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
   }
 
   // GUARD: HMAC validation
-  const apiSecret = process.env.SHOPIFY_API_SECRET?.replace(/[\r\n\s]+/g, "");
+  const { apiKey, apiSecret } = getShopifyCredentials(shop);
   if (!apiSecret) {
     return NextResponse.json({ error: "App not configured" }, { status: 500 });
   }
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      client_id: process.env.SHOPIFY_API_KEY?.trim().replace(/[\r\n]+$/, ""),
+      client_id: apiKey,
       client_secret: apiSecret,
       code,
     }),
