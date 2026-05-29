@@ -28,7 +28,7 @@ export const RATE_LIMITS = {
   runtime_assign: { limit: 100, windowSeconds: 60 },      // 100 req/min per visitor
   runtime_assign_shop: { limit: 2000, windowSeconds: 60 }, // 2000 req/min per shop (DoS guard)
   runtime_event: { limit: 200, windowSeconds: 60 },       // 200 events/min per shop
-  runtime_cart_sync: { limit: 60, windowSeconds: 60 },    // 60 req/min per visitor
+  runtime_cart_sync: { limit: 300, windowSeconds: 60 },   // 300 req/min per visitor
   // Generic admin
   admin_api: { limit: 300, windowSeconds: 60 },           // 300 req/min per shop
   webhook_inbound: { limit: 50, windowSeconds: 60 },      // 50 webhooks/min
@@ -57,26 +57,29 @@ export async function checkRateLimit(
   const windowStart = now - config.windowSeconds * 1000;
 
   try {
-    const pipeline = redis.pipeline();
+    // Phase 1: prune the window and read the current count atomically.
+    // We do NOT add the entry yet — adding unconditionally inflates the sorted set
+    // for every denied request (e.g. bot floods), which bloats Redis and skews resetAt.
+    const readPipeline = redis.pipeline();
+    readPipeline.zremrangebyscore(key, 0, windowStart);
+    readPipeline.zcard(key);
 
-    // Remove entries outside the window
-    pipeline.zremrangebyscore(key, 0, windowStart);
-    // Count entries in window
-    pipeline.zcard(key);
-    // Add current request
-    pipeline.zadd(key, now, `${now}-${Math.random()}`);
-    // Set TTL to auto-expire the key
-    pipeline.expire(key, config.windowSeconds + 1);
-
-    const results = await pipeline.exec();
-
-    // Result index 1 = zcard (count before adding current)
-    const countBefore = (results?.[1]?.[1] as number) ?? 0;
+    const readResults = await readPipeline.exec();
+    const countBefore = (readResults?.[1]?.[1] as number) ?? 0;
 
     const allowed = countBefore < config.limit;
     const remaining = Math.max(0, config.limit - countBefore - (allowed ? 1 : 0));
 
-    // The oldest entry in the window — when it expires, the window resets
+    // Phase 2: only record the request when it is actually allowed.
+    // Blocked requests must not consume quota slots in the sorted set.
+    if (allowed) {
+      const writePipeline = redis.pipeline();
+      writePipeline.zadd(key, now, `${now}-${Math.random()}`);
+      writePipeline.expire(key, config.windowSeconds + 1);
+      await writePipeline.exec();
+    }
+
+    // The oldest entry in the window determines when a new slot opens up.
     const oldest = await redis.zrange(key, 0, 0, "WITHSCORES");
     const oldestScore = oldest.length >= 2 ? Number(oldest[1]) : now;
     const resetAt = oldestScore + config.windowSeconds * 1000;
