@@ -160,7 +160,7 @@ function MarginLabCheckoutBlock() {
 
   if (!blockContent) return null;
 
-  return <BlockRenderer content={blockContent} assignment={assignment} />;
+  return <BlockRenderer content={blockContent} assignment={cartAssignment} />;
 }
 
 // ---------------------------------------------------------------------------
