@@ -159,7 +159,7 @@ describe("RuntimeConfigService.build", () => {
           where: { status: "ACTIVE" },
         },
         checkoutBlocks: {
-          where: { status: "ACTIVE" },
+          where: { status: { in: ["ACTIVE", "DRAFT"] } },
         },
         personalizations: {
           where: { status: "ACTIVE" },
