@@ -14,29 +14,29 @@ const DEFAULT_BADGES = [
 ];
 
 const DEFAULT_REVIEWS = [
-  { id: "r1", quote: "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm currently on my wellness and gym journey.", name: "Annika H.", label: "Verified Buyer", rating: 5 },
-  { id: "r2", quote: "Love drinking this creatine. The taste is so much better than all the other products I've tried previously.", name: "P.J.", label: "Verified Buyer", rating: 5 },
-  { id: "r3", quote: "It tastes sooooo good. I was using the unflavored one and was satisfied at the fact that it didn't leave any after taste.", name: "Shakerra", label: "Verified Buyer", rating: 5 },
+  { id: "r1", quote: "The ability to lift more while on it, is not joke. I'm currently on my wellness and gym journey.", name: "Annika H.", label: "Verified Buyer", rating: 5 },
+  { id: "r2", quote: "Love drinking this creatine. The taste is so much better than all the other products I've tried.", name: "P.J.", label: "Verified Buyer", rating: 5 },
+  { id: "r3", quote: "It tastes sooooo good. I was satisfied at the fact that it didn't leave any after taste.", name: "Shakerra", label: "Verified Buyer", rating: 5 },
 ];
 
 export function MarginLabBlock() {
   const attributes = useAttributes();
   const shop = useShop();
   const [content, setContent] = useState(null);
-  const [isControl, setIsControl] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   const shopDomain = shop?.myshopifyDomain ?? "";
+  // Read block_id from extension settings (set per-instance in checkout editor)
+  const configuredBlockId = String(shopify.settings?.current?.block_id ?? "").trim();
 
   useEffect(function() {
+    if (!shopDomain) return;
     let cancelled = false;
-
-    // Build URL — if no domain yet (editor), use empty string (API will use fallback)
-    const domain = shopDomain || "";
 
     function mlFetch(url, cb) {
       try {
         if (typeof fetch === "function") {
-          fetch(url, { headers: domain ? { "X-Shop-Domain": domain } : {} })
+          fetch(url, { headers: { "X-Shop-Domain": shopDomain } })
             .then(function(r) { return r.ok ? r.json() : null; })
             .then(cb)
             .catch(function() { cb(null); });
@@ -46,7 +46,7 @@ export function MarginLabBlock() {
       try {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url);
-        if (domain) xhr.setRequestHeader("X-Shop-Domain", domain);
+        xhr.setRequestHeader("X-Shop-Domain", shopDomain);
         xhr.onload = function() {
           try { cb(xhr.status >= 200 && xhr.status < 300 ? JSON.parse(xhr.responseText) : null); }
           catch (_) { cb(null); }
@@ -58,85 +58,63 @@ export function MarginLabBlock() {
       } catch (_) { cb(null); }
     }
 
-    const configUrl = domain
-      ? APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(domain)
-      : null;
-
-    if (!configUrl) return; // no domain = editor without shop context, skip
-
-    mlFetch(configUrl, function(config) {
+    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), function(config) {
       if (cancelled || !config) return;
 
-      const blocks = config.checkoutBlocks || [];
-      if (!blocks.length) return;
+      const allBlocks = config.checkoutBlocks || [];
+      if (!allBlocks.length) return;
 
-      // Build a set of ALL block IDs that are in running A/B tests
-      const testBlockIds = new Set();
+      // Find the target block:
+      // 1. If block_id is configured → use that specific block
+      // 2. Otherwise → use the first available block
+      const targetBlock = configuredBlockId
+        ? allBlocks.find(function(b) { return b.id === configuredBlockId; })
+        : allBlocks[0];
+
+      if (!targetBlock || !targetBlock.content) return;
+
+      // Check if this block is part of a running A/B test
       const runningTests = (config.experiments || []).filter(function(e) {
         return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
       });
 
-      runningTests.forEach(function(exp) {
-        (exp.variants || []).forEach(function(v) {
-          (v.checkoutBlockIds || []).forEach(function(id) {
-            testBlockIds.add(id);
-          });
+      const testForBlock = runningTests.find(function(exp) {
+        return exp.variants.some(function(v) {
+          return v.checkoutBlockIds && v.checkoutBlockIds.includes(targetBlock.id);
         });
       });
 
-      // For each active block, decide if/how to show it
-      for (const block of blocks) {
-        const isInTest = testBlockIds.has(block.id);
-
-        if (!isInTest) {
-          // Standalone block (not in any test) → always show
-          if (!cancelled && block.content) {
-            setContent(block.content);
-            setIsControl(false);
-          }
-          return;
-        }
-
-        // Block is in a test → find which experiment and check assignment
-        const experiment = runningTests.find(function(exp) {
-          return exp.variants.some(function(v) {
-            return v.checkoutBlockIds && v.checkoutBlockIds.includes(block.id);
-          });
-        });
-        if (!experiment) continue;
-
-        // Read EXPLICIT assignment from cart attributes (set by storefront runtime)
+      if (testForBlock) {
+        // Block is in a test — check explicit cart attribute assignment
         const expAttr = attributes.find(function(a) {
           return a && a.key && a.key.startsWith("_ml_exp_");
         });
 
         if (expAttr) {
-          // Visitor has an explicit assignment from the storefront
-          const assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
-          if (assignedVariant && assignedVariant.isControl) {
-            // Explicitly assigned to control → show nothing
-            if (!cancelled) setIsControl(true);
+          const assigned = testForBlock.variants.find(function(v) { return v.key === expAttr.value; });
+          if (assigned && assigned.isControl) {
+            // Explicitly assigned to control → hide this block
+            if (!cancelled) setHidden(true);
             return;
           }
-          // Explicitly assigned to variant → show the block
+          // Explicitly assigned to variant → show
         }
-        // No explicit assignment (editor, new visitor) → show the block by default
+        // No explicit assignment (editor, new visitor without storefront attribution) → show by default
+      }
 
-        if (!cancelled && block.content) {
-          setContent(block.content);
-          setIsControl(false);
-        }
-        return;
+      if (!cancelled) {
+        setContent(targetBlock.content);
+        setHidden(false);
       }
     });
 
     return function() { cancelled = true; };
-  }, [shopDomain, JSON.stringify(attributes)]);
+  }, [shopDomain, configuredBlockId, JSON.stringify(attributes)]);
 
-  // Explicitly control group = show nothing
-  if (isControl) return null;
+  // Explicitly in control group → show nothing
+  if (hidden) return null;
 
-  // No content yet (loading) = show nothing
+  // Still loading → show nothing
   if (!content) return null;
 
   const badges = (content.badges && content.badges.length)

@@ -9,3 +9,10 @@ type = "ui_extension"
 [[extensions.targeting]]
 module = "./src/Checkout.jsx"
 target = "purchase.checkout.block.render"
+
+[extensions.settings]
+  [[extensions.settings.fields]]
+  key = "block_id"
+  type = "single_line_text_field"
+  name = "Block ID"
+  description = "ID of the specific checkout block to show. Leave blank to use the first available active block."
