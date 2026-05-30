@@ -19,51 +19,69 @@ export function MarginLabBlock() {
     var shopDomain = "";
     try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
 
-    fetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), {
-      headers: { "X-Shop-Domain": shopDomain },
-    })
-      .then(function(r) { return r.ok ? r.json() : null; })
-      .then(function(config) {
-        if (cancelled || !config) return;
+    function mlFetch(url, headers, cb) {
+      // Try native fetch first, fall back to XHR
+      try {
+        if (typeof fetch === "function") {
+          fetch(url, { headers: headers })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(cb)
+            .catch(function() { cb(null); });
+          return;
+        }
+      } catch(_) {}
+      // XHR fallback
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url);
+        Object.keys(headers).forEach(function(k) { xhr.setRequestHeader(k, headers[k]); });
+        xhr.onload = function() {
+          try { cb(xhr.status >= 200 && xhr.status < 300 ? JSON.parse(xhr.responseText) : null); }
+          catch(_) { cb(null); }
+        };
+        xhr.onerror = function() { cb(null); };
+        xhr.send();
+      } catch(_) { cb(null); }
+    }
 
-        var experiment = (config.experiments || []).find(function(e) {
-          return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
-        });
-        if (!experiment || !experiment.variants || !experiment.variants.length) return;
+    var hdrs = { "X-Shop-Domain": shopDomain };
 
-        // Find variant_a (non-control with block IDs)
-        var variant = experiment.variants.find(function(v) {
-          return !v.isControl && v.checkoutBlockIds && v.checkoutBlockIds.length > 0;
-        });
-        if (!variant) return;
+    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), hdrs, function(config) {
+      if (cancelled || !config) return;
 
-        // Try cart attributes first to respect storefront assignment
-        var assignedVariant = null;
-        try {
-          var attrsA = shopify.attributes?.value;
-          var attrsB = shopify.attributes?.current;
-          var attrs = Array.isArray(attrsA) ? attrsA : Array.isArray(attrsB) ? attrsB : [];
-          var expAttr = attrs.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
-          if (expAttr) {
-            assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
+      var experiment = (config.experiments || []).find(function(e) {
+        return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
+      });
+      if (!experiment || !experiment.variants || !experiment.variants.length) return;
+
+      // Try cart attributes first to respect storefront assignment
+      var assignedVariant = null;
+      try {
+        var attrsA = shopify.attributes?.value;
+        var attrsB = shopify.attributes?.current;
+        var attrs = Array.isArray(attrsA) ? attrsA : Array.isArray(attrsB) ? attrsB : [];
+        var expAttr = attrs.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
+        if (expAttr) {
+          assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
+        }
+      } catch(_) {}
+
+      // Fallback: pick first non-control variant with block IDs
+      var targetVariant = assignedVariant || experiment.variants.find(function(v) {
+        return !v.isControl && v.checkoutBlockIds && v.checkoutBlockIds.length > 0;
+      });
+      if (!targetVariant || !targetVariant.checkoutBlockIds || !targetVariant.checkoutBlockIds.length) return;
+
+      mlFetch(
+        APP_URL + "/api/runtime/checkout-blocks?experimentId=" + experiment.id.slice(0, 8) + "&variantKey=" + targetVariant.key,
+        hdrs,
+        function(data) {
+          if (!cancelled && data && data.block && data.block.content) {
+            setContent(data.block.content);
           }
-        } catch(_) {}
-
-        var targetVariant = assignedVariant || variant;
-        if (!targetVariant.checkoutBlockIds || !targetVariant.checkoutBlockIds.length) return;
-
-        fetch(APP_URL + "/api/runtime/checkout-blocks?experimentId=" + experiment.id.slice(0, 8) + "&variantKey=" + targetVariant.key, {
-          headers: { "X-Shop-Domain": shopDomain },
-        })
-          .then(function(r) { return r.ok ? r.json() : null; })
-          .then(function(data) {
-            if (!cancelled && data && data.block && data.block.content) {
-              setContent(data.block.content);
-            }
-          })
-          .catch(function() {});
-      })
-      .catch(function() {});
+        }
+      );
+    });
 
     return function() { cancelled = true; };
   }, []);
