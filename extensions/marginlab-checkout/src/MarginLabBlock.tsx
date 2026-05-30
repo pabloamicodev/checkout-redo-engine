@@ -76,16 +76,7 @@ export function MarginLabBlock() {
         ?? "";
     } catch (_) {}
 
-    function mlFetch(url: string, cb: (data: unknown) => void): void {
-      try {
-        if (typeof fetch === "function") {
-          fetch(url, { headers: { "X-Shop-Domain": shopDomain } })
-            .then((r) => (r.ok ? r.json() : null))
-            .then(cb)
-            .catch(() => cb(null));
-          return;
-        }
-      } catch (_) {}
+    function xhrFetch(url: string, cb: (data: unknown) => void): void {
       try {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url);
@@ -95,8 +86,26 @@ export function MarginLabBlock() {
           catch (_) { cb(null); }
         };
         xhr.onerror = () => cb(null);
+        xhr.ontimeout = () => cb(null);
+        xhr.timeout = 8000;
         xhr.send();
       } catch (_) { cb(null); }
+    }
+
+    function mlFetch(url: string, cb: (data: unknown) => void): void {
+      // Try fetch first; fall back to XHR if fetch is unavailable or fails
+      let fetchAttempted = false;
+      try {
+        if (typeof fetch === "function") {
+          fetchAttempted = true;
+          fetch(url, { headers: { "X-Shop-Domain": shopDomain } })
+            .then((r) => (r.ok ? r.json() : null))
+            .then(cb)
+            .catch(() => xhrFetch(url, cb)); // on fetch rejection → XHR
+          return;
+        }
+      } catch (_) {}
+      if (!fetchAttempted) xhrFetch(url, cb);
     }
 
     // djb2 hash for consistent 50/50 assignment when cart attrs unavailable
