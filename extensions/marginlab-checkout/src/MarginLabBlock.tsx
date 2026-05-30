@@ -105,32 +105,23 @@ export function MarginLabBlock() {
         });
         if (!experiment) continue;
 
-        // Read assignment from cart attributes (useAttributes hook)
+        // Read EXPLICIT assignment from cart attributes (set by storefront runtime)
         const expAttr = attributes.find(function(a) {
           return a && a.key && a.key.startsWith("_ml_exp_");
         });
 
-        let assignedVariant = null;
         if (expAttr) {
-          assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
+          // Visitor has an explicit assignment from the storefront
+          const assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
+          if (assignedVariant && assignedVariant.isControl) {
+            // Explicitly assigned to control → show nothing
+            if (!cancelled) setIsControl(true);
+            return;
+          }
+          // Explicitly assigned to variant → show the block
         }
+        // No explicit assignment (editor, new visitor) → show the block by default
 
-        // No cart attribute → fallback hash (shopDomain + experimentId = consistent per shop)
-        if (!assignedVariant) {
-          let h = 5381;
-          const seed = domain + experiment.id;
-          for (let i = 0; i < seed.length; i++) h = ((h << 5) + h) ^ seed.charCodeAt(i);
-          const idx = Math.abs(h) % experiment.variants.length;
-          assignedVariant = experiment.variants[idx];
-        }
-
-        if (assignedVariant && assignedVariant.isControl) {
-          // Explicitly in control → show nothing
-          if (!cancelled) setIsControl(true);
-          return;
-        }
-
-        // In variant with this block → show it
         if (!cancelled && block.content) {
           setContent(block.content);
           setIsControl(false);
