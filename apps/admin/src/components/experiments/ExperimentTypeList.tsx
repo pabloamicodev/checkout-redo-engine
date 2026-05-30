@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Plus, ExternalLink, ChevronLeft, ChevronRight, FlaskConical, Loader2 } from "lucide-react";
+import { Plus, ExternalLink, ChevronLeft, ChevronRight, FlaskConical, Loader2, Trash2 } from "lucide-react";
 import { getStatusTheme } from "@/lib/design/statusTheme";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/experiments/ExperimentActionsMenu";
 
 // ---------------------------------------------------------------------------
 // Status action definitions
@@ -114,6 +115,8 @@ export function ExperimentTypeList({
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const runningCount = items.filter((i) => i.status === "RUNNING").length;
@@ -166,7 +169,33 @@ export function ExperimentTypeList({
     }
   }
 
+  async function doDelete() {
+    if (!deleteTarget) return;
+    const { id, name } = deleteTarget;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`${apiPath}/${id}/delete`, { method: "POST" });
+      if (!res.ok) {
+        const d = (await res.json()) as { error?: string };
+        throw new Error(d.error || "Delete failed");
+      }
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      setTotal((prev) => prev - 1);
+      toast.success(`"${name}" was permanently deleted.`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `Could not delete "${name}": ${err.message}`
+          : `Failed to delete test. Please try again.`
+      );
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTarget(null);
+    }
+  }
+
   return (
+    <>
     <div className="px-6 py-6 space-y-5">
       {/* Page header with type accent */}
       <div
@@ -350,6 +379,15 @@ export function ExperimentTypeList({
                           >
                             View <ExternalLink className="w-3 h-3" />
                           </Link>
+                          {/* Delete button */}
+                          <button
+                            onClick={() => setDeleteTarget({ id: exp.id, name: exp.name })}
+                            disabled={!!actionLoading[exp.id]}
+                            className="inline-flex items-center p-1 rounded text-neutral-300 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Delete test"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -383,5 +421,16 @@ export function ExperimentTypeList({
         )}
       </div>
     </div>
+
+    {deleteTarget && (
+      <ConfirmDialog
+        title="Delete this test?"
+        body={`This will permanently delete "${deleteTarget.name}" and all its data — visitors, assignments, and results. This cannot be undone.`}
+        confirmLabel={deleteLoading ? "Deleting…" : "Delete permanently"}
+        onConfirm={doDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    )}
+    </>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Play, Pause, CheckCircle2, Copy, Archive } from "lucide-react";
+import { Play, Pause, CheckCircle2, Copy, Archive, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDestructiveModal } from "@/components/ui/Modal";
 
@@ -13,6 +13,8 @@ interface Props {
   accentHex?: string;
   /** Base API path for action endpoints. Defaults to /api/experiments */
   apiBase?: string;
+  /** Where to redirect after a successful delete. Defaults to the non-/api equivalent of apiBase. */
+  listPath?: string;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -21,30 +23,38 @@ const ACTION_LABELS: Record<string, string> = {
   complete: "Test completed",
   archive: "Test archived",
   duplicate: "Test duplicated",
+  delete: "Test deleted permanently",
 };
 
-export function ExperimentActions({ experimentId, status, accentHex, apiBase = "/api/experiments" }: Props) {
+export function ExperimentActions({ experimentId, status, accentHex, apiBase = "/api/experiments", listPath }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [loading, setLoading] = useState<string | null>(null);
 
+  // Derive the list page path from apiBase if not explicitly provided
+  // e.g. /api/checkout-tests → /checkout-tests, /api/experiments → /experiments
+  const resolvedListPath = listPath ?? apiBase.replace(/^\/api\//, "/");
+
   // Guard modal state
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const canLaunch = ["DRAFT", "QA", "PREVIEW", "PAUSED", "SCHEDULED"].includes(status);
   const canPause = status === "RUNNING";
   const canComplete = ["RUNNING", "PAUSED"].includes(status);
   const canArchive = !["RUNNING"].includes(status);
 
-  async function doAction(action: "launch" | "pause" | "complete" | "archive" | "duplicate") {
+  async function doAction(action: "launch" | "pause" | "complete" | "archive" | "duplicate" | "delete") {
     setLoading(action);
     try {
       const res = await fetch(`${apiBase}/${experimentId}/${action}`, { method: "POST" });
       const data = await res.json() as { error?: string; experiment?: { id: string } };
       if (!res.ok) throw new Error(data.error ?? "Action failed");
       toast.success(ACTION_LABELS[action] ?? "Done");
-      if (action === "duplicate" && data.experiment) {
+      if (action === "delete") {
+        router.push(resolvedListPath);
+      } else if (action === "duplicate" && data.experiment) {
         router.push(`/experiments/${data.experiment.id}`);
       } else {
         router.refresh();
@@ -64,6 +74,11 @@ export function ExperimentActions({ experimentId, status, accentHex, apiBase = "
   async function handleArchiveConfirm() {
     setArchiveModalOpen(false);
     await doAction("archive");
+  }
+
+  async function handleDeleteConfirm() {
+    setDeleteModalOpen(false);
+    await doAction("delete");
   }
 
   return (
@@ -91,6 +106,18 @@ export function ExperimentActions({ experimentId, status, accentHex, apiBase = "
             Archive
           </Button>
         )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />}
+          onClick={() => setDeleteModalOpen(true)}
+          loading={loading === "delete"}
+          disabled={loading !== null}
+          className="text-rose-500 hover:bg-rose-50"
+        >
+          Delete
+        </Button>
 
         {canLaunch && (
           <button
@@ -155,6 +182,18 @@ export function ExperimentActions({ experimentId, status, accentHex, apiBase = "
         confirmLabel="Archive test"
         confirmVariant="danger"
         loading={loading === "archive"}
+      />
+
+      {/* Delete guard modal */}
+      <ConfirmDestructiveModal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete this test?"
+        description="This will permanently delete the test and all its data — visitors, assignments, and results. This cannot be undone."
+        confirmLabel="Delete permanently"
+        confirmVariant="danger"
+        loading={loading === "delete"}
       />
     </>
   );
