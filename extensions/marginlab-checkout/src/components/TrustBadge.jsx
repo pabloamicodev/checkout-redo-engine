@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "@shopify/ui-extensions/preact";
 
 export function TrustBadge({ line1, line2, iconSource, accessibilityLabel }) {

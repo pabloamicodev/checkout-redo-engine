@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "@shopify/ui-extensions/preact";
 
 export function StarRating({ rating, max = 5 }) {

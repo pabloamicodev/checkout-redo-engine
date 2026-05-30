@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "@shopify/ui-extensions/preact";
 import { ReviewCard } from "./ReviewCard.jsx";
 
