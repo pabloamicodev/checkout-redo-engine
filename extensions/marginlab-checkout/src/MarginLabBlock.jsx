@@ -21,18 +21,31 @@ export function MarginLabBlock() {
     if (!appUrl) return;
     let cancelled = false;
 
-    // Read cart attributes to find ML experiment assignment
-    // shopify.attributes is available in checkout extension context
-    const attrs = (() => {
-      try {
-        const raw = shopify.attributes?.current ?? shopify.checkout?.attributes ?? {};
-        return /** @type {Record<string, string>} */ (raw);
-      } catch (_) { return {}; }
-    })();
+    // Read cart attributes — shopify.attributes returns ReadonlyArray<{key, value}>
+    // Option A: try .value (newer 2025-10+ signal API)
+    var attrsRaw = null;
+    try {
+      var val = shopify.attributes?.value;
+      if (Array.isArray(val)) attrsRaw = val;
+    } catch (_) {}
 
-    const expAttrKey = Object.keys(attrs).find((k) => k.startsWith("_ml_exp_"));
-    const variantKey = expAttrKey ? attrs[expAttrKey] : null;
-    const experimentShortId = expAttrKey ? expAttrKey.replace("_ml_exp_", "") : null;
+    // Option B fallback: try .current (older but still valid API)
+    if (!attrsRaw) {
+      try {
+        var curr = shopify.attributes?.current;
+        if (Array.isArray(curr)) {
+          attrsRaw = curr;
+        } else if (curr && typeof curr === "object") {
+          // Handle unexpected object format: convert {key: value} → [{key, value}]
+          attrsRaw = Object.entries(curr).map(function(e) { return { key: e[0], value: e[1] }; });
+        }
+      } catch (_) {}
+    }
+
+    var attrs = /** @type {Array<{key: string, value: string}>} */ (attrsRaw ?? []);
+    var expAttr = attrs.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
+    var variantKey = expAttr ? expAttr.value : null;
+    var experimentShortId = expAttr ? expAttr.key.replace("_ml_exp_", "") : null;
 
     // If we have an assignment from the storefront, fetch the block directly
     if (experimentShortId && variantKey) {
