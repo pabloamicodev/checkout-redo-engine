@@ -20,7 +20,7 @@ export default async function CheckoutBlocksPage() {
     ? await service.list(shop.id, { limit: 100 })
     : { items: [] };
 
-  const rows = items.map((b) => ({
+  const rows = items.map((b: typeof items[number]) => ({
     id: b.id,
     name: b.name,
     type: b.type,
