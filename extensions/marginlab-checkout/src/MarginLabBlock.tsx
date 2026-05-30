@@ -169,7 +169,10 @@ export function MarginLabBlock() {
     return () => { cancelled = true; };
   }, []);
 
-  const badges: Badge[] = content?.badges?.length
+  // No content = control group (or config not yet loaded) → render nothing
+  if (!content) return null;
+
+  const badges: Badge[] = content.badges?.length
     ? content.badges.map((b, i) => ({
         id: b.id ?? `b${i}`,
         line1: b.label ?? b.line1 ?? "",
@@ -179,7 +182,7 @@ export function MarginLabBlock() {
       }))
     : DEFAULT_BADGES;
 
-  const reviews: Review[] = content?.reviews?.length
+  const reviews: Review[] = content.reviews?.length
     ? content.reviews.map((r, i) => ({
         id: r.id ?? `r${i}`,
         quote: r.quote ?? "",
