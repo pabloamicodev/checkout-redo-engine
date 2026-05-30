@@ -69,6 +69,7 @@ declare const shopify: {
 
 export function MarginLabBlock() {
   const [content, setContent] = useState<BlockContent | null>(null);
+  const [debug, setDebug] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +82,8 @@ export function MarginLabBlock() {
         ?? shop?.myshopifyDomain
         ?? "";
     } catch (_) {}
+
+    setDebug("domain:" + (shopDomain || "EMPTY"));
 
     function xhrFetch(url: string, cb: (data: unknown) => void): void {
       try {
@@ -169,8 +172,8 @@ export function MarginLabBlock() {
     return () => { cancelled = true; };
   }, []);
 
-  // No content = control group (or config not yet loaded) → render nothing
-  if (!content) return null;
+  // No content = control group (or config not yet loaded) → show debug then nothing
+  if (!content) return debug ? <s-text>{debug}</s-text> : null;
 
   const badges: Badge[] = content.badges?.length
     ? content.badges.map((b, i) => ({
