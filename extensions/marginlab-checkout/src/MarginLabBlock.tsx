@@ -25,8 +25,18 @@ export function MarginLabBlock() {
   const [content, setContent] = useState(null);
   const [hidden, setHidden] = useState(false);
 
-  const shopDomain = shop?.myshopifyDomain ?? "";
+  // Try useShop() hook first, fall back to shopify.shop global (like the old working version)
+  let shopDomain = shop?.myshopifyDomain ?? "";
+  if (!shopDomain) { try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {} }
   const configuredBlockId = String(shopify.settings?.current?.block_id ?? "").trim();
+
+  // Also try to read attributes from shopify global as fallback for useAttributes()
+  let extraAttrs = [];
+  try {
+    const a = shopify.attributes?.value ?? shopify.attributes?.current ?? [];
+    if (Array.isArray(a)) extraAttrs = a;
+  } catch(_) {}
+  const allAttributes = attributes.length ? attributes : extraAttrs;
 
   useEffect(function() {
     // No shopDomain = editor without shop context → skip fetch, defaults will render
@@ -83,7 +93,7 @@ export function MarginLabBlock() {
       });
 
       if (testForBlock) {
-        const expAttr = attributes.find(function(a) {
+        const expAttr = allAttributes.find(function(a) {
           return a && a.key && a.key.startsWith("_ml_exp_");
         });
         if (expAttr) {
@@ -103,7 +113,7 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, [shopDomain, configuredBlockId, JSON.stringify(attributes)]);
+  }, [shopDomain, configuredBlockId, JSON.stringify(allAttributes)]);
 
   // Explicitly assigned to control → show nothing
   if (hidden) return null;
