@@ -19,19 +19,10 @@ const DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
-  // Access Preact signals in component body — creates reactive subscriptions
-  // shopify.attributes.value and shopify.shop.value are signals that update
-  // the component when their values change
-  var attrs = [];
-  try { attrs = shopify.attributes?.value ?? []; } catch(_) {}
-
-  var shopDomain = "";
-  try {
-    // Try signal .value first, fall back to direct property (older pattern)
-    shopDomain = shopify.shop?.value?.myshopifyDomain
-      ?? shopify.shop?.myshopifyDomain
-      ?? "";
-  } catch(_) {}
+  // Exact Shopify docs pattern — shopify.attributes.value and shopify.shop
+  // are Preact signals, accessed directly in render for reactive subscriptions
+  var attrs = shopify.attributes.value;          // per Shopify docs
+  var shopDomain = shopify.shop.myshopifyDomain; // per Shopify docs
 
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
