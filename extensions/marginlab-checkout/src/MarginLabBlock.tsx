@@ -1,7 +1,7 @@
 // @ts-nocheck
 import "@shopify/ui-extensions/preact";
 import { useState, useEffect } from "preact/hooks";
-import { useAttributes, useShop } from "@shopify/ui-extensions/checkout/preact";
+import { useAttributes } from "@shopify/ui-extensions/checkout/preact";
 import { TrustBadgeList } from "./components/TrustBadgeList.jsx";
 import { ReviewList } from "./components/ReviewList.jsx";
 
@@ -20,29 +20,24 @@ const DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
+  // useAttributes() is a Preact hook — reactive, updates when cart attrs change
   const attributes = useAttributes();
-  const shop = useShop();
   const [content, setContent] = useState(null);
   const [hidden, setHidden] = useState(false);
 
-  // Try useShop() hook first, fall back to shopify.shop global (like the old working version)
-  let shopDomain = shop?.myshopifyDomain ?? "";
-  if (!shopDomain) { try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {} }
-  const configuredBlockId = String(shopify.settings?.current?.block_id ?? "").trim();
-
-  // Also try to read attributes from shopify global as fallback for useAttributes()
-  let extraAttrs = [];
-  try {
-    const a = shopify.attributes?.value ?? shopify.attributes?.current ?? [];
-    if (Array.isArray(a)) extraAttrs = a;
-  } catch(_) {}
-  const allAttributes = attributes.length ? attributes : extraAttrs;
-
   useEffect(function() {
-    // No shopDomain = editor without shop context → skip fetch, defaults will render
-    if (!shopDomain) return;
+    var cancelled = false;
 
-    let cancelled = false;
+    // Read shopDomain INSIDE the effect — shopify.shop is populated after mount
+    var shopDomain = "";
+    try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
+
+    // Read configured block_id from extension settings INSIDE the effect
+    var configuredBlockId = "";
+    try { configuredBlockId = String(shopify.settings?.current?.block_id ?? "").trim(); } catch(_) {}
+
+    // No shopDomain = editor without real shop → skip fetch, defaults will render
+    if (!shopDomain) return;
 
     function mlFetch(url, cb) {
       try {
@@ -55,7 +50,7 @@ export function MarginLabBlock() {
         }
       } catch (_) {}
       try {
-        const xhr = new XMLHttpRequest();
+        var xhr = new XMLHttpRequest();
         xhr.open("GET", url);
         xhr.setRequestHeader("X-Shop-Domain", shopDomain);
         xhr.onload = function() {
@@ -72,38 +67,47 @@ export function MarginLabBlock() {
     mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), function(config) {
       if (cancelled || !config) return;
 
-      const allBlocks = config.checkoutBlocks || [];
+      var allBlocks = config.checkoutBlocks || [];
       if (!allBlocks.length) return;
 
-      const targetBlock = configuredBlockId
+      // Use configured block_id or first available block
+      var targetBlock = configuredBlockId
         ? allBlocks.find(function(b) { return b.id === configuredBlockId; })
         : allBlocks[0];
 
       if (!targetBlock || !targetBlock.content) return;
 
-      // Check A/B assignment only if block is part of a running test
-      const runningTests = (config.experiments || []).filter(function(e) {
+      // Check A/B assignment only if this block is in a running test
+      var runningTests = (config.experiments || []).filter(function(e) {
         return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
       });
 
-      const testForBlock = runningTests.find(function(exp) {
+      var testForBlock = runningTests.find(function(exp) {
         return exp.variants.some(function(v) {
           return v.checkoutBlockIds && v.checkoutBlockIds.includes(targetBlock.id);
         });
       });
 
       if (testForBlock) {
-        const expAttr = allAttributes.find(function(a) {
+        // Read cart attributes — try hook result then shopify global fallback
+        var cartAttrs = attributes.length ? attributes : [];
+        try {
+          var ga = shopify.attributes?.value ?? shopify.attributes?.current ?? [];
+          if (!cartAttrs.length && Array.isArray(ga)) cartAttrs = ga;
+        } catch(_) {}
+
+        var expAttr = cartAttrs.find(function(a) {
           return a && a.key && a.key.startsWith("_ml_exp_");
         });
+
         if (expAttr) {
-          const assigned = testForBlock.variants.find(function(v) { return v.key === expAttr.value; });
+          var assigned = testForBlock.variants.find(function(v) { return v.key === expAttr.value; });
           if (assigned && assigned.isControl) {
             if (!cancelled) setHidden(true);
             return;
           }
         }
-        // No explicit assignment → show by default (editor, new visitor)
+        // No explicit assignment (editor, new visitor) → show by default
       }
 
       if (!cancelled) {
@@ -113,19 +117,19 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, [shopDomain, configuredBlockId, JSON.stringify(allAttributes)]);
+  }, [JSON.stringify(attributes)]); // re-run when cart attributes change
 
   // Explicitly assigned to control → show nothing
   if (hidden) return null;
 
-  // No shopDomain or content not loaded yet → use defaults
-  const badges = (content && content.badges && content.badges.length)
+  // Build badges and reviews: use API content if loaded, defaults otherwise
+  var badges = (content && content.badges && content.badges.length)
     ? content.badges.map(function(b, i) {
         return { id: b.id || ("b" + i), line1: b.label || b.line1 || "", line2: b.sublabel || b.line2 || "", iconSource: b.iconUrl || b.iconSource || "", accessibilityLabel: b.alt || b.label || "" };
       })
     : DEFAULT_BADGES;
 
-  const reviews = (content && content.reviews && content.reviews.length)
+  var reviews = (content && content.reviews && content.reviews.length)
     ? content.reviews.map(function(r, i) {
         return { id: r.id || ("r" + i), quote: r.quote || "", name: r.name || "", label: r.label || "Verified Buyer", rating: Math.min(5, Math.max(1, Number(r.rating || 5))) };
       })
