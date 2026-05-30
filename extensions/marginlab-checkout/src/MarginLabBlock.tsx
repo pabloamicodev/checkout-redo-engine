@@ -85,6 +85,15 @@ export function MarginLabBlock() {
       } catch (_) { cb(null); }
     }
 
+    // djb2 hash for consistent 50/50 assignment when cart attrs unavailable
+    const sessionKey = String(Math.random());
+    function hashToIndex(str: string, n: number): number {
+      if (!str || n <= 1) return 0;
+      let h = 5381;
+      for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+      return Math.abs(h) % n;
+    }
+
     mlFetch(`${APP_URL}/api/runtime/config?shop=${encodeURIComponent(shopDomain)}`, (raw) => {
       if (cancelled) return;
       const config = raw as Config | null;
@@ -95,6 +104,7 @@ export function MarginLabBlock() {
       );
       if (!experiment?.variants?.length) return;
 
+      // Try cart attributes first (storefront assignment = most accurate)
       let assignedVariant: Variant | undefined;
       try {
         const attrsA = shopify.attributes?.value;
@@ -106,10 +116,18 @@ export function MarginLabBlock() {
         }
       } catch (_) {}
 
-      const targetVariant = assignedVariant ?? experiment.variants.find(
-        (v) => !v.isControl && v.checkoutBlockIds && v.checkoutBlockIds.length > 0
-      );
-      if (!targetVariant?.checkoutBlockIds?.length) return;
+      // Fallback: consistent hash for this session (same split as storefront)
+      if (!assignedVariant) {
+        const idx = hashToIndex(sessionKey, experiment.variants.length);
+        assignedVariant = experiment.variants[idx];
+      }
+
+      // Control = show nothing
+      if (!assignedVariant || assignedVariant.isControl) return;
+
+      // Variant with block IDs = show the block
+      const targetVariant = assignedVariant;
+      if (!targetVariant.checkoutBlockIds?.length) return;
 
       mlFetch(
         `${APP_URL}/api/runtime/checkout-blocks?experimentId=${experiment.id.slice(0, 8)}&variantKey=${targetVariant.key}`,
