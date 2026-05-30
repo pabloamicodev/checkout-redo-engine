@@ -19,20 +19,18 @@ var DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
-  // shopify.attributes.value — Preact signal, read in render for reactivity
-  // This triggers re-render when cart attributes change
-  var attrs = [];
-  try { attrs = shopify.attributes.value ?? []; } catch(_) {}
-
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
 
   useEffect(function() {
     var cancelled = false;
 
-    // shopDomain read INSIDE effect — populated by mount time (confirmed working)
+    // Read everything inside the effect — all signals populated at mount time
     var shopDomain = "";
     try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
+
+    var attrs = [];
+    try { attrs = shopify.attributes.value ?? []; } catch(_) {}
 
     if (!shopDomain) return; // editor without real shop context
 
@@ -99,7 +97,7 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, [JSON.stringify(attrs)]); // re-run when cart attributes change
+  }, []); // run once at mount — signals populated by then
 
   if (hidden) return null;
 
