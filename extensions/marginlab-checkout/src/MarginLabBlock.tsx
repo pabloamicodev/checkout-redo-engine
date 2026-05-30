@@ -1,7 +1,6 @@
 // @ts-nocheck
 import "@shopify/ui-extensions/preact";
 import { useState, useEffect } from "preact/hooks";
-import { useAttributes } from "@shopify/ui-extensions/checkout/preact";
 import { TrustBadgeList } from "./components/TrustBadgeList.jsx";
 import { ReviewList } from "./components/ReviewList.jsx";
 
@@ -20,29 +19,38 @@ const DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
-  // useAttributes() is a Preact hook — reactive, updates when cart attrs change
-  const attributes = useAttributes();
-  const [content, setContent] = useState(null);
-  const [hidden, setHidden] = useState(false);
+  // Access Preact signals in component body — creates reactive subscriptions
+  // shopify.attributes.value and shopify.shop.value are signals that update
+  // the component when their values change
+  var attrs = [];
+  try { attrs = shopify.attributes?.value ?? []; } catch(_) {}
+
+  var shopDomain = "";
+  try {
+    // Try signal .value first, fall back to direct property (older pattern)
+    shopDomain = shopify.shop?.value?.myshopifyDomain
+      ?? shopify.shop?.myshopifyDomain
+      ?? "";
+  } catch(_) {}
+
+  var [content, setContent] = useState(null);
+  var [hidden, setHidden] = useState(false);
 
   useEffect(function() {
     var cancelled = false;
 
-    // Read shopDomain INSIDE the effect — shopify.shop is populated after mount
-    var shopDomain = "";
-    try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
-
-    // Read configured block_id from extension settings INSIDE the effect
+    // Re-read inside effect to get latest value
+    var domain = shopDomain;
     var configuredBlockId = "";
     try { configuredBlockId = String(shopify.settings?.current?.block_id ?? "").trim(); } catch(_) {}
 
-    // No shopDomain = editor without real shop → skip fetch, defaults will render
-    if (!shopDomain) return;
+    // No domain = editor or initial load without shop context → defaults render
+    if (!domain) return;
 
     function mlFetch(url, cb) {
       try {
         if (typeof fetch === "function") {
-          fetch(url, { headers: { "X-Shop-Domain": shopDomain } })
+          fetch(url, { headers: { "X-Shop-Domain": domain } })
             .then(function(r) { return r.ok ? r.json() : null; })
             .then(cb)
             .catch(function() { cb(null); });
@@ -52,7 +60,7 @@ export function MarginLabBlock() {
       try {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", url);
-        xhr.setRequestHeader("X-Shop-Domain", shopDomain);
+        xhr.setRequestHeader("X-Shop-Domain", domain);
         xhr.onload = function() {
           try { cb(xhr.status >= 200 && xhr.status < 300 ? JSON.parse(xhr.responseText) : null); }
           catch (_) { cb(null); }
@@ -64,20 +72,19 @@ export function MarginLabBlock() {
       } catch (_) { cb(null); }
     }
 
-    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), function(config) {
+    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(domain), function(config) {
       if (cancelled || !config) return;
 
       var allBlocks = config.checkoutBlocks || [];
       if (!allBlocks.length) return;
 
-      // Use configured block_id or first available block
       var targetBlock = configuredBlockId
         ? allBlocks.find(function(b) { return b.id === configuredBlockId; })
         : allBlocks[0];
 
       if (!targetBlock || !targetBlock.content) return;
 
-      // Check A/B assignment only if this block is in a running test
+      // Check A/B assignment only if block is part of a running test
       var runningTests = (config.experiments || []).filter(function(e) {
         return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
       });
@@ -89,17 +96,10 @@ export function MarginLabBlock() {
       });
 
       if (testForBlock) {
-        // Read cart attributes — try hook result then shopify global fallback
-        var cartAttrs = attributes.length ? attributes : [];
-        try {
-          var ga = shopify.attributes?.value ?? shopify.attributes?.current ?? [];
-          if (!cartAttrs.length && Array.isArray(ga)) cartAttrs = ga;
-        } catch(_) {}
-
-        var expAttr = cartAttrs.find(function(a) {
+        // Read explicit assignment from cart attributes (reactive signal value)
+        var expAttr = attrs.find(function(a) {
           return a && a.key && a.key.startsWith("_ml_exp_");
         });
-
         if (expAttr) {
           var assigned = testForBlock.variants.find(function(v) { return v.key === expAttr.value; });
           if (assigned && assigned.isControl) {
@@ -107,7 +107,7 @@ export function MarginLabBlock() {
             return;
           }
         }
-        // No explicit assignment (editor, new visitor) → show by default
+        // No explicit assignment → show by default
       }
 
       if (!cancelled) {
@@ -117,12 +117,10 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, [JSON.stringify(attributes)]); // re-run when cart attributes change
+  }, [shopDomain, JSON.stringify(attrs)]); // re-run when domain or attributes change
 
-  // Explicitly assigned to control → show nothing
   if (hidden) return null;
 
-  // Build badges and reviews: use API content if loaded, defaults otherwise
   var badges = (content && content.badges && content.badges.length)
     ? content.badges.map(function(b, i) {
         return { id: b.id || ("b" + i), line1: b.label || b.line1 || "", line2: b.sublabel || b.line2 || "", iconSource: b.iconUrl || b.iconSource || "", accessibilityLabel: b.alt || b.label || "" };
