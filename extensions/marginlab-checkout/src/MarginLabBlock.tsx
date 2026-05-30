@@ -39,8 +39,15 @@ interface Experiment {
   variants: Variant[];
 }
 
+interface CheckoutBlockData {
+  id: string;
+  type: string;
+  content: BlockContent;
+}
+
 interface Config {
   experiments?: Experiment[];
+  checkoutBlocks?: CheckoutBlockData[];
 }
 
 const DEFAULT_BADGES: Badge[] = [
@@ -125,19 +132,16 @@ export function MarginLabBlock() {
       // Control = show nothing
       if (!assignedVariant || assignedVariant.isControl) return;
 
-      // Variant with block IDs = show the block
+      // Variant with block IDs = find block directly in config.checkoutBlocks
       const targetVariant = assignedVariant;
       if (!targetVariant.checkoutBlockIds?.length) return;
 
-      mlFetch(
-        `${APP_URL}/api/runtime/checkout-blocks?experimentId=${experiment.id.slice(0, 8)}&variantKey=${targetVariant.key}`,
-        (raw) => {
-          const data = raw as { block?: { content?: BlockContent } } | null;
-          if (!cancelled && data?.block?.content) {
-            setContent(data.block.content);
-          }
-        }
+      const block = (config.checkoutBlocks ?? []).find(
+        (b) => targetVariant.checkoutBlockIds!.includes(b.id)
       );
+      if (!cancelled && block?.content) {
+        setContent(block.content);
+      }
     });
 
     return () => { cancelled = true; };
