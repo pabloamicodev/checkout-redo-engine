@@ -77,20 +77,30 @@ export function MarginLabBlock() {
         return;
       }
 
-      // Target: assigned non-control, or first non-control with blocks
+      // Target: assigned non-control, or first non-control variant
       var targetVariant = assignedVariant || experiment.variants.find(function(v) {
-        return !v.isControl && v.checkoutBlockIds && v.checkoutBlockIds.length > 0;
+        return !v.isControl;
       });
-      if (!targetVariant || !targetVariant.checkoutBlockIds || !targetVariant.checkoutBlockIds.length) return;
+      if (!targetVariant) return;
 
-      mlFetch(
-        APP_URL + "/api/runtime/checkout-blocks?experimentId=" + experiment.id.slice(0, 8) + "&variantKey=" + targetVariant.key,
-        function(data) {
-          if (!cancelled && data && data.block && data.block.content) {
-            setContent(data.block.content);
-          }
-        }
-      );
+      // Find block from config.checkoutBlocks using variantId (the reliable link).
+      // variant.checkoutBlockIds[] is an optional denormalized cache that may be empty
+      // even when the block exists — always prefer the direct variantId match first.
+      var allBlocks = config.checkoutBlocks || [];
+      var block = allBlocks.find(function(b) {
+        return b.variantId === targetVariant.id;
+      });
+
+      // Fallback: match via the denormalized checkoutBlockIds array
+      if (!block && targetVariant.checkoutBlockIds && targetVariant.checkoutBlockIds.length) {
+        block = allBlocks.find(function(b) {
+          return targetVariant.checkoutBlockIds.indexOf(b.id) !== -1;
+        });
+      }
+
+      if (block && block.content && !cancelled) {
+        setContent(block.content);
+      }
     });
 
     return function() { cancelled = true; };
