@@ -3,129 +3,102 @@ import { useState, useEffect } from "preact/hooks";
 import { TrustBadgeList } from "./components/TrustBadgeList.jsx";
 import { ReviewList } from "./components/ReviewList.jsx";
 
-const DEFAULT_BADGES = [
-  { id: "guarantee", line1: "30-Day Money", line2: "Back Guarantee*", iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_cftpjb.webp?v=1778721307", accessibilityLabel: "30-Day Money Back Guarantee" },
-  { id: "shipping",  line1: "Fast",          line2: "Shipping",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_1_vfx39d.webp?v=1778721307", accessibilityLabel: "Fast Shipping" },
-  { id: "secure",    line1: "Safe & Secure", line2: "Checkout",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_2_dsnu9m.webp?v=1778721307", accessibilityLabel: "Safe and Secure Checkout" },
-];
-
 var APP_URL = "https://checkout-redo-engine.vercel.app";
 
+var DEFAULT_BADGES = [
+  { id: "guarantee", line1: "30-Day Money", line2: "Back Guarantee*", iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_cftpjb.webp?v=1778721307", accessibilityLabel: "30-Day Money Back Guarantee" },
+  { id: "shipping",  line1: "Fast",         line2: "Shipping",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_1_vfx39d.webp?v=1778721307", accessibilityLabel: "Fast Shipping" },
+  { id: "secure",    line1: "Safe & Secure",line2: "Checkout",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_2_dsnu9m.webp?v=1778721307", accessibilityLabel: "Safe and Secure Checkout" },
+];
+
 export function MarginLabBlock() {
-  var appUrl = APP_URL;
-  const shopDomain = (() => { try { return shopify.shop?.myshopifyDomain ?? ""; } catch (_) { return ""; } })();
+  var [content, setContent] = useState(null);
 
-  const [content, setContent] = useState(/** @type {{ badges?: any[], reviews?: any[] } | null} */ (null));
+  useEffect(function() {
+    var cancelled = false;
+    var shopDomain = "";
+    try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
 
-  useEffect(() => {
-    if (!appUrl) return;
-    let cancelled = false;
-
-    // Read cart attributes — shopify.attributes returns ReadonlyArray<{key, value}>
-    // Option A: try .value (newer 2025-10+ signal API)
-    var attrsRaw = null;
-    try {
-      var val = shopify.attributes?.value;
-      if (Array.isArray(val)) attrsRaw = val;
-    } catch (_) {}
-
-    // Option B fallback: try .current (older but still valid API)
-    if (!attrsRaw) {
-      try {
-        var curr = shopify.attributes?.current;
-        if (Array.isArray(curr)) {
-          attrsRaw = curr;
-        } else if (curr && typeof curr === "object") {
-          // Handle unexpected object format: convert {key: value} → [{key, value}]
-          attrsRaw = Object.entries(curr).map(function(e) { return { key: e[0], value: e[1] }; });
-        }
-      } catch (_) {}
-    }
-
-    var attrs = /** @type {Array<{key: string, value: string}>} */ (attrsRaw ?? []);
-    var expAttr = attrs.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
-    var variantKey = expAttr ? expAttr.value : null;
-    var experimentShortId = expAttr ? expAttr.key.replace("_ml_exp_", "") : null;
-
-    // If we have an assignment from the storefront, fetch the block directly
-    if (experimentShortId && variantKey) {
-      fetch(`${appUrl}/api/runtime/checkout-blocks?experimentId=${experimentShortId}&variantKey=${variantKey}`, {
-        headers: { "X-Shop-Domain": shopDomain },
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((/** @type {any} */ data) => {
-          if (cancelled || !data?.block?.content) return;
-          setContent(data.block.content);
-        })
-        .catch(() => {});
-      return () => { cancelled = true; };
-    }
-
-    // Fallback: fetch full config and assign variant based on ML session key
-    const ML_SESSION_KEY = String(Math.random());
-    fetch(`${appUrl}/api/runtime/config`, {
+    fetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), {
       headers: { "X-Shop-Domain": shopDomain },
     })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((/** @type {any} */ config) => {
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(config) {
         if (cancelled || !config) return;
-        const experiment = (config.experiments ?? []).find(
-          (/** @type {any} */ e) => e.status === "RUNNING" && e.type === "CHECKOUT_TEST"
-        );
-        if (!experiment?.variants?.length) return;
 
-        // Use same djb2 hash as checkout-trust-social-proof for consistent assignment
-        const str = ML_SESSION_KEY;
-        let h = 5381;
-        for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
-        const variantIdx = Math.abs(h) % experiment.variants.length;
-        const variant = experiment.variants[variantIdx];
-        if (!variant?.checkoutBlockIds?.length) return;
+        var experiment = (config.experiments || []).find(function(e) {
+          return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
+        });
+        if (!experiment || !experiment.variants || !experiment.variants.length) return;
 
-        fetch(`${appUrl}/api/runtime/checkout-blocks?experimentId=${experiment.id.slice(0, 8)}&variantKey=${variant.key}`, {
+        // Find variant_a (non-control with block IDs)
+        var variant = experiment.variants.find(function(v) {
+          return !v.isControl && v.checkoutBlockIds && v.checkoutBlockIds.length > 0;
+        });
+        if (!variant) return;
+
+        // Try cart attributes first to respect storefront assignment
+        var assignedVariant = null;
+        try {
+          var attrsA = shopify.attributes?.value;
+          var attrsB = shopify.attributes?.current;
+          var attrs = Array.isArray(attrsA) ? attrsA : Array.isArray(attrsB) ? attrsB : [];
+          var expAttr = attrs.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
+          if (expAttr) {
+            assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
+          }
+        } catch(_) {}
+
+        var targetVariant = assignedVariant || variant;
+        if (!targetVariant.checkoutBlockIds || !targetVariant.checkoutBlockIds.length) return;
+
+        fetch(APP_URL + "/api/runtime/checkout-blocks?experimentId=" + experiment.id.slice(0, 8) + "&variantKey=" + targetVariant.key, {
           headers: { "X-Shop-Domain": shopDomain },
         })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((/** @type {any} */ data) => {
-            if (cancelled || !data?.block?.content) return;
-            setContent(data.block.content);
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(data) {
+            if (!cancelled && data && data.block && data.block.content) {
+              setContent(data.block.content);
+            }
           })
-          .catch(() => {});
+          .catch(function() {});
       })
-      .catch(() => {});
+      .catch(function() {});
 
-    return () => { cancelled = true; };
+    return function() { cancelled = true; };
   }, []);
 
-  // Build badges — from ML content or defaults
-  const badges = content?.badges?.length
-    ? content.badges.map((b, i) => ({
-        id: b.id ?? `badge-${i}`,
-        line1: b.label ?? b.line1 ?? "",
-        line2: b.sublabel ?? b.line2 ?? "",
-        iconSource: b.iconUrl ?? b.iconSource ?? "",
-        accessibilityLabel: b.alt ?? b.label ?? "",
-      }))
+  var badges = (content && content.badges && content.badges.length)
+    ? content.badges.map(function(b, i) {
+        return {
+          id: b.id || ("badge-" + i),
+          line1: b.label || b.line1 || "",
+          line2: b.sublabel || b.line2 || "",
+          iconSource: b.iconUrl || b.iconSource || "",
+          accessibilityLabel: b.alt || b.label || "",
+        };
+      })
     : DEFAULT_BADGES;
 
-  // Build reviews — from ML content or empty
-  const reviews = (content?.reviews ?? []).map((r, i) => ({
-    id: r.id ?? `review-${i}`,
-    quote: r.quote ?? "",
-    name: r.name ?? "",
-    label: r.label ?? "Verified Buyer",
-    rating: Math.min(5, Math.max(1, Number(r.rating ?? 5))),
-  }));
+  var reviews = (content && content.reviews ? content.reviews : []).map(function(r, i) {
+    return {
+      id: r.id || ("review-" + i),
+      quote: r.quote || "",
+      name: r.name || "",
+      label: r.label || "Verified Buyer",
+      rating: Math.min(5, Math.max(1, Number(r.rating || 5))),
+    };
+  });
 
   return (
     <s-box paddingBlock="base" paddingInline="none">
       <s-stack direction="block" gap="base">
         <TrustBadgeList badges={badges} />
         {reviews.length > 0 && (
-          <>
+          <s-stack direction="block" gap="base">
             <s-divider />
             <ReviewList reviews={reviews} />
-          </>
+          </s-stack>
         )}
       </s-stack>
     </s-box>
