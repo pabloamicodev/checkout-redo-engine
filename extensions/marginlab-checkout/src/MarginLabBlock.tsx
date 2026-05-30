@@ -13,32 +13,30 @@ const DEFAULT_BADGES = [
   { id: "secure",    line1: "Safe & Secure",  line2: "Checkout",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_2_dsnu9m.webp?v=1778721307", accessibilityLabel: "Safe and Secure Checkout" },
 ];
 
-interface ContentBadge { id?: string; label?: string; line1?: string; sublabel?: string; line2?: string; iconUrl?: string; iconSource?: string; alt?: string }
-interface ContentReview { id?: string; quote?: string; name?: string; label?: string; rating?: number }
-interface BlockContent { badges?: ContentBadge[]; reviews?: ContentReview[] }
-
 const DEFAULT_REVIEWS = [
-  { id: "review-1", quote: "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm currently on my wellness and gym journey.", name: "Annika H.", label: "Verified Buyer", rating: 5 },
-  { id: "review-2", quote: "Love drinking this creatine. The taste is so much better than all the other products I've tried previously.", name: "P.J.", label: "Verified Buyer", rating: 5 },
-  { id: "review-3", quote: "It tastes sooooo good. I was using the unflavored one and was satisfied at the fact that it didn't leave any after taste.", name: "Shakerra", label: "Verified Buyer", rating: 5 },
+  { id: "r1", quote: "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm currently on my wellness and gym journey.", name: "Annika H.", label: "Verified Buyer", rating: 5 },
+  { id: "r2", quote: "Love drinking this creatine. The taste is so much better than all the other products I've tried previously.", name: "P.J.", label: "Verified Buyer", rating: 5 },
+  { id: "r3", quote: "It tastes sooooo good. I was using the unflavored one and was satisfied at the fact that it didn't leave any after taste.", name: "Shakerra", label: "Verified Buyer", rating: 5 },
 ];
 
 export function MarginLabBlock() {
-  // useAttributes() reads checkout cart attributes — this is the correct Preact hook
   const attributes = useAttributes();
   const shop = useShop();
-  const [content, setContent] = useState<BlockContent | null>(null);
+  const [content, setContent] = useState(null);
+  const [isControl, setIsControl] = useState(false);
 
   const shopDomain = shop?.myshopifyDomain ?? "";
 
   useEffect(function() {
-    if (!shopDomain) return;
     let cancelled = false;
 
-    function mlFetch(url: string, cb: (data: unknown) => void) {
+    // Build URL — if no domain yet (editor), use empty string (API will use fallback)
+    const domain = shopDomain || "";
+
+    function mlFetch(url, cb) {
       try {
         if (typeof fetch === "function") {
-          fetch(url, { headers: { "X-Shop-Domain": shopDomain } })
+          fetch(url, { headers: domain ? { "X-Shop-Domain": domain } : {} })
             .then(function(r) { return r.ok ? r.json() : null; })
             .then(cb)
             .catch(function() { cb(null); });
@@ -48,7 +46,7 @@ export function MarginLabBlock() {
       try {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url);
-        xhr.setRequestHeader("X-Shop-Domain", shopDomain);
+        if (domain) xhr.setRequestHeader("X-Shop-Domain", domain);
         xhr.onload = function() {
           try { cb(xhr.status >= 200 && xhr.status < 300 ? JSON.parse(xhr.responseText) : null); }
           catch (_) { cb(null); }
@@ -60,46 +58,94 @@ export function MarginLabBlock() {
       } catch (_) { cb(null); }
     }
 
-    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), function(config) {
+    const configUrl = domain
+      ? APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(domain)
+      : null;
+
+    if (!configUrl) return; // no domain = editor without shop context, skip
+
+    mlFetch(configUrl, function(config) {
       if (cancelled || !config) return;
 
-      const experiment = (config.experiments || []).find(function(e) {
+      const blocks = config.checkoutBlocks || [];
+      if (!blocks.length) return;
+
+      // Build a set of ALL block IDs that are in running A/B tests
+      const testBlockIds = new Set();
+      const runningTests = (config.experiments || []).filter(function(e) {
         return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
       });
-      if (!experiment || !experiment.variants || !experiment.variants.length) return;
 
-      // Primary: use useAttributes() hook — reads actual checkout cart attributes
-      let assignedVariant = null;
-      const expAttr = attributes.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
-      if (expAttr) {
-        assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
-      }
-
-      // Fallback: consistent hash using shopDomain (NOT random — same result every checkout)
-      if (!assignedVariant) {
-        let h = 5381;
-        const seed = shopDomain + experiment.id;
-        for (let i = 0; i < seed.length; i++) h = ((h << 5) + h) ^ seed.charCodeAt(i);
-        const idx = Math.abs(h) % experiment.variants.length;
-        assignedVariant = experiment.variants[idx];
-      }
-
-      // Control = show nothing
-      if (!assignedVariant || assignedVariant.isControl) return;
-
-      // Find block in config.checkoutBlocks (single API call)
-      const block = (config.checkoutBlocks || []).find(function(b) {
-        return assignedVariant.checkoutBlockIds && assignedVariant.checkoutBlockIds.includes(b.id);
+      runningTests.forEach(function(exp) {
+        (exp.variants || []).forEach(function(v) {
+          (v.checkoutBlockIds || []).forEach(function(id) {
+            testBlockIds.add(id);
+          });
+        });
       });
-      if (!cancelled && block && block.content) {
-        setContent(block.content);
+
+      // For each active block, decide if/how to show it
+      for (const block of blocks) {
+        const isInTest = testBlockIds.has(block.id);
+
+        if (!isInTest) {
+          // Standalone block (not in any test) → always show
+          if (!cancelled && block.content) {
+            setContent(block.content);
+            setIsControl(false);
+          }
+          return;
+        }
+
+        // Block is in a test → find which experiment and check assignment
+        const experiment = runningTests.find(function(exp) {
+          return exp.variants.some(function(v) {
+            return v.checkoutBlockIds && v.checkoutBlockIds.includes(block.id);
+          });
+        });
+        if (!experiment) continue;
+
+        // Read assignment from cart attributes (useAttributes hook)
+        const expAttr = attributes.find(function(a) {
+          return a && a.key && a.key.startsWith("_ml_exp_");
+        });
+
+        let assignedVariant = null;
+        if (expAttr) {
+          assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
+        }
+
+        // No cart attribute → fallback hash (shopDomain + experimentId = consistent per shop)
+        if (!assignedVariant) {
+          let h = 5381;
+          const seed = domain + experiment.id;
+          for (let i = 0; i < seed.length; i++) h = ((h << 5) + h) ^ seed.charCodeAt(i);
+          const idx = Math.abs(h) % experiment.variants.length;
+          assignedVariant = experiment.variants[idx];
+        }
+
+        if (assignedVariant && assignedVariant.isControl) {
+          // Explicitly in control → show nothing
+          if (!cancelled) setIsControl(true);
+          return;
+        }
+
+        // In variant with this block → show it
+        if (!cancelled && block.content) {
+          setContent(block.content);
+          setIsControl(false);
+        }
+        return;
       }
     });
 
     return function() { cancelled = true; };
   }, [shopDomain, JSON.stringify(attributes)]);
 
-  // Control group or pre-load = nothing
+  // Explicitly control group = show nothing
+  if (isControl) return null;
+
+  // No content yet (loading) = show nothing
   if (!content) return null;
 
   const badges = (content.badges && content.badges.length)
