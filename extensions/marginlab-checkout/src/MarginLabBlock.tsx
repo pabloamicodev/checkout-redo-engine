@@ -66,8 +66,15 @@ export function MarginLabBlock() {
 
   useEffect(() => {
     let cancelled = false;
+    // shopify.shop is a Preact signal — try .value/.current before direct access
     let shopDomain = "";
-    try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch (_) {}
+    try {
+      const shop = shopify.shop as unknown as { value?: { myshopifyDomain?: string }; current?: { myshopifyDomain?: string }; myshopifyDomain?: string };
+      shopDomain = shop?.value?.myshopifyDomain
+        ?? shop?.current?.myshopifyDomain
+        ?? shop?.myshopifyDomain
+        ?? "";
+    } catch (_) {}
 
     function mlFetch(url: string, cb: (data: unknown) => void): void {
       try {
