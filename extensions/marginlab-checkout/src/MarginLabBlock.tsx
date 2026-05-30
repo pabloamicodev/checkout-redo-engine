@@ -111,11 +111,11 @@ export function MarginLabBlock() {
     return function() { cancelled = true; };
   }, [shopDomain, configuredBlockId, JSON.stringify(attributes)]);
 
-  // Explicitly in control group → show nothing
-  if (hidden) return null;
-
-  // Still loading → show nothing
-  if (!content) return null;
+  // DEBUG: always render visible state info
+  const debugLine = "ML| domain:" + (shopDomain || "EMPTY") + " | blockId:" + (configuredBlockId || "none") + " | content:" + (content ? "OK" : "null") + " | hidden:" + hidden;
+  if (!content || hidden) {
+    return <s-text>{debugLine}</s-text>;
+  }
 
   const badges = (content.badges && content.badges.length)
     ? content.badges.map(function(b, i) {
