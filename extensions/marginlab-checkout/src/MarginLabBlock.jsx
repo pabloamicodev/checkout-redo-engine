@@ -1,5 +1,9 @@
 import "@shopify/ui-extensions/preact";
 
 export function MarginLabBlock() {
-  return <div>MARGINLAB-TEST-RENDER</div>;
+  return (
+    <s-box paddingBlock="base">
+      <s-text>MARGINLAB TEST</s-text>
+    </s-box>
+  );
 }
