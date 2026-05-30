@@ -26,11 +26,12 @@ export function MarginLabBlock() {
   const [hidden, setHidden] = useState(false);
 
   const shopDomain = shop?.myshopifyDomain ?? "";
-  // Read block_id from extension settings (set per-instance in checkout editor)
   const configuredBlockId = String(shopify.settings?.current?.block_id ?? "").trim();
 
   useEffect(function() {
+    // No shopDomain = editor without shop context → skip fetch, defaults will render
     if (!shopDomain) return;
+
     let cancelled = false;
 
     function mlFetch(url, cb) {
@@ -64,16 +65,13 @@ export function MarginLabBlock() {
       const allBlocks = config.checkoutBlocks || [];
       if (!allBlocks.length) return;
 
-      // Find the target block:
-      // 1. If block_id is configured → use that specific block
-      // 2. Otherwise → use the first available block
       const targetBlock = configuredBlockId
         ? allBlocks.find(function(b) { return b.id === configuredBlockId; })
         : allBlocks[0];
 
       if (!targetBlock || !targetBlock.content) return;
 
-      // Check if this block is part of a running A/B test
+      // Check A/B assignment only if block is part of a running test
       const runningTests = (config.experiments || []).filter(function(e) {
         return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
       });
@@ -85,21 +83,17 @@ export function MarginLabBlock() {
       });
 
       if (testForBlock) {
-        // Block is in a test — check explicit cart attribute assignment
         const expAttr = attributes.find(function(a) {
           return a && a.key && a.key.startsWith("_ml_exp_");
         });
-
         if (expAttr) {
           const assigned = testForBlock.variants.find(function(v) { return v.key === expAttr.value; });
           if (assigned && assigned.isControl) {
-            // Explicitly assigned to control → hide this block
             if (!cancelled) setHidden(true);
             return;
           }
-          // Explicitly assigned to variant → show
         }
-        // No explicit assignment (editor, new visitor without storefront attribution) → show by default
+        // No explicit assignment → show by default (editor, new visitor)
       }
 
       if (!cancelled) {
@@ -111,19 +105,17 @@ export function MarginLabBlock() {
     return function() { cancelled = true; };
   }, [shopDomain, configuredBlockId, JSON.stringify(attributes)]);
 
-  // DEBUG: always render visible state info
-  const debugLine = "ML| domain:" + (shopDomain || "EMPTY") + " | blockId:" + (configuredBlockId || "none") + " | content:" + (content ? "OK" : "null") + " | hidden:" + hidden;
-  if (!content || hidden) {
-    return <s-text>{debugLine}</s-text>;
-  }
+  // Explicitly assigned to control → show nothing
+  if (hidden) return null;
 
-  const badges = (content.badges && content.badges.length)
+  // No shopDomain or content not loaded yet → use defaults
+  const badges = (content && content.badges && content.badges.length)
     ? content.badges.map(function(b, i) {
         return { id: b.id || ("b" + i), line1: b.label || b.line1 || "", line2: b.sublabel || b.line2 || "", iconSource: b.iconUrl || b.iconSource || "", accessibilityLabel: b.alt || b.label || "" };
       })
     : DEFAULT_BADGES;
 
-  const reviews = (content.reviews && content.reviews.length)
+  const reviews = (content && content.reviews && content.reviews.length)
     ? content.reviews.map(function(r, i) {
         return { id: r.id || ("r" + i), quote: r.quote || "", name: r.name || "", label: r.label || "Verified Buyer", rating: Math.min(5, Math.max(1, Number(r.rating || 5))) };
       })
