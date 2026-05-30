@@ -50,6 +50,12 @@ interface Config {
   checkoutBlocks?: CheckoutBlockData[];
 }
 
+const DEFAULT_REVIEWS: Review[] = [
+  { id: "review-1", quote: "The ability to lift more while on it, is not joke. I won't ever take anything else. I'm currently on my wellness and gym journey - after a few failed ventures- I wish I had OneSol creatine during that time because I believe it would've given me the assistance I needed back then.", name: "Annika H.", label: "Verified Buyer", rating: 5 },
+  { id: "review-2", quote: "Love drinking this creatine. I have never liked creatine before I tried this product. I don't feel like I'm drinking creatine when I'm drinking this product. The taste is so much better than all the other products I've tried previously.", name: "P.J.", label: "Verified Buyer", rating: 5 },
+  { id: "review-3", quote: "It tastes sooooo good. I was using the unflavored one and was satisfied at the fact that it didn't leave any after taste, but this one, it's so delicious.", name: "Shakerra", label: "Verified Buyer", rating: 5 },
+];
+
 const DEFAULT_BADGES: Badge[] = [
   { id: "guarantee", line1: "30-Day Money", line2: "Back Guarantee*", iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_cftpjb.webp?v=1778721307", accessibilityLabel: "30-Day Money Back Guarantee" },
   { id: "shipping",  line1: "Fast",         line2: "Shipping",        iconSource: "https://cdn.shopify.com/s/files/1/0600/5643/6975/files/icon-money-back-v2.svg_1_vfx39d.webp?v=1778721307", accessibilityLabel: "Fast Shipping" },
@@ -173,13 +179,15 @@ export function MarginLabBlock() {
       }))
     : DEFAULT_BADGES;
 
-  const reviews: Review[] = (content?.reviews ?? []).map((r, i) => ({
-    id: r.id ?? `r${i}`,
-    quote: r.quote ?? "",
-    name: r.name ?? "",
-    label: r.label ?? "Verified Buyer",
-    rating: Math.min(5, Math.max(1, Number(r.rating ?? 5))),
-  }));
+  const reviews: Review[] = content?.reviews?.length
+    ? content.reviews.map((r, i) => ({
+        id: r.id ?? `r${i}`,
+        quote: r.quote ?? "",
+        name: r.name ?? "",
+        label: r.label ?? "Verified Buyer",
+        rating: Math.min(5, Math.max(1, Number(r.rating ?? 5))),
+      }))
+    : DEFAULT_REVIEWS;
 
   return (
     <s-box paddingBlock="base" paddingInline="none">
