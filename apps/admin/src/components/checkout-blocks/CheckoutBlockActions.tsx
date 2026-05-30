@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Pause, Archive, Loader2 } from "lucide-react";
+import { Play, Pause, Archive, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 interface Props {
@@ -34,6 +34,23 @@ export function CheckoutBlockActions({ blockId, status }: Props) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Could not ${action} block. Please try again.`);
     } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete this checkout block permanently? This cannot be undone.")) return;
+    setLoading("delete");
+    try {
+      const res = await fetch(`/api/checkout-blocks/${blockId}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) {
+        const d = (await res.json()).catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? "Delete failed");
+      }
+      toast.success("Checkout block deleted.");
+      router.push("/checkout-blocks");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete block. Please try again.");
       setLoading(null);
     }
   }
@@ -77,6 +94,15 @@ export function CheckoutBlockActions({ blockId, status }: Props) {
           Archive
         </button>
       )}
+
+      <button
+        onClick={handleDelete}
+        disabled={loading !== null}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-60"
+      >
+        {loading === "delete" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+        Delete
+      </button>
     </div>
   );
 }
