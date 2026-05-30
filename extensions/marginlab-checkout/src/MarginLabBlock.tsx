@@ -19,25 +19,24 @@ var DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
+  // Shopify docs pattern: access signals in component body for reactive subscriptions
+  // When signals update, component re-renders → useEffect deps change → effect re-runs
+  var attrs = shopify.attributes.value ?? [];      // docs: shopify.attributes.value
+  var shopDomain = shopify.shop?.myshopifyDomain ?? ""; // trust-social-proof pattern
+
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
 
   useEffect(function() {
     var cancelled = false;
+    var domain = shopDomain; // use the value from render scope
 
-    // Read everything inside the effect — all signals populated at mount time
-    var shopDomain = "";
-    try { shopDomain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
-
-    var attrs = [];
-    try { attrs = shopify.attributes.value ?? []; } catch(_) {}
-
-    if (!shopDomain) return; // editor without real shop context
+    if (!domain) return; // editor without shop context
 
     function mlFetch(url, cb) {
       try {
         if (typeof fetch === "function") {
-          fetch(url, { headers: { "X-Shop-Domain": shopDomain } })
+          fetch(url, { headers: { "X-Shop-Domain": domain } })
             .then(function(r) { return r.ok ? r.json() : null; })
             .then(cb)
             .catch(function() { cb(null); });
@@ -47,7 +46,7 @@ export function MarginLabBlock() {
       try {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", url);
-        xhr.setRequestHeader("X-Shop-Domain", shopDomain);
+        xhr.setRequestHeader("X-Shop-Domain", domain);
         xhr.onload = function() {
           try { cb(xhr.status >= 200 && xhr.status < 300 ? JSON.parse(xhr.responseText) : null); }
           catch(_) { cb(null); }
@@ -57,7 +56,7 @@ export function MarginLabBlock() {
       } catch(_) { cb(null); }
     }
 
-    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(shopDomain), function(config) {
+    mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(domain), function(config) {
       if (cancelled || !config) return;
 
       var experiment = (config.experiments || []).find(function(e) {
@@ -65,14 +64,12 @@ export function MarginLabBlock() {
       });
       if (!experiment || !experiment.variants || !experiment.variants.length) return;
 
-      // Check explicit A/B assignment — match the SPECIFIC experiment's attribute key
-      // e.g. "_ml_exp_cmprsd0j" for experiment "cmprsd0jd000..."
-      var assignedVariant = null;
+      // Match SPECIFIC experiment ID to avoid using old archived experiment's attribute
       var expKey = "_ml_exp_" + experiment.id.slice(0, 8);
       var expAttr = attrs.find(function(a) { return a && a.key === expKey; });
-      if (expAttr) {
-        assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
-      }
+      var assignedVariant = expAttr
+        ? experiment.variants.find(function(v) { return v.key === expAttr.value; })
+        : null;
 
       // Explicitly assigned to control → hide
       if (assignedVariant && assignedVariant.isControl) {
@@ -97,7 +94,7 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, []); // run once at mount — signals populated by then
+  }, [shopDomain, JSON.stringify(attrs)]); // re-run when domain OR attrs change
 
   if (hidden) return null;
 
