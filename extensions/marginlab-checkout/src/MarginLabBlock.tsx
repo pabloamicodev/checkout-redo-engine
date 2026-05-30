@@ -67,9 +67,11 @@ export function MarginLabBlock() {
       });
       if (!experiment || !experiment.variants || !experiment.variants.length) return;
 
-      // Check explicit A/B assignment from cart attributes
+      // Check explicit A/B assignment — match the SPECIFIC experiment's attribute key
+      // e.g. "_ml_exp_cmprsd0j" for experiment "cmprsd0jd000..."
       var assignedVariant = null;
-      var expAttr = attrs.find(function(a) { return a && a.key && a.key.startsWith("_ml_exp_"); });
+      var expKey = "_ml_exp_" + experiment.id.slice(0, 8);
+      var expAttr = attrs.find(function(a) { return a && a.key === expKey; });
       if (expAttr) {
         assignedVariant = experiment.variants.find(function(v) { return v.key === expAttr.value; });
       }
