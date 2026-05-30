@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CheckoutBlockService } from "@/services/checkout-block.service";
 import { CreateCheckoutBlockSchema } from "@/lib/zod-schemas";
-import { withShopAuth, withBillingActive, withPlanGuard } from "@/lib/api-middleware";
+import { withShopAuth } from "@/lib/api-middleware";
 
 const service = new CheckoutBlockService();
 
@@ -20,8 +20,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withShopAuth(request, async (shopId) => {
-    return withBillingActive(shopId, () =>
-      withPlanGuard(shopId, "checkoutBlocks", async () => {
+    return (async () => {
         let body: unknown;
         try {
           body = await request.json();
@@ -43,8 +42,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-      })
-    );
+      })();
   });
 }
 
