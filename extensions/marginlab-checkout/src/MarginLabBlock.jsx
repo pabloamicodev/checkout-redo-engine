@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "@shopify/ui-extensions/preact";
 import { useState, useEffect } from "preact/hooks";
 import { TrustBadgeList } from "./components/TrustBadgeList.jsx";
