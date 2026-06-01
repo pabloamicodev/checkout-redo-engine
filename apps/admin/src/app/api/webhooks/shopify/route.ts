@@ -10,6 +10,7 @@ import { BillingService } from "@/services/billing.service";
 import { ThemeTestService } from "@/services/theme-test.service";
 import { EmailService } from "@/services/email.service";
 import { logger } from "@/lib/logger";
+import { getShopifyRestFetch } from "@/lib/shopify-admin-rest";
 
 const orderAttributionService = new OrderAttributionService();
 const billingService = new BillingService();
@@ -156,9 +157,22 @@ async function processWebhook(
             const totalPrice = parseFloat(String(checkout.total_price ?? "0"));
             if (totalPrice < minCartValue) break;
           }
-          // returningOnly: if true, only send to customers who have ordered before
-          // Note: checkout payload doesn't include order count — skip this rule for now
-          // and handle it via a customer lookup if needed in the future.
+          // returningOnly: look up the customer via Admin REST API to check order count
+          const returningOnly = targeting["returningOnly"] as boolean | undefined;
+          if (returningOnly === true) {
+            try {
+              const rest = await getShopifyRestFetch(shopDomain);
+              const result = await rest<{ customers: Array<{ orders_count: number }> }>(
+                `/customers.json?email=${encodeURIComponent(email)}&fields=id,orders_count&limit=1`
+              );
+              const customer = result.customers[0];
+              // orders_count === 0 means no previous purchases → new customer → skip
+              if (!customer || customer.orders_count === 0) break;
+            } catch (err) {
+              // If lookup fails, fail open (send the email) to avoid blocking recovery
+              logger.error("[Webhook checkouts/update] returningOnly customer lookup failed", err instanceof Error ? err : undefined, { shopDomain });
+            }
+          }
         }
 
         // Deduplication — only send once per checkout token per shop
