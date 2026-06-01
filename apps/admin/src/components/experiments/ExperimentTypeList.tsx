@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Plus, ExternalLink, ChevronLeft, ChevronRight, FlaskConical, Loader2, Trash2, MoreHorizontal, Pause, Play, CheckCircle, Archive, StopCircle } from "lucide-react";
 import { getStatusTheme } from "@/lib/design/statusTheme";
@@ -133,17 +134,22 @@ export function ExperimentTypeList({
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [openMenu, setOpenMenu] = useState<{ id: string; rect: DOMRect } | null>(null);
+
+  const handleMenuToggle = useCallback((id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOpenMenu(prev => prev?.id === id ? null : { id, rect });
+  }, []);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenu(null);
-      }
-    }
+    function handleClick() { setOpenMenu(null); }
+    function handleScroll() { setOpenMenu(null); }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -371,7 +377,7 @@ export function ExperimentTypeList({
                         {new Date(exp.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-end gap-2" ref={openMenu === exp.id ? menuRef : undefined}>
+                        <div className="flex items-center justify-end gap-2">
                           {/* View link */}
                           <Link
                             href={`${detailBasePath}/${exp.id}`}
@@ -379,60 +385,18 @@ export function ExperimentTypeList({
                           >
                             View <ExternalLink className="w-3 h-3" />
                           </Link>
-                          {/* Actions dropdown */}
-                          <div className="relative">
-                            <button
-                              onClick={() => setOpenMenu(openMenu === exp.id ? null : exp.id)}
-                              disabled={!!actionLoading[exp.id]}
-                              className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors disabled:opacity-40"
-                            >
-                              {actionLoading[exp.id] ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <MoreHorizontal className="w-4 h-4" />
-                              )}
-                            </button>
-                            {openMenu === exp.id && (
-                              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white rounded-xl border border-neutral-200 shadow-lg py-1 text-sm">
-                                {getActions(exp.status).map((action) => {
-                                  const icons: Record<string, React.ReactNode> = {
-                                    launch: <Play className="w-3.5 h-3.5" />,
-                                    pause: <Pause className="w-3.5 h-3.5" />,
-                                    activate: <Play className="w-3.5 h-3.5" />,
-                                    complete: <CheckCircle className="w-3.5 h-3.5" />,
-                                    stop: <StopCircle className="w-3.5 h-3.5" />,
-                                  };
-                                  return (
-                                    <button
-                                      key={action.route}
-                                      onClick={() => { setOpenMenu(null); doAction(exp.id, action); }}
-                                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-neutral-700 hover:bg-neutral-50 transition-colors"
-                                    >
-                                      {icons[action.route] ?? <Play className="w-3.5 h-3.5" />}
-                                      {action.label} test
-                                    </button>
-                                  );
-                                })}
-                                {getArchiveAction(exp.status) && (
-                                  <button
-                                    onClick={() => { setOpenMenu(null); doAction(exp.id, getArchiveAction(exp.status)!); }}
-                                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-neutral-700 hover:bg-neutral-50 transition-colors"
-                                  >
-                                    <Archive className="w-3.5 h-3.5" />
-                                    Archive
-                                  </button>
-                                )}
-                                <div className="my-1 border-t border-neutral-100" />
-                                <button
-                                  onClick={() => { setOpenMenu(null); setDeleteTarget({ id: exp.id, name: exp.name }); }}
-                                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-rose-600 hover:bg-rose-50 transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  Delete
-                                </button>
-                              </div>
+                          {/* Actions ⋯ button — dropdown via portal to avoid overflow clipping */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMenuToggle(exp.id, e); }}
+                            disabled={!!actionLoading[exp.id]}
+                            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors disabled:opacity-40"
+                          >
+                            {actionLoading[exp.id] ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="w-4 h-4" />
                             )}
-                          </div>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -466,6 +430,61 @@ export function ExperimentTypeList({
         )}
       </div>
     </div>
+
+    {/* Portal dropdown — rendered outside table to avoid overflow-x-auto clipping */}
+    {openMenu && typeof document !== "undefined" && createPortal(
+      <div
+        className="fixed z-[9999] w-48 bg-white rounded-xl border border-neutral-200 shadow-xl py-1 text-sm"
+        style={{ top: openMenu.rect.bottom + 4, left: openMenu.rect.right - 192 }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {(() => {
+          const exp = items.find(i => i.id === openMenu.id);
+          if (!exp) return null;
+          const icons: Record<string, React.ReactNode> = {
+            launch: <Play className="w-3.5 h-3.5" />,
+            pause: <Pause className="w-3.5 h-3.5" />,
+            activate: <Play className="w-3.5 h-3.5" />,
+            complete: <CheckCircle className="w-3.5 h-3.5" />,
+            stop: <StopCircle className="w-3.5 h-3.5" />,
+          };
+          const actions = getActions(exp.status);
+          const archiveAction = getArchiveAction(exp.status);
+          return (
+            <>
+              {actions.map((action) => (
+                <button
+                  key={action.route}
+                  onClick={() => { setOpenMenu(null); doAction(exp.id, action); }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-neutral-700 hover:bg-neutral-50 transition-colors"
+                >
+                  {icons[action.route] ?? <Play className="w-3.5 h-3.5" />}
+                  {action.label} test
+                </button>
+              ))}
+              {archiveAction && (
+                <button
+                  onClick={() => { setOpenMenu(null); doAction(exp.id, archiveAction); }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-neutral-700 hover:bg-neutral-50 transition-colors"
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                  Archive
+                </button>
+              )}
+              <div className="my-1 border-t border-neutral-100" />
+              <button
+                onClick={() => { setOpenMenu(null); setDeleteTarget({ id: exp.id, name: exp.name }); }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-rose-600 hover:bg-rose-50 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            </>
+          );
+        })()}
+      </div>,
+      document.body
+    )}
 
     {deleteTarget && (
       <ConfirmDialog
