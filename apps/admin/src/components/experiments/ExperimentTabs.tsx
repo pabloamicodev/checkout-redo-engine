@@ -1302,44 +1302,87 @@ function CheckoutAnalyticsTab({
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <p className="text-xs font-semibold text-neutral-700 mb-3 flex items-center gap-1">
-            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-            Checkout CVR
-          </p>
-          <ResponsiveContainer width="100%" height={100}>
-            <BarChart data={cvrData} barSize={16} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
-              <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid #e5e7eb" }} />
-              <Bar dataKey="value" fill={ACCENT} radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <p className="text-xs font-semibold text-neutral-700 mb-3">Avg Order Value</p>
-          <ResponsiveContainer width="100%" height={100}>
-            <BarChart data={aovData} barSize={16} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
-              <Tooltip formatter={(v: number) => formatCurrency(v, currencyCode)} contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid #e5e7eb" }} />
-              <Bar dataKey="value" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <p className="text-xs font-semibold text-neutral-700 mb-3">Revenue / Visitor</p>
-          <ResponsiveContainer width="100%" height={100}>
-            <BarChart data={rpvData} barSize={16} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} tickFormatter={(v: number) => `$${v.toFixed(1)}`} />
-              <Tooltip formatter={(v: number) => formatCurrency(v, currencyCode)} contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid #e5e7eb" }} />
-              <Bar dataKey="value" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {(() => {
+        const hasAnyData = analytics && analytics.summary.totalOrders > 0;
+        const chartCards = [
+          {
+            title: "Checkout CVR",
+            subtitle: "Conversion rate to purchase",
+            icon: <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />,
+            data: cvrData,
+            color: ACCENT,
+            formatter: (v: number) => `${v.toFixed(2)}%`,
+            yFormatter: (v: number) => `${v.toFixed(1)}%`,
+          },
+          {
+            title: "Avg Order Value",
+            subtitle: "Average revenue per order",
+            icon: null,
+            data: aovData,
+            color: "#f59e0b",
+            formatter: (v: number) => formatCurrency(v, currencyCode),
+            yFormatter: (v: number) => `$${v.toFixed(0)}`,
+          },
+          {
+            title: "Revenue / Visitor",
+            subtitle: "Revenue per unique session",
+            icon: null,
+            data: rpvData,
+            color: "#8b5cf6",
+            formatter: (v: number) => formatCurrency(v, currencyCode),
+            yFormatter: (v: number) => `$${v.toFixed(2)}`,
+          },
+        ];
+        return (
+          <div className="grid grid-cols-3 gap-4">
+            {chartCards.map((card) => (
+              <div key={card.title} className="bg-white rounded-xl border border-neutral-200 p-5">
+                <div className="mb-4">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    {card.icon}
+                    <p className="text-sm font-semibold text-neutral-800">{card.title}</p>
+                  </div>
+                  <p className="text-[11px] text-neutral-400">{card.subtitle}</p>
+                </div>
+                {hasAnyData ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={card.data} barSize={28} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11, fill: "#9ca3af" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(name: string) => name.length > 12 ? name.slice(0, 11) + "…" : name}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "#9ca3af" }}
+                        tickFormatter={card.yFormatter}
+                        axisLine={false}
+                        tickLine={false}
+                        width={48}
+                      />
+                      <Tooltip
+                        formatter={(v: number) => [card.formatter(v), card.title]}
+                        contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                        cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                      />
+                      <Bar dataKey="value" fill={card.color} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-48 flex flex-col items-center justify-center gap-2 border border-dashed border-neutral-200 rounded-lg">
+                    <BarChart3 className="w-8 h-8 text-neutral-200" />
+                    <p className="text-xs text-neutral-400 text-center px-4">
+                      Data will appear here once orders start coming in
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
