@@ -122,9 +122,16 @@ export function MarginLabBlock() {
       })
     : DEFAULT_REVIEWS;
 
+  var dbgAttrKey = attrs.find(function(a){ return a && a.key && a.key.startsWith("_ml_exp_"); });
+  var dbgLine = "domain:" + dbgDomain
+    + " | attrs:" + attrs.length
+    + " | expAttr:" + (dbgAttrKey ? dbgAttrKey.key + "=" + dbgAttrKey.value : "none")
+    + " | content:" + (content ? "ADMIN(badge0=" + (content.badges && content.badges[0] && content.badges[0].label) + ")" : "DEFAULT");
+
   return (
     <s-box paddingBlock="base" paddingInline="none">
       <s-stack direction="block" gap="base">
+        <s-text>{dbgLine}</s-text>
         <TrustBadgeList badges={badges} />
         {reviews.length > 0 && (
           <s-stack direction="block" gap="base">
