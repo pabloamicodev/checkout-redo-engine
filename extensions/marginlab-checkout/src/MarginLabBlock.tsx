@@ -24,14 +24,16 @@ export function MarginLabBlock() {
 
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
+  var [dbgDomain, setDbgDomain] = useState("...");
 
   useEffect(function() {
     var cancelled = false;
     // shopDomain read INSIDE effect — same as trust-social-proof (populated at mount time)
     var domain = "";
     try { domain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
+    setDbgDomain(domain || "EMPTY");
 
-    if (!domain) return; // editor without real shop context
+  /*   if (!domain) return;  */// editor without real shop context
 
     function mlFetch(url, cb) {
       try {
