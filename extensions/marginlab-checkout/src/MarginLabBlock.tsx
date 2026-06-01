@@ -21,23 +21,16 @@ var DEFAULT_REVIEWS = [
 export function MarginLabBlock() {
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
-  var [dbgDomain, setDbgDomain] = useState("...");
-  var [dbgAttrs, setDbgAttrs] = useState(0);
+  var [loaded, setLoaded] = useState(false);
 
-  // [] deps = same pattern as checkout-trust-social-proof (runs once at mount)
-  // All signals are populated by mount time — no race condition
   useEffect(function() {
     var cancelled = false;
 
-    // Read EVERYTHING inside the effect at mount time (signals populated)
     var domain = "";
     try { domain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
 
     var attrs = [];
     try { attrs = Array.isArray(shopify.attributes?.value) ? shopify.attributes.value : []; } catch(_) {}
-
-    setDbgDomain(domain || "EMPTY");
-    setDbgAttrs(attrs.length);
 
     function mlFetch(url, cb) {
       try {
@@ -62,56 +55,69 @@ export function MarginLabBlock() {
       } catch(_) { cb(null); }
     }
 
+    if (!domain) {
+      // Editor without real shop — show defaults immediately
+      if (!cancelled) setLoaded(true);
+      return;
+    }
+
     mlFetch(APP_URL + "/api/runtime/config?shop=" + encodeURIComponent(domain), function(config) {
-      if (cancelled || !config) return;
+      if (cancelled) return;
+
+      if (!config) {
+        setLoaded(true);
+        return;
+      }
 
       var experiment = (config.experiments || []).find(function(e) {
         return e.status === "RUNNING" && e.type === "CHECKOUT_TEST";
       });
-      if (!experiment || !experiment.variants || !experiment.variants.length) return;
 
-      // Match SPECIFIC experiment ID to avoid using old archived experiment's attribute
+      if (!experiment || !experiment.variants || !experiment.variants.length) {
+        setLoaded(true);
+        return;
+      }
+
       var expKey = "_ml_exp_" + experiment.id.slice(0, 8);
       var expAttr = attrs.find(function(a) { return a && a.key === expKey; });
       var assignedVariant = expAttr
         ? experiment.variants.find(function(v) { return v.key === expAttr.value; })
         : null;
 
-      // Explicitly assigned to control → hide
       if (assignedVariant && assignedVariant.isControl) {
-        if (!cancelled) setHidden(true);
+        setHidden(true);
+        setLoaded(true);
         return;
       }
 
-      // Target: assigned non-control, or first non-control variant
       var targetVariant = assignedVariant || experiment.variants.find(function(v) {
         return !v.isControl;
       });
-      if (!targetVariant) return;
 
-      // Find block from config.checkoutBlocks using variantId (the reliable link).
-      // variant.checkoutBlockIds[] is an optional denormalized cache that may be empty
-      // even when the block exists — always prefer the direct variantId match first.
+      if (!targetVariant) {
+        setLoaded(true);
+        return;
+      }
+
       var allBlocks = config.checkoutBlocks || [];
-      var block = allBlocks.find(function(b) {
-        return b.variantId === targetVariant.id;
-      });
-
-      // Fallback: match via the denormalized checkoutBlockIds array
+      var block = allBlocks.find(function(b) { return b.variantId === targetVariant.id; });
       if (!block && targetVariant.checkoutBlockIds && targetVariant.checkoutBlockIds.length) {
         block = allBlocks.find(function(b) {
           return targetVariant.checkoutBlockIds.indexOf(b.id) !== -1;
         });
       }
 
-      if (block && block.content && !cancelled) {
+      if (block && block.content) {
         setContent(block.content);
       }
+      setLoaded(true);
     });
 
     return function() { cancelled = true; };
-  }, []); // [] like trust-social-proof — runs once at mount, signals populated
+  }, []);
 
+  // Don't render until fetch completes — prevents content flicker
+  if (!loaded) return null;
   if (hidden) return null;
 
   var badges = (content && content.badges && content.badges.length)
@@ -126,14 +132,9 @@ export function MarginLabBlock() {
       })
     : DEFAULT_REVIEWS;
 
-  var dbgLine = "domain:" + dbgDomain
-    + " | attrs:" + dbgAttrs
-    + " | content:" + (content ? "ADMIN(badge0=" + (content.badges && content.badges[0] && content.badges[0].label) + ")" : "DEFAULT");
-
   return (
     <s-box paddingBlock="base" paddingInline="none">
       <s-stack direction="block" gap="base">
-        <s-text>{dbgLine}</s-text>
         <TrustBadgeList badges={badges} />
         {reviews.length > 0 && (
           <s-stack direction="block" gap="base">
