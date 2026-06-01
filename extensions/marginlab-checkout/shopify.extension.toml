@@ -6,16 +6,16 @@ handle = "marginlab-checkout"
 uid = "da0ac1b9-1ccf-3812-dcec-4623c5c153ab0ebbe27e"
 type = "ui_extension"
 
-[[extensions.targeting]]
-module = "./src/Checkout.jsx"
-target = "purchase.checkout.block.render"
+  [extensions.capabilities]
+  network_access = true
 
-[extensions.capabilities]
-network_access = true
+  [[extensions.targeting]]
+  module = "./src/Checkout.jsx"
+  target = "purchase.checkout.block.render"
 
-[extensions.settings]
-  [[extensions.settings.fields]]
-  key = "block_id"
-  type = "single_line_text_field"
-  name = "Block ID"
-  description = "ID of the specific checkout block to show. Leave blank to use the first available active block."
+  [extensions.settings]
+    [[extensions.settings.fields]]
+    key = "block_id"
+    type = "single_line_text_field"
+    name = "Block ID"
+    description = "ID of the specific checkout block to show. Leave blank to use the first available active block."
