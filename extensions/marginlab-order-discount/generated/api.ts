@@ -2865,4 +2865,4 @@ export enum WeightUnit {
 export type RunInputVariables = Exact<{ [key: string]: never; }>;
 
 
-export type RunInput = { __typename?: 'Input', cart: { __typename?: 'Cart', attribute?: { __typename?: 'Attribute', value?: string | null } | null, cost: { __typename?: 'CartCost', subtotalAmount: { __typename?: 'MoneyV2', amount: any, currencyCode: CurrencyCode } } }, discountNode: { __typename?: 'DiscountNode', metafield?: { __typename?: 'Metafield', jsonValue: any } | null } };
+export type RunInput = { __typename?: 'Input', cart: { __typename?: 'Cart', mlExperiments?: { __typename?: 'Attribute', value?: string | null } | null, cost: { __typename?: 'CartCost', subtotalAmount: { __typename?: 'MoneyV2', amount: any, currencyCode: CurrencyCode } } }, discountNode: { __typename?: 'DiscountNode', metafield?: { __typename?: 'Metafield', jsonValue: any } | null } };

@@ -1,6 +1,6 @@
 query RunInput {
   cart {
-    attribute(key: "_ml_visitor_id") {
+    mlExperiments: attribute(key: "_ml_experiments") {
       value
     }
     cost {

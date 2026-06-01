@@ -46,8 +46,22 @@ export function run(input: RunInput): FunctionRunResult {
     return EMPTY_DISCOUNT;
   }
 
-  const cartAttributes: Array<{ key: string; value: string }> =
-    (input.cart.attributes as Array<{ key: string; value: string }>) ?? [];
+  // _ml_experiments is a JSON object written by marginlab-runtime.js:
+  //   { "<expId8chars>": "variant_key", ... }
+  // Shopify Functions can only query cart attributes by individual key (no plural
+  // attributes[] in the schema), so we use this single aggregated attribute.
+  const mlExpAttr = (input.cart as Record<string, unknown>).mlExperiments as
+    | { value: string }
+    | null
+    | undefined;
+  let experimentAssignments: Record<string, string> = {};
+  try {
+    if (mlExpAttr?.value) {
+      experimentAssignments = JSON.parse(mlExpAttr.value) as Record<string, string>;
+    }
+  } catch {
+    // malformed JSON — no assignments
+  }
 
   const subtotal = parseFloat(
     (input.cart.cost?.subtotalAmount?.amount as string | undefined) ?? "0"
@@ -59,10 +73,10 @@ export function run(input: RunInput): FunctionRunResult {
   for (const rule of config.variant_discounts ?? []) {
     if (!rule.experiment_id || !rule.variant_key || !rule.value) continue;
 
-    // Cart attribute key uses first 8 chars of the experiment ID
-    const attrKey = EXP_ATTR_PREFIX + rule.experiment_id.slice(0, 8);
-    const assigned = cartAttributes.find((a) => a.key === attrKey);
-    if (!assigned || assigned.value !== rule.variant_key) continue;
+    // Look up assignment using first 8 chars of the experiment ID
+    const expShortId = rule.experiment_id.slice(0, 8);
+    const assignedVariant = experimentAssignments[expShortId];
+    if (!assignedVariant || assignedVariant !== rule.variant_key) continue;
 
     if (rule.minimum_cart_value !== undefined && subtotal < rule.minimum_cart_value) continue;
 
