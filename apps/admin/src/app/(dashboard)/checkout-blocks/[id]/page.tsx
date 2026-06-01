@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Settings, Share2 } from "lucide-react";
+import { ChevronRight, Settings, Share2, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSessionShop } from "@/lib/session-shop";
 import { CheckoutBlockActions } from "@/components/checkout-blocks/CheckoutBlockActions";
@@ -61,6 +61,13 @@ export default async function CheckoutBlockDetailPage({
           <span className="text-neutral-600 truncate max-w-sm">{block.name}</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <Link
+            href={`/checkout-blocks/${block.id}/edit`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </Link>
           <button className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100 transition-colors">
             <Share2 className="w-4 h-4" />
           </button>

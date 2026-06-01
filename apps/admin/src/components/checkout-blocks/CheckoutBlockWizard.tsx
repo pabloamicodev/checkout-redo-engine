@@ -1178,21 +1178,53 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 // Wizard shell
 // ---------------------------------------------------------------------------
 
-export function CheckoutBlockWizard() {
+interface CheckoutBlockWizardProps {
+  blockId?: string;
+  initialData?: {
+    name: string;
+    type: string;
+    content: Record<string, unknown>;
+    styles: Record<string, unknown>;
+    position: string;
+    targetingRules: unknown[];
+  };
+}
+
+export function CheckoutBlockWizard({ blockId, initialData }: CheckoutBlockWizardProps = {}) {
+  const isEdit = !!blockId;
   const router = useRouter();
   const toast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [state, setState] = useState<WizardState>({
-    name: "",
-    type: "",
-    content: {},
-    styles: {},
-    position: "AFTER_CONTACT",
-    targetingRules: {},
-  });
+  // Parse targeting rules back into form state when editing
+  const parsedTargeting: WizardState["targetingRules"] = {};
+  if (initialData?.targetingRules?.length) {
+    const conds = (initialData.targetingRules[0] as { conditions?: Array<{ type: string; value: unknown }> })?.conditions ?? [];
+    const dt = conds.find((c) => c.type === "device_type");
+    if (dt) parsedTargeting.deviceType = String(dt.value);
+    const ctry = conds.find((c) => c.type === "country");
+    if (ctry) parsedTargeting.countries = Array.isArray(ctry.value) ? ctry.value.join(", ") : String(ctry.value);
+  }
+
+  const [state, setState] = useState<WizardState>(
+    initialData ? {
+      name: initialData.name,
+      type: initialData.type as CheckoutBlockType | "",
+      content: initialData.content,
+      styles: initialData.styles,
+      position: initialData.position as Position,
+      targetingRules: parsedTargeting,
+    } : {
+      name: "",
+      type: "",
+      content: {},
+      styles: {},
+      position: "AFTER_CONTACT",
+      targetingRules: {},
+    }
+  );
 
   function patch(p: Partial<WizardState>) {
     setState((prev) => ({ ...prev, ...p }));
@@ -1232,8 +1264,10 @@ export function CheckoutBlockWizard() {
     setError(null);
 
     try {
-      const res = await fetch("/api/checkout-blocks", {
-        method: "POST",
+      const url = isEdit ? `/api/checkout-blocks/${blockId}` : "/api/checkout-blocks";
+      const method = isEdit ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: state.name,
@@ -1247,11 +1281,11 @@ export function CheckoutBlockWizard() {
 
       if (!res.ok) {
         const data = (await res.json()) as { error?: unknown };
-        throw new Error(typeof data.error === "string" ? data.error : "Failed to create checkout block");
+        throw new Error(typeof data.error === "string" ? data.error : isEdit ? "Failed to update checkout block" : "Failed to create checkout block");
       }
 
-      toast.success(`Checkout block "${state.name}" created — activate it from the blocks page.`);
-      router.push("/checkout-blocks");
+      toast.success(isEdit ? `Checkout block "${state.name}" updated.` : `Checkout block "${state.name}" created — activate it from the blocks page.`);
+      router.push(isEdit ? `/checkout-blocks/${blockId}` : "/checkout-blocks");
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to save checkout block";
