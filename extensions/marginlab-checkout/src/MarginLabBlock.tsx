@@ -19,21 +19,25 @@ var DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
-  // attrs in body = reactive signal subscription (re-runs effect when cart attrs change)
-  var attrs = shopify.attributes.value ?? [];
-
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
   var [dbgDomain, setDbgDomain] = useState("...");
+  var [dbgAttrs, setDbgAttrs] = useState(0);
 
+  // [] deps = same pattern as checkout-trust-social-proof (runs once at mount)
+  // All signals are populated by mount time — no race condition
   useEffect(function() {
     var cancelled = false;
-    // shopDomain read INSIDE effect — same as trust-social-proof (populated at mount time)
+
+    // Read EVERYTHING inside the effect at mount time (signals populated)
     var domain = "";
     try { domain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
-    setDbgDomain(domain || "EMPTY");
 
-  /*   if (!domain) return;  */// editor without real shop context
+    var attrs = [];
+    try { attrs = Array.isArray(shopify.attributes?.value) ? shopify.attributes.value : []; } catch(_) {}
+
+    setDbgDomain(domain || "EMPTY");
+    setDbgAttrs(attrs.length);
 
     function mlFetch(url, cb) {
       try {
@@ -106,7 +110,7 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, [JSON.stringify(attrs)]); // re-run when cart attrs change
+  }, []); // [] like trust-social-proof — runs once at mount, signals populated
 
   if (hidden) return null;
 
@@ -122,10 +126,8 @@ export function MarginLabBlock() {
       })
     : DEFAULT_REVIEWS;
 
-  var dbgAttrKey = attrs.find(function(a){ return a && a.key && a.key.startsWith("_ml_exp_"); });
   var dbgLine = "domain:" + dbgDomain
-    + " | attrs:" + attrs.length
-    + " | expAttr:" + (dbgAttrKey ? dbgAttrKey.key + "=" + dbgAttrKey.value : "none")
+    + " | attrs:" + dbgAttrs
     + " | content:" + (content ? "ADMIN(badge0=" + (content.badges && content.badges[0] && content.badges[0].label) + ")" : "DEFAULT");
 
   return (
