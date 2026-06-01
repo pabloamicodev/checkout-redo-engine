@@ -105,6 +105,17 @@
     // Fetch config and run experiments + personalizations
     fetchConfig().then(function (config) {
       state.config = config;
+      // Purge stored assignments for experiments no longer active in the config.
+      // Prevents deleted/archived experiments from continuing to redirect visitors.
+      var activeExpIds = {};
+      (config.experiments || []).forEach(function (e) {
+        if (["RUNNING", "PREVIEW", "QA"].includes(e.status)) activeExpIds[e.id] = true;
+      });
+      var hadStale = false;
+      Object.keys(state.assignments).forEach(function (expId) {
+        if (!activeExpIds[expId]) { delete state.assignments[expId]; hadStale = true; }
+      });
+      if (hadStale) persistAssignments();
       runExperiments(config);
       runPersonalizations(config);
       runOffers(config);
@@ -1077,6 +1088,15 @@
         localStorage.removeItem("_ml_config");
         fetchConfig().then(function (config) {
           state.config = config;
+          var activeIds = {};
+          (config.experiments || []).forEach(function (e) {
+            if (["RUNNING", "PREVIEW", "QA"].includes(e.status)) activeIds[e.id] = true;
+          });
+          var stale = false;
+          Object.keys(state.assignments).forEach(function (expId) {
+            if (!activeIds[expId]) { delete state.assignments[expId]; stale = true; }
+          });
+          if (stale) persistAssignments();
           runExperiments(config);
         });
       },

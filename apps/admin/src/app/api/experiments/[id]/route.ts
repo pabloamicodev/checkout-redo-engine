@@ -43,7 +43,7 @@ export async function DELETE(
 ) {
   return withShopAuth(request, async (shopId, actorId) => {
     const { id } = await params;
-    await service.archive(shopId, id, actorId);
+    await service.hardDelete(shopId, id, actorId);
     return NextResponse.json({ success: true });
   });
 }
