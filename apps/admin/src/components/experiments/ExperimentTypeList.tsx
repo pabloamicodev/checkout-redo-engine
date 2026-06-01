@@ -208,7 +208,7 @@ export function ExperimentTypeList({
     const { id, name } = deleteTarget;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`${apiPath}/${id}/delete`, { method: "POST" });
+      const res = await fetch(`${apiPath}/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const d = (await res.json()) as { error?: string };
         throw new Error(d.error || "Delete failed");
