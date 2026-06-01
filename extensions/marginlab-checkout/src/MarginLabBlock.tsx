@@ -19,19 +19,19 @@ var DEFAULT_REVIEWS = [
 ];
 
 export function MarginLabBlock() {
-  // Shopify docs pattern: access signals in component body for reactive subscriptions
-  // When signals update, component re-renders → useEffect deps change → effect re-runs
-  var attrs = shopify.attributes.value ?? [];      // docs: shopify.attributes.value
-  var shopDomain = shopify.shop?.myshopifyDomain ?? ""; // trust-social-proof pattern
+  // attrs in body = reactive signal subscription (re-runs effect when cart attrs change)
+  var attrs = shopify.attributes.value ?? [];
 
   var [content, setContent] = useState(null);
   var [hidden, setHidden] = useState(false);
 
   useEffect(function() {
     var cancelled = false;
-    var domain = shopDomain; // use the value from render scope
+    // shopDomain read INSIDE effect — same as trust-social-proof (populated at mount time)
+    var domain = "";
+    try { domain = shopify.shop?.myshopifyDomain ?? ""; } catch(_) {}
 
-    if (!domain) return; // editor without shop context
+    if (!domain) return; // editor without real shop context
 
     function mlFetch(url, cb) {
       try {
@@ -104,7 +104,7 @@ export function MarginLabBlock() {
     });
 
     return function() { cancelled = true; };
-  }, [shopDomain, JSON.stringify(attrs)]); // re-run when domain OR attrs change
+  }, [JSON.stringify(attrs)]); // re-run when cart attrs change
 
   if (hidden) return null;
 
