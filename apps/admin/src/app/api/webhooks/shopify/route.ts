@@ -129,19 +129,48 @@ async function processWebhook(
         break;
 
       case "checkouts/update": {
-        // Shopify sets abandoned_checkout_url when a checkout goes stale (≈1 hour of inactivity).
-        // Look up any active AbandonedCart personalization and send a recovery email.
+        // Shopify sets abandoned_checkout_url ~10 minutes after the customer provides their
+        // email and then becomes inactive. Every subsequent checkouts/update also includes it,
+        // so we deduplicate by checkout token to prevent sending multiple recovery emails.
         const checkout = payload as Record<string, unknown>;
         const abandonedUrl = checkout.abandoned_checkout_url as string | undefined;
         const email = checkout.email as string | undefined;
-        if (!abandonedUrl || !email) break;
+        const checkoutToken = checkout.token as string | undefined;
+        if (!abandonedUrl || !email || !checkoutToken) break;
+
+        // Respect buyer marketing consent — do not send if opted out
+        const acceptsMarketing = checkout.buyer_accepts_marketing as boolean | undefined;
+        if (acceptsMarketing === false) break;
 
         const personalization = await prisma.personalization.findFirst({
           where: { shopId, type: "ABANDONED_CART", status: "ACTIVE" },
           orderBy: { priority: "asc" },
         });
-
         if (!personalization) break;
+
+        // Evaluate targeting rules — minCartValue, returningOnly
+        const targeting = personalization.targetingRules as Record<string, unknown> | null;
+        if (targeting) {
+          const minCartValue = targeting["minCartValue"] as number | undefined;
+          if (minCartValue) {
+            const totalPrice = parseFloat(String(checkout.total_price ?? "0"));
+            if (totalPrice < minCartValue) break;
+          }
+          // returningOnly: if true, only send to customers who have ordered before
+          // Note: checkout payload doesn't include order count — skip this rule for now
+          // and handle it via a customer lookup if needed in the future.
+        }
+
+        // Deduplication — only send once per checkout token per shop
+        const alreadySent = await prisma.event.findFirst({
+          where: {
+            shopId,
+            eventType: "CUSTOM",
+            metadata: { path: ["_acr"], equals: checkoutToken },
+          },
+          select: { id: true },
+        });
+        if (alreadySent) break;
 
         const mods = personalization.modifications as Array<Record<string, unknown>>;
         const bannerMod = mods.find((m) => m["type"] === "announcement_bar") ?? mods[0];
@@ -153,7 +182,6 @@ async function processWebhook(
           price: String(item["price"] ?? "0.00"),
         }));
 
-        // Find an offer code linked to this personalization if any
         let offerCode: string | undefined;
         if (personalization.offerIds?.[0]) {
           const offer = await prisma.offer.findUnique({
@@ -165,6 +193,20 @@ async function processWebhook(
             offerCode = rules?.["code"] as string | undefined;
           }
         }
+
+        // Record send event BEFORE firing email to prevent race-condition duplicates.
+        // Uses CUSTOM eventType with _acr marker so it's queryable without a schema migration.
+        await prisma.event.create({
+          data: {
+            shopId,
+            eventType: "CUSTOM",
+            eventName: "abandoned_cart_email_sent",
+            visitorId: email,
+            personalizationId: personalization.id,
+            occurredAt: new Date(),
+            metadata: { _acr: checkoutToken, email } as never,
+          },
+        });
 
         void emailService
           .sendAbandonedCartEmail({

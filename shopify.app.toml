@@ -31,7 +31,20 @@ api_version = "2026-04"
   topics = [ "themes/publish" ]
   uri = "/api/webhooks/shopify"
 
+  [[webhooks.subscriptions]]
+  # Abandoned cart recovery — abandoned_checkout_url is set ~10 min after email + inactivity
+  topics = [ "checkouts/create", "checkouts/update" ]
+  uri = "/api/webhooks/shopify"
 
+  [[webhooks.subscriptions]]
+  # Revenue attribution — refund tracking for experiment analytics
+  topics = [ "refunds/create" ]
+  uri = "/api/webhooks/shopify"
+
+  [[webhooks.subscriptions]]
+  # GDPR — mandatory for all Shopify apps (required for App Store review)
+  topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "/api/webhooks/shopify"
 
 [access_scopes]
 # Scopes required by MarginLab — see SCOPES.md for full audit.

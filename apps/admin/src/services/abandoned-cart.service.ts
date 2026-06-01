@@ -6,7 +6,7 @@
  * Flow:
  *  1. Merchant creates an ACR personalization with message + optional offer + targeting
  *  2. On activation, the personalization is included in the RuntimeConfig payload
- *  3. The storefront runtime detects cart-abandonment signals and applies modifications
+ *  3. Shopify fires checkouts/update with abandoned_checkout_url ~10 min after email + inactivity
  *  4. Events (view, click, recovery) are attributed back to the personalization
  *
  * Guards & edge cases handled:
