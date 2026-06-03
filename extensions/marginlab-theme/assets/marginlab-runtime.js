@@ -350,9 +350,9 @@
       console.warn("[MarginLab][syncCart] no assignments — skipping");
       return;
     }
-    // Throttle + reentrance guard shared with syncAssignmentsToCart — prevents BOGOS-mediated loops
+    // Throttle shared with syncAssignmentsToCart — prevents BOGOS-mediated loops
     var now = Date.now();
-    if (_mlSyncingCart || now - _mlLastSyncTime < ML_SYNC_THROTTLE_MS) return;
+    if (now - _mlLastSyncTime < ML_SYNC_THROTTLE_MS) return;
     _mlLastSyncTime = now;
 
     var assignmentList = Object.entries(state.assignments).map(function (entry) {
@@ -369,15 +369,13 @@
     });
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
     console.log("[MarginLab][syncCart] writing cart attributes:", JSON.stringify(attributes));
-    _mlSyncingCart = true;
-    // Use XHR instead of fetch so BOGOS (which only wraps window.fetch) never
-    // intercepts this write and cannot react with add.js/update.js calls that
-    // would re-trigger our cart-change listener → infinite loop.
+    // Start cooldown BEFORE the write so any immediate BOGOS reaction is blocked.
+    _mlCartCooldownUntil = Date.now() + ML_CART_COOLDOWN_MS;
+    // Use XHR — bypasses BOGOS's window.fetch wrapper.
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/cart/update.js");
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onload = function () {
-      _mlSyncingCart = false;
       try {
         var data = JSON.parse(xhr.responseText);
         if (data && data.attributes) {
@@ -386,7 +384,6 @@
       } catch (e) {}
     };
     xhr.onerror = function () {
-      _mlSyncingCart = false;
       console.error("[MarginLab][syncCart] ❌ XHR failed");
     };
     xhr.send(JSON.stringify({ attributes: attributes }));
@@ -793,8 +790,13 @@
   // ---------------------------------------------------------------------------
   // Cart sync
   // ---------------------------------------------------------------------------
-  var _mlSyncingCart = false; // reentrance guard — prevents our own /cart/update.js from re-triggering sync
-  var _mlLastSyncTime = 0;    // throttle — prevents BOGOS-mediated re-trigger loops
+  // After any cart attribute write, ignore add.js/change.js triggers until this timestamp.
+  // Gives BOGOS (and any other reactive app) time to fire its own cart calls without
+  // re-triggering our sync — a time-based cooldown is more robust than an XHR-flight guard
+  // because BOGOS typically fires add.js *after* the XHR completes (~500–2000ms later).
+  var _mlCartCooldownUntil = 0;
+  var ML_CART_COOLDOWN_MS = 5000; // 5 s after a cart write, ignore add.js/change.js events
+  var _mlLastSyncTime = 0;        // secondary throttle — keeps redundant calls cheap
   var ML_SYNC_THROTTLE_MS = 2000; // minimum ms between syncAssignmentsToCart calls
 
   function listenForCartChanges() {
@@ -809,7 +811,7 @@
       var url = typeof input === "string" ? input : (input && input.url) || "";
       var promise = originalFetch.apply(this, arguments);
 
-      if (/\/cart\/(add|change)\.js/.test(url) && !_mlSyncingCart) {
+      if (/\/cart\/(add|change)\.js/.test(url) && Date.now() >= _mlCartCooldownUntil) {
         promise.then(function (response) {
           if (response.ok) {
             response.clone().json().then(function (cartData) {
@@ -877,15 +879,12 @@
     // (Cart.attributes plural is unavailable in that function API)
     attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
 
-    _mlSyncingCart = true;
-    // Use XHR instead of fetch so BOGOS (which only wraps window.fetch) never
-    // intercepts this write and cannot react with add.js/update.js calls that
-    // would re-trigger our cart-change listener → infinite loop.
+    // Start cooldown BEFORE the write so any immediate BOGOS reaction is blocked.
+    _mlCartCooldownUntil = Date.now() + ML_CART_COOLDOWN_MS;
+    // Use XHR — bypasses BOGOS's window.fetch wrapper.
     var xhrSync = new XMLHttpRequest();
     xhrSync.open("POST", "/cart/update.js");
     xhrSync.setRequestHeader("Content-Type", "application/json");
-    xhrSync.onload = function () { _mlSyncingCart = false; };
-    xhrSync.onerror = function () { _mlSyncingCart = false; };
     xhrSync.send(JSON.stringify({ attributes: attributes }));
   }
 
@@ -960,22 +959,18 @@
       // sendBeacon returns false if the queue is full — fall through to fetch
     }
 
-    fetch(state.apiBase + "/api/runtime/events", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shop-Domain": state.shopDomain,
-      },
-      body: payload,
-      keepalive: true,
-    }).catch(function () {
+    // Use XHR — bypasses BOGOS's window.fetch wrapper (sendBeacon already handles unload).
+    var xhrEv = new XMLHttpRequest();
+    xhrEv.open("POST", state.apiBase + "/api/runtime/events");
+    xhrEv.setRequestHeader("Content-Type", "application/json");
+    xhrEv.setRequestHeader("X-Shop-Domain", state.shopDomain);
+    xhrEv.onerror = function () {
       if (attempt < MAX_ATTEMPTS - 1) {
-        setTimeout(function () {
-          sendEventBatch(batch, attempt + 1);
-        }, RETRY_DELAYS[attempt]);
+        setTimeout(function () { sendEventBatch(batch, attempt + 1); }, RETRY_DELAYS[attempt]);
       }
       // After max attempts, events are dropped — acceptable data loss on persistent network failure
-    });
+    };
+    xhrEv.send(payload);
   }
 
   // Flush on page unload
