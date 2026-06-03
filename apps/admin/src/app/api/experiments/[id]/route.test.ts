@@ -4,10 +4,10 @@ import { NextRequest } from "next/server";
 
 // ─── Hoisted service mocks ────────────────────────────────────────────────────
 
-const { mockGet, mockUpdate, mockArchive } = vi.hoisted(() => ({
+const { mockGet, mockUpdate, mockHardDelete } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockUpdate: vi.fn(),
-  mockArchive: vi.fn(),
+  mockHardDelete: vi.fn(),
 }));
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ vi.mock("@/services/experiment.service", () => ({
   ExperimentService: vi.fn().mockImplementation(() => ({
     get: mockGet,
     update: mockUpdate,
-    archive: mockArchive,
+    hardDelete: mockHardDelete,
   })),
 }));
 
@@ -178,8 +178,8 @@ describe("DELETE /api/experiments/[id]", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 200 with success:true on archive", async () => {
-    mockArchive.mockResolvedValueOnce(EXP);
+  it("returns 200 with success:true on hard delete", async () => {
+    mockHardDelete.mockResolvedValueOnce(undefined);
     const req = new NextRequest("http://localhost/api/experiments/exp-1", {
       method: "DELETE",
       headers: authHeaders(),
@@ -190,13 +190,13 @@ describe("DELETE /api/experiments/[id]", () => {
     expect(body.success).toBe(true);
   });
 
-  it("calls service.archive with correct shopId and experimentId", async () => {
-    mockArchive.mockResolvedValueOnce(EXP);
+  it("calls service.hardDelete with correct shopId and experimentId", async () => {
+    mockHardDelete.mockResolvedValueOnce(undefined);
     const req = new NextRequest("http://localhost/api/experiments/exp-1", {
       method: "DELETE",
       headers: authHeaders(),
     });
     await DELETE(req, routeParams("exp-1"));
-    expect(mockArchive).toHaveBeenCalledWith("shop-1", "exp-1", "12345");
+    expect(mockHardDelete).toHaveBeenCalledWith("shop-1", "exp-1", "12345");
   });
 });
