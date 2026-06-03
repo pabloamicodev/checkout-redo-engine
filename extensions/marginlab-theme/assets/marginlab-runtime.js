@@ -191,6 +191,39 @@
   // ---------------------------------------------------------------------------
   // Config fetch with stale-while-revalidate
   // ---------------------------------------------------------------------------
+  // XHR-based JSON GET — bypasses window.fetch so third-party apps (e.g. BOGOS)
+  // that wrap window.fetch never intercept our own API calls and cannot react
+  // with cart mutations that would re-trigger our cart-change listener.
+  function _mlXhrGet(url, headers) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url);
+      if (headers) {
+        Object.keys(headers).forEach(function (k) { xhr.setRequestHeader(k, headers[k]); });
+      }
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+        } else {
+          reject(new Error("Config fetch failed: " + xhr.status));
+        }
+      };
+      xhr.onerror = function () { reject(new Error("Network error")); };
+      xhr.send();
+    });
+  }
+
+  // XHR-based JSON POST — same rationale as _mlXhrGet.
+  function _mlXhrPost(url, headers, body) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    if (headers) {
+      Object.keys(headers).forEach(function (k) { xhr.setRequestHeader(k, headers[k]); });
+    }
+    xhr.send(JSON.stringify(body));
+  }
+
   function fetchConfig() {
     var url = state.apiBase + "/api/runtime/config?shop=" + encodeURIComponent(state.shopDomain);
 
@@ -199,10 +232,9 @@
       var cached = localStorage.getItem("_ml_config");
       var cachedAt = parseInt(localStorage.getItem("_ml_config_at") || "0");
       if (cached && Date.now() - cachedAt < CONFIG_TTL) {
-        // Revalidate in background
+        // Revalidate in background via XHR — bypasses BOGOS fetch intercept
         setTimeout(function () {
-          fetch(url)
-            .then(function (r) { return r.json(); })
+          _mlXhrGet(url, { "X-Shop-Domain": state.shopDomain })
             .then(function (config) { cacheConfig(config); })
             .catch(function () {});
         }, 0);
@@ -210,15 +242,11 @@
       }
     } catch (e) {}
 
-    return fetch(url, {
-      headers: { "X-Shop-Domain": state.shopDomain },
-    }).then(function (r) {
-      if (!r.ok) throw new Error("Config fetch failed: " + r.status);
-      return r.json();
-    }).then(function (config) {
-      cacheConfig(config);
-      return config;
-    });
+    return _mlXhrGet(url, { "X-Shop-Domain": state.shopDomain })
+      .then(function (config) {
+        cacheConfig(config);
+        return config;
+      });
   }
 
   function cacheConfig(config) {
@@ -824,20 +852,18 @@
       };
     });
 
-    fetch(state.apiBase + "/api/runtime/cart-sync", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shop-Domain": state.shopDomain,
-      },
-      body: JSON.stringify({
+    // Use XHR — same reason as the /cart/update.js write below: bypasses BOGOS.
+    _mlXhrPost(
+      state.apiBase + "/api/runtime/cart-sync",
+      { "X-Shop-Domain": state.shopDomain },
+      {
         shopDomain: state.shopDomain,
         visitorId: state.visitorId,
         sessionId: state.sessionId,
         cartToken: cartToken,
         assignments: assignmentList,
-      }),
-    }).catch(function () {});
+      }
+    );
 
     // Also write to cart attributes via Shopify AJAX API
     var attributes = { "_ml_visitor_id": state.visitorId };
