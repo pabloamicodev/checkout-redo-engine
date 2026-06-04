@@ -41,10 +41,6 @@ api_version = "2026-04"
   topics = [ "refunds/create" ]
   uri = "/api/webhooks/shopify"
 
-  [[webhooks.subscriptions]]
-  # GDPR — mandatory for all Shopify apps (required for App Store review)
-  topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
-  uri = "/api/webhooks/shopify"
 
 [access_scopes]
 # Scopes required by MarginLab — see SCOPES.md for full audit.
