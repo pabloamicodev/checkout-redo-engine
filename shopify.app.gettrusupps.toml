@@ -1,6 +1,6 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "c6f5826368ce8cc82561c106c8ccc9b4"
+client_id = "ef05a2cf8735057b2c9e043d26225eb0"
 name = "checkout redo engine"
 application_url = "https://checkout-redo-engine.vercel.app"
 embedded = true
