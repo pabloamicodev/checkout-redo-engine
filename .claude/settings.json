@@ -93,7 +93,37 @@
       "Bash(git push *)",
       "Bash(npm run *)",
       "Bash(git commit -m 'fix: remove GraphQL extension validation errors in function-config.service.ts *)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"test: s-text web component render test\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"feat: restore full trust badges + reviews logic with fetch/XHR fallback\")",
+      "Bash(cp \"c:/Users/pol/Desktop/checkout-redo-engine/extensions/marginlab-checkout/src/Checkout.jsx\" /tmp/checkout_backup.jsx; echo \"backed up\")",
+      "Bash(git -C \"c:\\\\Users\\\\pol\\\\Desktop\\\\checkout-redo-engine\" rev-parse --show-toplevel)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add \"apps/admin/src/app/\\(dashboard\\)/checkout-blocks/page.tsx\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"fix: type annotation for checkout-blocks page items.map\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" diff --stat HEAD extensions/marginlab-checkout/)",
+      "Bash(xargs grep -l \"marginlab\\\\|MarginLab\\\\|checkout-redo\\\\|redo\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\pol\\\\Desktop\\\\checkout-redo-engine\\\\extensions\" -Directory)",
+      "Bash(mkdir -p \"c:/Users/pol/Desktop/checkout-redo-engine/apps/admin/src/app/\\(dashboard\\)/checkout-blocks/[id]/edit\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add apps/admin/src/)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'feat: edit checkout blocks - wizard edit mode + /[id]/edit page *)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'feat: improve checkout test results charts + larger size *)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add apps/admin/src/components/experiments/ExperimentTypeList.tsx)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'feat: dropdown ⋯ menu on test list rows - Pause/Complete/Archive/Delete *)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'fix: dropdown via createPortal - no more overflow clipping *)",
+      "Bash(xargs grep -l \"delete\\\\|DELETE\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"fix: use DELETE /api/[id] instead of POST /api/[id]/delete\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add shopify.app.toml apps/admin/src/app/api/webhooks/shopify/route.ts apps/admin/src/services/abandoned-cart.service.ts)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'fix: abandoned cart - register webhooks + dedup + consent + targeting *)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add apps/admin/src/app/api/webhooks/shopify/route.ts)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'feat: implement returningOnly targeting via Admin REST API customer lookup *)",
+      "Bash(sed -i 's/    attribute\\(key: \"_ml_visitor_id\"\\) {\\\\n      value\\\\n    }/    attributes {\\\\n      key\\\\n      value\\\\n    }/' \"c:/Users/pol/Desktop/checkout-redo-engine/extensions/marginlab-order-discount/src/run.graphql\")",
+      "Bash(python3 -c ' *)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add extensions/marginlab-order-discount/)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m 'fix: price test function reads _ml_experiments JSON instead of individual attrs *)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"fix: DiscountApplicationStrategy.All -> First \\(All removed from API\\)\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add extensions/marginlab-order-discount/src/run.ts extensions/marginlab-order-discount/dist/)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" status --short)",
+      "Bash(dir c:\\\\Users\\\\pol\\\\Desktop\\\\checkout-redo-engine\\\\shopify.app*.toml)"
     ],
     "additionalDirectories": [
       "c:\\Users\\pol\\.claude\\projects\\c--Users-pol-Desktop-checkout-redo-engine\\memory",
@@ -104,7 +134,9 @@
       "c:\\Users\\pol\\Desktop\\checkout-redo-engine\\apps\\admin\\src\\app\\(dashboard)\\personalizations",
       "c:\\Users\\pol\\Desktop\\checkout-redo-engine\\apps\\admin\\src\\app\\(dashboard)\\personalizations\\abandoned-cart",
       "c:\\Users\\pol\\Desktop\\checkout-redo-engine\\apps\\admin\\src\\app\\(dashboard)\\personalizations\\[id]",
-      "c:\\Users\\pol\\Desktop\\checkout-redo-engine\\apps\\admin\\src\\app\\(dashboard)\\get-inspired\\[slug]"
+      "c:\\Users\\pol\\Desktop\\checkout-redo-engine\\apps\\admin\\src\\app\\(dashboard)\\get-inspired\\[slug]",
+      "\\tmp",
+      "c:\\Users\\pol\\Desktop\\checkout-redo-engine\\apps\\admin\\src\\app\\(dashboard)\\checkout-blocks\\[id]"
     ]
   }
 }

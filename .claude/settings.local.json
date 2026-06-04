@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "mcp__codegraph__codegraph_files",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "WebFetch(domain:shopify.dev)",
+      "WebFetch(domain:community.shopify.dev)",
+      "WebSearch",
+      "WebFetch(domain:dev.to)",
+      "Bash(git -C c:/Users/pol/Desktop/checkout-redo-engine commit -m ' *)",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"test: absolute minimal render - single s-text to confirm Preact mounts\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" commit -m \"test: plain div render - no Shopify web components\")",
+      "Bash(xargs grep -l \"checkout-block\\\\|CheckoutBlock\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add apps/admin/src/app/api/checkout-blocks/route.ts apps/admin/src/components/checkout-blocks/CheckoutBlockActions.tsx)",
+      "Bash(python3 -c \"import json; d=open\\(r'C:/Users/pol/AppData/Roaming/com.vercel.cli/Data/auth.json'\\).read\\(\\); print\\(json.loads\\(d\\)['token']\\)\")",
+      "Bash(curl -s 'https://api.vercel.com/v6/deployments?projectId=prj_pCHuqbvjU8OHIk0tQCYl5Uq2Uya8&teamId=__TRACKED_VAR__&limit=1' -H 'Authorization: Bearer __TRACKED_VAR__')",
+      "Bash(curl -s \"https://extensions.shopifycdn.com/partners-extensions-scripts-bucket/ui_extension/handle/marginlab-checkout/version/checkout-redo-engine-65/019e5731-fadc-7784-b57e-26a22cd10d03/fe8cc2bea73291b2fc9598a75d8ea274.js\")",
+      "Bash(git -C \"c:/Users/pol/Desktop/checkout-redo-engine\" add extensions/marginlab-checkout/tsconfig.json extensions/marginlab-checkout/shopify.d.ts)",
+      "Bash(node --check \"c:/Users/pol/Desktop/checkout-redo-engine/extensions/marginlab-theme/assets/marginlab-runtime.js\")"
     ]
   }
 }

@@ -347,46 +347,16 @@
   // the customer reaches checkout (rather than waiting for a cart add/change event).
   function syncCartAttributesOnly() {
     if (!Object.keys(state.assignments).length) {
-      console.warn("[MarginLab][syncCart] no assignments — skipping");
+      if (state.debugMode) console.warn("[MarginLab][syncCart] no assignments — skipping");
       return;
     }
-    // Throttle shared with syncAssignmentsToCart — prevents BOGOS-mediated loops
     var now = Date.now();
     if (now - _mlLastSyncTime < ML_SYNC_THROTTLE_MS) return;
     _mlLastSyncTime = now;
 
-    var assignmentList = Object.entries(state.assignments).map(function (entry) {
-      var expId = entry[0];
-      var variant = entry[1];
-      return { experimentId: expId, variantId: variant.id, experimentSlug: variant.slug || expId, variantKey: variant.key };
-    });
-    var attributes = { "_ml_visitor_id": state.visitorId };
-    var experimentsMap = {};
-    assignmentList.forEach(function (a) {
-      var shortId = a.experimentId.slice(0, 8);
-      attributes["_ml_exp_" + shortId] = a.variantKey;
-      experimentsMap[shortId] = a.variantKey;
-    });
-    attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
-    console.log("[MarginLab][syncCart] writing cart attributes:", JSON.stringify(attributes));
-    // Start cooldown BEFORE the write so any immediate BOGOS reaction is blocked.
-    _mlCartCooldownUntil = Date.now() + ML_CART_COOLDOWN_MS;
-    // Use XHR — bypasses BOGOS's window.fetch wrapper.
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/cart/update.js");
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.onload = function () {
-      try {
-        var data = JSON.parse(xhr.responseText);
-        if (data && data.attributes) {
-          console.log("[MarginLab][syncCart] ✅ cart attributes written:", JSON.stringify(data.attributes));
-        }
-      } catch (e) {}
-    };
-    xhr.onerror = function () {
-      console.error("[MarginLab][syncCart] ❌ XHR failed");
-    };
-    xhr.send(JSON.stringify({ attributes: attributes }));
+    var built = buildMarginLabCartAttributes();
+    if (state.debugMode) console.log("[MarginLab][syncCart] checking attributes:", JSON.stringify(built.attributes));
+    writeCartAttributesIfChanged(built.attributes);
   }
 
   // ---------------------------------------------------------------------------
@@ -795,9 +765,58 @@
   // re-triggering our sync — a time-based cooldown is more robust than an XHR-flight guard
   // because BOGOS typically fires add.js *after* the XHR completes (~500–2000ms later).
   var _mlCartCooldownUntil = 0;
-  var ML_CART_COOLDOWN_MS = 5000; // 5 s after a cart write, ignore add.js/change.js events
-  var _mlLastSyncTime = 0;        // secondary throttle — keeps redundant calls cheap
-  var ML_SYNC_THROTTLE_MS = 2000; // minimum ms between syncAssignmentsToCart calls
+  var ML_CART_COOLDOWN_MS = 10000; // 10 s after a cart write, ignore add.js/change.js events
+  var _mlLastSyncTime = 0;         // secondary throttle — keeps redundant calls cheap
+  var ML_SYNC_THROTTLE_MS = 5000;  // minimum ms between syncAssignmentsToCart calls
+  var ML_LAST_CART_ATTRS_KEY = "_ml_last_cart_attrs"; // sessionStorage — last-written attrs fingerprint
+
+  // Build the _ml_* attribute map from current assignments.
+  // Extracted so both sync functions produce identical payloads.
+  function buildMarginLabCartAttributes() {
+    var assignmentList = Object.entries(state.assignments).map(function (entry) {
+      var expId = entry[0], variant = entry[1];
+      return { experimentId: expId, variantId: variant.id, experimentSlug: variant.slug || expId, variantKey: variant.key };
+    });
+    var attributes = { "_ml_visitor_id": state.visitorId };
+    var experimentsMap = {};
+    assignmentList.forEach(function (a) {
+      var shortId = a.experimentId.slice(0, 8);
+      attributes["_ml_exp_" + shortId] = a.variantKey;
+      experimentsMap[shortId] = a.variantKey;
+    });
+    attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
+    return { attributes: attributes, assignmentList: assignmentList };
+  }
+
+  // Write cart attributes only if they differ from the last-written set.
+  // Compares against a sessionStorage fingerprint — no extra GET /cart.js needed.
+  // Returns true if a write was triggered, false if skipped.
+  function writeCartAttributesIfChanged(attributes) {
+    var fingerprint = JSON.stringify(attributes);
+    try {
+      if (sessionStorage.getItem(ML_LAST_CART_ATTRS_KEY) === fingerprint) {
+        if (state.debugMode) console.log("[MarginLab][syncCart] attributes unchanged — skipping write");
+        return false;
+      }
+    } catch (e) {}
+
+    _mlCartCooldownUntil = Date.now() + ML_CART_COOLDOWN_MS;
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/cart/update.js");
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onload = function () {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data && data.attributes) {
+          console.log("[MarginLab][syncCart] ✅ cart attributes written:", JSON.stringify(data.attributes));
+          try { sessionStorage.setItem(ML_LAST_CART_ATTRS_KEY, fingerprint); } catch (e2) {}
+        }
+      } catch (e) {}
+    };
+    xhr.onerror = function () { console.error("[MarginLab][syncCart] ❌ XHR failed"); };
+    xhr.send(JSON.stringify({ attributes: attributes }));
+    return true;
+  }
 
   function listenForCartChanges() {
     // Listen for fetch/XHR calls to /cart/add.js and /cart/change.js ONLY.
@@ -843,18 +862,8 @@
     if (now - _mlLastSyncTime < ML_SYNC_THROTTLE_MS) return;
     _mlLastSyncTime = now;
 
-    var assignmentList = Object.entries(state.assignments).map(function (entry) {
-      var expId = entry[0];
-      var variant = entry[1];
-      return {
-        experimentId: expId,
-        variantId: variant.id,
-        experimentSlug: variant.slug || expId,
-        variantKey: variant.key,
-      };
-    });
+    var built = buildMarginLabCartAttributes();
 
-    // Use XHR — same reason as the /cart/update.js write below: bypasses BOGOS.
     _mlXhrPost(
       state.apiBase + "/api/runtime/cart-sync",
       { "X-Shop-Domain": state.shopDomain },
@@ -863,29 +872,11 @@
         visitorId: state.visitorId,
         sessionId: state.sessionId,
         cartToken: cartToken,
-        assignments: assignmentList,
+        assignments: built.assignmentList,
       }
     );
 
-    // Also write to cart attributes via Shopify AJAX API
-    var attributes = { "_ml_visitor_id": state.visitorId };
-    var experimentsMap = {};
-    assignmentList.forEach(function (a) {
-      var shortId = a.experimentId.slice(0, 8);
-      attributes["_ml_exp_" + shortId] = a.variantKey;
-      experimentsMap[shortId] = a.variantKey;
-    });
-    // Consolidated JSON attribute for delivery customization function
-    // (Cart.attributes plural is unavailable in that function API)
-    attributes["_ml_experiments"] = JSON.stringify(experimentsMap);
-
-    // Start cooldown BEFORE the write so any immediate BOGOS reaction is blocked.
-    _mlCartCooldownUntil = Date.now() + ML_CART_COOLDOWN_MS;
-    // Use XHR — bypasses BOGOS's window.fetch wrapper.
-    var xhrSync = new XMLHttpRequest();
-    xhrSync.open("POST", "/cart/update.js");
-    xhrSync.setRequestHeader("Content-Type", "application/json");
-    xhrSync.send(JSON.stringify({ attributes: attributes }));
+    writeCartAttributesIfChanged(built.attributes);
   }
 
   // ---------------------------------------------------------------------------
