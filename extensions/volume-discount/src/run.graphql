@@ -8,6 +8,9 @@ query RunInput {
           amount
         }
       }
+      bundleItem: attribute(key: "_bundle_item") {
+        value
+      }
       merchandise {
         ... on ProductVariant {
           __typename

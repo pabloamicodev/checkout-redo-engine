@@ -15,6 +15,18 @@ coverage
 logs
 *.log
 
+# Local tool state
+.codegraph/
+.vercel/
+
+# Next.js output
+.next/
+**/.next/
+**/.vercel/
+next-env.d.ts
+**/next-env.d.ts
+*.tsbuildinfo
+
 # extensions build output
 extensions/*/build
 extensions/*/dist
