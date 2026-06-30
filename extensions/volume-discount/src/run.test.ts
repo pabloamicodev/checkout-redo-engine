@@ -350,6 +350,43 @@ describe("volume discount", () => {
       ).toEqual(EMPTY_DISCOUNT);
     });
 
+    it("applies volume tiers to non-bundle lines while ignoring bundle builder lines in the same cart", () => {
+      expect(
+        run(
+          input([
+            productLine({
+              id: "bundle-line-1",
+              productId: "bundle-product-1",
+              total: "10.00",
+              bundleItem: true,
+            }),
+            productLine({
+              id: "bundle-line-2",
+              productId: "bundle-product-2",
+              total: "20.00",
+              bundleItem: true,
+            }),
+            productLine({
+              id: "pdp-line-1",
+              productId: "pdp-product-1",
+              total: "10.00",
+            }),
+            productLine({
+              id: "pdp-line-2",
+              productId: "pdp-product-2",
+              total: "20.00",
+            }),
+          ]),
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("pdp-line-1", "1.50", "2+ for 15% off"),
+          discount("pdp-line-2", "3.00", "2+ for 15% off"),
+        ],
+      });
+    });
+
     it("skips non ProductVariant merchandise", () => {
       expect(
         run(
