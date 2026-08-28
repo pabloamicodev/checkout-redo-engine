@@ -7,14 +7,17 @@ import {
 import { run } from "./run";
 
 type CartLine = RunInput["cart"]["lines"][number];
-type ProductVariantLine = Extract<
-  CartLine,
-  { merchandise: { __typename: "ProductVariant" } }
->;
-type CustomProductLine = Extract<
-  CartLine,
-  { merchandise: { __typename?: "CustomProduct" } }
->;
+// CartLine itself isn't a discriminated union — only its `merchandise` field is
+// (see generated/api.ts) — so Extract<CartLine, {...}> always resolved to
+// `never` (a union is assignable to a shape only if EVERY member satisfies it,
+// which the CustomProduct member never does for a ProductVariant-shaped
+// constraint, and vice versa). Narrow the `merchandise` field directly instead.
+type ProductVariantLine = Omit<CartLine, "merchandise"> & {
+  merchandise: Extract<CartLine["merchandise"], { __typename: "ProductVariant" }>;
+};
+type CustomProductLine = Omit<CartLine, "merchandise"> & {
+  merchandise: Extract<CartLine["merchandise"], { __typename?: "CustomProduct" }>;
+};
 type TierConfig = {
   qty: number;
   percent: number;
@@ -39,6 +42,8 @@ function productLine({
   total,
   tiers = DEFAULT_TIERS,
   bundleItem = false,
+  quizBundleId,
+  nektarGlp1,
 }: {
   id: string;
   productId: string;
@@ -46,6 +51,8 @@ function productLine({
   total: string;
   tiers?: unknown;
   bundleItem?: boolean;
+  quizBundleId?: string;
+  nektarGlp1?: string;
 }): ProductVariantLine {
   return {
     __typename: "CartLine",
@@ -62,6 +69,18 @@ function productLine({
       ? {
           __typename: "Attribute",
           value: "true",
+        }
+      : null,
+    quizBundleId: quizBundleId
+      ? {
+          __typename: "Attribute",
+          value: quizBundleId,
+        }
+      : null,
+    nektarGlp1: nektarGlp1
+      ? {
+          __typename: "Attribute",
+          value: nektarGlp1,
         }
       : null,
     merchandise: {
@@ -94,15 +113,27 @@ function customProductLine(id: string, quantity = 1, total = "10.00"): CustomPro
       },
     },
     bundleItem: null,
+    quizBundleId: null,
+    nektarGlp1: null,
     merchandise: {
       __typename: "CustomProduct",
     },
   };
 }
 
-function input(lines: CartLine[]): RunInput {
+function input(lines: CartLine[], config?: Record<string, unknown>): RunInput {
   return {
     __typename: "Input",
+    discountNode: {
+      __typename: "DiscountNode",
+      metafield:
+        config == null
+          ? null
+          : {
+              __typename: "Metafield",
+              jsonValue: config,
+            },
+    },
     cart: {
       __typename: "Cart",
       lines,
@@ -119,7 +150,7 @@ function discount(lineId: string, amount: string, message: string) {
 }
 
 describe("volume discount", () => {
-  describe("tier selection", () => {
+  describe("tier selection (per product)", () => {
     it("does not discount a single eligible item because the qty 1 tier is 0%", () => {
       expect(
         run(
@@ -134,32 +165,7 @@ describe("volume discount", () => {
       ).toEqual(EMPTY_DISCOUNT);
     });
 
-    it("applies the qty 2 tier across different eligible products", () => {
-      expect(
-        run(
-          input([
-            productLine({
-              id: "line-1",
-              productId: "product-1",
-              total: "10.00",
-            }),
-            productLine({
-              id: "line-2",
-              productId: "product-2",
-              total: "20.00",
-            }),
-          ]),
-        ),
-      ).toEqual({
-        discountApplicationStrategy: DiscountApplicationStrategy.All,
-        discounts: [
-          discount("line-1", "1.50", "2+ for 15% off"),
-          discount("line-2", "3.00", "2+ for 15% off"),
-        ],
-      });
-    });
-
-    it("applies the qty 3 tier across different eligible products", () => {
+    it("does NOT apply a tier across different eligible products (each product is scoped independently)", () => {
       expect(
         run(
           input([
@@ -180,6 +186,55 @@ describe("volume discount", () => {
             }),
           ]),
         ),
+      ).toEqual(EMPTY_DISCOUNT);
+    });
+
+    it("applies the qty 2 tier across two lines of the SAME product (e.g. two different flavors)", () => {
+      expect(
+        run(
+          input([
+            productLine({
+              id: "line-1",
+              productId: "product-1",
+              total: "10.00",
+            }),
+            productLine({
+              id: "line-2",
+              productId: "product-1",
+              total: "20.00",
+            }),
+          ]),
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("line-1", "1.50", "2+ for 15% off"),
+          discount("line-2", "3.00", "2+ for 15% off"),
+        ],
+      });
+    });
+
+    it("applies the qty 3 tier across three lines of the SAME product", () => {
+      expect(
+        run(
+          input([
+            productLine({
+              id: "line-1",
+              productId: "product-1",
+              total: "10.00",
+            }),
+            productLine({
+              id: "line-2",
+              productId: "product-1",
+              total: "20.00",
+            }),
+            productLine({
+              id: "line-3",
+              productId: "product-1",
+              total: "30.00",
+            }),
+          ]),
+        ),
       ).toEqual({
         discountApplicationStrategy: DiscountApplicationStrategy.All,
         discounts: [
@@ -190,7 +245,27 @@ describe("volume discount", () => {
       });
     });
 
-    it("counts quantity on a single eligible line toward the global quantity", () => {
+    it("keeps two different products' tier groups fully independent in the same cart", () => {
+      const result = run(
+        input([
+          // product-1: 2 units -> hits the 15% tier
+          productLine({ id: "a-1", productId: "product-1", total: "10.00" }),
+          productLine({ id: "a-2", productId: "product-1", total: "10.00" }),
+          // product-2: 1 unit -> no tier
+          productLine({ id: "b-1", productId: "product-2", total: "50.00" }),
+        ]),
+      );
+
+      expect(result).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("a-1", "1.50", "2+ for 15% off"),
+          discount("a-2", "1.50", "2+ for 15% off"),
+        ],
+      });
+    });
+
+    it("counts quantity on a single eligible line toward that product's own quantity", () => {
       expect(
         run(
           input([
@@ -220,7 +295,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "10.00",
               tiers: JSON.stringify(DEFAULT_TIERS),
             }),
@@ -253,13 +328,13 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "10.00",
               tiers: unsortedTiers,
             }),
             productLine({
               id: "line-3",
-              productId: "product-3",
+              productId: "product-1",
               total: "10.00",
               tiers: unsortedTiers,
             }),
@@ -292,7 +367,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "10.00",
               tiers: duplicateQtyTiers,
             }),
@@ -320,7 +395,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "20.00",
               tiers: null,
             }),
@@ -341,7 +416,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "20.00",
               bundleItem: true,
             }),
@@ -362,7 +437,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "bundle-line-2",
-              productId: "bundle-product-2",
+              productId: "bundle-product-1",
               total: "20.00",
               bundleItem: true,
             }),
@@ -373,7 +448,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "pdp-line-2",
-              productId: "pdp-product-2",
+              productId: "pdp-product-1",
               total: "20.00",
             }),
           ]),
@@ -383,6 +458,159 @@ describe("volume discount", () => {
         discounts: [
           discount("pdp-line-1", "1.50", "2+ for 15% off"),
           discount("pdp-line-2", "3.00", "2+ for 15% off"),
+        ],
+      });
+    });
+
+    it("applies volume tiers while ignoring Nektar GLP-1 lines of the same product", () => {
+      expect(
+        run(
+          input([
+            productLine({
+              id: "nektar-line",
+              productId: "product-1",
+              total: "50.00",
+              nektarGlp1: "true",
+            }),
+            productLine({
+              id: "pdp-line-1",
+              productId: "product-1",
+              total: "10.00",
+            }),
+            productLine({
+              id: "pdp-line-2",
+              productId: "product-1",
+              total: "20.00",
+            }),
+          ]),
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("pdp-line-1", "1.50", "2+ for 15% off"),
+          discount("pdp-line-2", "3.00", "2+ for 15% off"),
+        ],
+      });
+    });
+
+    it("does NOT exclude Product Quiz bundle lines when the store has no excludeQuizBundleLines config (quiz doesn't exist there)", () => {
+      expect(
+        run(
+          input([
+            productLine({
+              id: "quiz-line-1",
+              productId: "product-1",
+              total: "10.00",
+              quizBundleId: "tq-123",
+            }),
+            productLine({
+              id: "quiz-line-2",
+              productId: "product-1",
+              total: "20.00",
+              quizBundleId: "tq-123",
+            }),
+          ]),
+          // no config at all — the default for every store that never opted in
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("quiz-line-1", "1.50", "2+ for 15% off"),
+          discount("quiz-line-2", "3.00", "2+ for 15% off"),
+        ],
+      });
+    });
+
+    it("does not count Product Quiz bundle lines when excludeQuizBundleLines is enabled for this store", () => {
+      expect(
+        run(
+          input(
+            [
+              productLine({
+                id: "quiz-line-1",
+                productId: "product-1",
+                total: "10.00",
+                quizBundleId: "tq-123",
+              }),
+              productLine({
+                id: "quiz-line-2",
+                productId: "product-1",
+                total: "20.00",
+                quizBundleId: "tq-123",
+              }),
+            ],
+            { excludeQuizBundleLines: true },
+          ),
+        ),
+      ).toEqual(EMPTY_DISCOUNT);
+    });
+
+    it("applies volume tiers to non-quiz lines while ignoring Product Quiz lines of the same product in the same cart, when enabled", () => {
+      expect(
+        run(
+          input(
+            [
+              productLine({
+                id: "quiz-line-1",
+                productId: "product-1",
+                total: "10.00",
+                quizBundleId: "tq-123",
+              }),
+              productLine({
+                id: "quiz-line-2",
+                productId: "product-1",
+                total: "10.00",
+                quizBundleId: "tq-123",
+              }),
+              productLine({
+                id: "pdp-line-1",
+                productId: "product-1",
+                total: "10.00",
+              }),
+              productLine({
+                id: "pdp-line-2",
+                productId: "product-1",
+                total: "10.00",
+              }),
+            ],
+            { excludeQuizBundleLines: true },
+          ),
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("pdp-line-1", "1.50", "2+ for 15% off"),
+          discount("pdp-line-2", "1.50", "2+ for 15% off"),
+        ],
+      });
+    });
+
+    it("ignores an invalid config metafield and falls back to not excluding quiz lines", () => {
+      expect(
+        run(
+          input(
+            [
+              productLine({
+                id: "quiz-line-1",
+                productId: "product-1",
+                total: "10.00",
+                quizBundleId: "tq-123",
+              }),
+              productLine({
+                id: "quiz-line-2",
+                productId: "product-1",
+                total: "10.00",
+                quizBundleId: "tq-123",
+              }),
+            ],
+            "{not valid json" as unknown as Record<string, unknown>,
+          ),
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [
+          discount("quiz-line-1", "1.50", "2+ for 15% off"),
+          discount("quiz-line-2", "1.50", "2+ for 15% off"),
         ],
       });
     });
@@ -414,7 +642,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "10.00",
             }),
           ]),
@@ -442,7 +670,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "10.00",
               tiers: mixedTiers,
             }),
@@ -468,17 +696,17 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "-1.00",
             }),
             productLine({
               id: "line-3",
-              productId: "product-3",
+              productId: "product-1",
               total: "not-a-number",
             }),
             productLine({
               id: "line-4",
-              productId: "product-4",
+              productId: "product-1",
               total: "10.00",
             }),
           ]),
@@ -499,7 +727,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "75.00",
             }),
           ]),
@@ -523,12 +751,12 @@ describe("volume discount", () => {
           }),
           productLine({
             id: "line-2",
-            productId: "product-2",
+            productId: "product-1",
             total: "0.01",
           }),
           productLine({
             id: "line-3",
-            productId: "product-3",
+            productId: "product-1",
             total: "0.01",
           }),
         ]),
@@ -567,7 +795,7 @@ describe("volume discount", () => {
             }),
             productLine({
               id: "line-2",
-              productId: "product-2",
+              productId: "product-1",
               total: "10.00",
               tiers: tiersWithoutLabel,
             }),

@@ -1,4 +1,9 @@
 query RunInput {
+  discountNode {
+    metafield(namespace: "volume_discount", key: "config") {
+      jsonValue
+    }
+  }
   cart {
     lines {
       id
@@ -9,6 +14,12 @@ query RunInput {
         }
       }
       bundleItem: attribute(key: "_bundle_item") {
+        value
+      }
+      quizBundleId: attribute(key: "_quiz_bundle_id") {
+        value
+      }
+      nektarGlp1: attribute(key: "_nektar_glp1") {
         value
       }
       merchandise {
