@@ -44,6 +44,7 @@ function productLine({
   bundleItem = false,
   quizBundleId,
   nektarGlp1,
+  landingSource,
 }: {
   id: string;
   productId: string;
@@ -53,6 +54,7 @@ function productLine({
   bundleItem?: boolean;
   quizBundleId?: string;
   nektarGlp1?: string;
+  landingSource?: string;
 }): ProductVariantLine {
   return {
     __typename: "CartLine",
@@ -81,6 +83,12 @@ function productLine({
       ? {
           __typename: "Attribute",
           value: nektarGlp1,
+        }
+      : null,
+    landingSource: landingSource
+      ? {
+          __typename: "Attribute",
+          value: landingSource,
         }
       : null,
     merchandise: {
@@ -460,6 +468,23 @@ describe("volume discount", () => {
           discount("pdp-line-2", "3.00", "2+ for 15% off"),
         ],
       });
+    });
+
+    it("ignores Protein edu landing lines (__landing_source=protein-edu-lp) but not other landings", () => {
+      expect(
+        run(
+          input([
+            productLine({ id: "edu-line", productId: "product-1", quantity: 3, total: "134.97", landingSource: "protein-edu-lp" }),
+            productLine({ id: "other-landing", productId: "product-2", quantity: 2, total: "20.00", landingSource: "protein-complete-lp" }),
+          ]),
+        ),
+      ).toEqual({
+        discountApplicationStrategy: DiscountApplicationStrategy.All,
+        discounts: [discount("other-landing", "3.00", "2+ for 15% off")],
+      });
+      expect(
+        run(input([productLine({ id: "edu-only", productId: "product-1", quantity: 3, total: "134.97", landingSource: "protein-edu-lp" })])),
+      ).toEqual(EMPTY_DISCOUNT);
     });
 
     it("applies volume tiers while ignoring Nektar GLP-1 lines of the same product", () => {

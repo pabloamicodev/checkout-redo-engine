@@ -22,6 +22,9 @@ query RunInput {
       nektarGlp1: attribute(key: "_nektar_glp1") {
         value
       }
+      landingSource: attribute(key: "__landing_source") {
+        value
+      }
       merchandise {
         ... on ProductVariant {
           __typename
