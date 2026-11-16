@@ -40,6 +40,10 @@ function isTier(value: unknown): value is Tier {
   );
 }
 
+// `__landing_source` values whose lines get no volume discount. Only TRU's Protein edu
+// landings set "protein-edu-lp", so other stores are unaffected.
+const EXCLUDED_LANDING_SOURCES = new Set(["protein-edu-lp"]);
+
 type RunConfig = {
   excludeQuizBundleLines: boolean;
 };
@@ -130,6 +134,8 @@ export function run(input: RunInput): FunctionRunResult {
     // never also compete with this cart-wide-per-product volume discount —
     // but only on stores that actually run that quiz (see readConfig above).
     if (config.excludeQuizBundleLines && line.quizBundleId?.value) continue;
+    // Landings with their own Promo Engine pricing: volume tiers must not compete with it.
+    if (line.landingSource?.value && EXCLUDED_LANDING_SOURCES.has(line.landingSource.value)) continue;
 
     const merch = line.merchandise;
     // __typename check + fallback: skip non-ProductVariant lines (e.g. gift cards)
